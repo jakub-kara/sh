@@ -83,6 +83,7 @@ class PotentialEnergySurface:
     def __init__(self, config: dict, par: Params):
         self.ham_diab_mnss = np.zeros((par.n_steps, par.n_substeps, par.n_states, par.n_states), dtype=np.complex128)
         self.ham_diag_mnss = np.zeros((par.n_steps, par.n_substeps, par.n_states, par.n_states))
+        self.poten_mn = np.zeros((par.n_steps, par.n_substeps))
         self.ham_transform_mnss = np.zeros((par.n_steps, par.n_substeps, par.n_states, par.n_states), dtype=np.complex128)
         self.diagonalise = True
         self.nac_ddr_mnssad = np.zeros((par.n_steps, par.n_substeps, par.n_states, par.n_states, par.n_atoms, 3))

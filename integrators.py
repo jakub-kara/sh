@@ -556,6 +556,24 @@ def est_wrapper(x: np.ndarray, nacs: bool, traj: Trajectory):
     traj.geo.force_mnad[-1,0] = -traj.pes.nac_ddr_mnssad[-1,0,traj.hop.active,traj.hop.active]/traj.geo.mass_a[:,None]
     return traj.geo.force_mnad[-1,0]
 
+def ARKN3Solver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, fargs: tuple, dt: float, scheme: RKN, *args):
+    a1 = 1/2
+    b1 = 2/3
+    b_1 = -1/3
+    b2 = 5/6
+    b2_ = 5/12
+    b_ = a1*b2
+    
+    k1 = f0[-1]
+    k2 = func(y0[-1] + dt*a1*k1, False, *fargs)
+    k_1 = f0[-2]
+    k_2 = func(y0[-2] + dt*a1*k_1, False, *fargs)
+    
+    y1 = y0[-1] + 3/2*dt*v0[-1] + 1/2*dt*v0[-2] + dt**2*b_*(k1 - k_1)
+    v1 = v0[-1] + dt*(b1*k1 - b_1*k_1 + b2*(k2 - k_2))
+    f1 = func(y1, True, *fargs)
+    return y1, v1, f1
+
 def RKNSolver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, fargs: tuple, dt: float, scheme: RKN, *args):
     def tri(x):
         return int(x*(x+1)/2)
@@ -676,6 +694,7 @@ def shift_values(*args):
     for arr in args:
         for m in range(1, arr.shape[0]):
             arr[m-1] = arr[m]
+        arr[m] = np.nan
 
 def interpolate(x: np.ndarray, y: np.ndarray, inp: float):
     poly = np.ones_like(x, dtype=float)

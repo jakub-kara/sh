@@ -1,10 +1,11 @@
 import os, sys
 import pickle, json
 import numpy as np
+from copy import deepcopy
 
 from classes import Trajectory
 from selection import select_est, select_force_updater, select_nac_setter, select_coeff_propagator, select_solvers, select_stepfunc
-from io_methods import finalise_dynamics, write_headers, write_dat, write_xyz, write_log, time_log, step_log, back_up_step
+from io_methods import finalise_dynamics, write_headers, write_dat, write_xyz, write_log, time_log, step_log, back_up_step, Printer
 from integrators import shift_values, est_wrapper, calculate_am4_coeffs, calculate_sy4_coeffs, update_tdc, integrate_quantum, get_dt
 from hopping import adjust_velocity_and_hop, decoherence_edc
 from constants import Constants
@@ -58,19 +59,32 @@ def initialise_dynamics(traj: Trajectory):
 
     #figure out a place to store pe
     if traj.par.type == "sh":
-        pe = traj.pes.ham_diag_mnss[-1,0,traj.hop.active, traj.hop.active]
+        traj.pes.poten_mn[-1,0] = traj.pes.ham_diag_mnss[-1,0,traj.hop.active, traj.hop.active]
     elif traj.par.type == "mfe":
-        pe = 0
+        traj.pes.poten_mn[-1,0] = 0
         for s in range(traj.par.n_states):
-            pe += np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
+            traj.pes.poten_mn[-1,0] += np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
     
     traj.ctrl.dt = traj.ctrl.dt_func(traj, get_inp(traj.pes.nac_ddt_mnss[-1,0]))
     traj.ctrl.dtq = traj.ctrl.dt/traj.par.n_qsteps
     traj.ctrl.h[-1] = traj.ctrl.dt
 
+    with open("data/cons.dat", "w") as f:
+        f.write(Printer.write(" Time", "s"))
+        f.write(Printer.write("Redo", "s"))
+        f.write("\n")
+
+def check_est(traj: Trajectory):
+    ke0 = 0.5*np.sum(traj.geo.mass_a[:,None]*traj.geo.velocity_mnad[-2,0]**2)
+    ke1 = 0.5*np.sum(traj.geo.mass_a[:,None]*traj.geo.velocity_mnad[-1,0]**2)
+    pe0 = traj.pes.poten_mn[-2,0]
+    pe1 = traj.pes.poten_mn[-1,0]
+    print(ke0, pe0, ke1, pe1)
+    return np.abs(ke0 + pe0 - ke1 - pe1) < 2e-4
+
 def loop_dynamics(traj: Trajectory):
     while traj.ctrl.curr_time <= traj.ctrl.t_max:
-
+        traj_old = deepcopy(traj)
 
         if os.path.isfile("stop"):
             exit(23)
@@ -81,7 +95,7 @@ def loop_dynamics(traj: Trajectory):
 
         shift_values(traj.geo.position_mnad, traj.geo.velocity_mnad, traj.geo.force_mnad)
         shift_values(traj.pes.ham_diag_mnss, traj.pes.nac_ddr_mnssad, traj.pes.nac_ddt_mnss)
-        shift_values(traj.est.coeff_mns)
+        shift_values(traj.est.coeff_mns, traj.pes.poten_mn)
         
         if traj.ctrl.init_steps:
             traj.ctrl.init_steps -= 1
@@ -107,6 +121,22 @@ def loop_dynamics(traj: Trajectory):
 
         traj.est.calculate_nacs[:] = False
         traj.geo.position_mnad[-1,0], traj.geo.velocity_mnad[-1,0], traj.geo.force_mnad[-1,0] = tempx, tempv, tempf
+        if traj.par.type == "sh":
+            traj.pes.poten_mn[-1,0] = traj.pes.ham_diag_mnss[-1,0,traj.hop.active, traj.hop.active]
+        elif traj.par.type == "mfe":
+            traj.pes.poten_mn[-1,0] = 0
+            for s in range(traj.par.n_states):
+                traj.pes.poten_mn[-1,0] = np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
+        if not check_est(traj) and traj.ctrl.curr_step > 1:
+            with open ("data/cons.dat", "a") as f:
+                f.write(Printer.write(traj.ctrl.curr_time*Constants.au2fs, "f"))
+                f.write(Printer.write(1, "i"))
+                f.write("\n")
+
+            print("Energy not conserved, stepping back")
+            traj = traj_old
+            traj.ctrl.init_steps = 1
+            continue
 
         # step 4&5: update electronic wf coefficients & compute hopping probabilities
         time_log(traj, "WF coeffs: ", lambda : update_tdc(traj), lambda: integrate_quantum(traj))
@@ -131,15 +161,14 @@ def loop_dynamics(traj: Trajectory):
             traj.est.run(traj)
             traj.geo.force_updater(traj)
         traj.est.calculate_nacs[:] = False
+        if traj.par.type == "sh":
+            traj.pes.poten_mn[-1,0] = traj.pes.ham_diag_mnss[-1,0,traj.hop.active, traj.hop.active]
+        elif traj.par.type == "mfe":
+            traj.pes.poten_mn[-1,0] = 0
+            for s in range(traj.par.n_states):
+                traj.pes.poten_mn[-1,0] = np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
 
         time_log(traj, "Backup: ", lambda : back_up_step(traj))
-
-        if traj.par.type == "sh":
-            pe = traj.pes.ham_diag_mnss[-1,0,traj.hop.active, traj.hop.active]
-        elif traj.par.type == "mfe":
-            pe = 0
-            for s in range(traj.par.n_states):
-                pe = np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
         
         write_dat(traj)
         write_xyz(traj)

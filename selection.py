@@ -3,7 +3,7 @@ import numpy as np
 from classes import Trajectory
 from abinitio import harm, spin_boson, tully_1, tully_2, tully_3, tully_n, tully_s, sub_2, sub_s, sub_x, lvc_wrapper, run_molcas, run_molpro, set_est_mfe, set_est_sh
 from errors import *
-from integrators import SV, OV, RKN4, RKN6, RKN8, SY4, SY6, SY8, SY8b, SY8c, AM4, AM6, AM8, VVSolver, OVSolver, RKNSolver, SYSolver, update_force_mfe, update_force_sh, propagator_matrix
+from integrators import SV, OV, RKN4, RKN6, RKN8, SY4, SY6, SY8, SY8b, SY8c, AM4, AM6, AM8, VVSolver, OVSolver, RKNSolver, ARKN3Solver, SYSolver, update_force_mfe, update_force_sh, propagator_matrix
 
 def select_est(traj: Trajectory):
     if traj.est.program == "model":
@@ -41,20 +41,21 @@ def select_est(traj: Trajectory):
     
 def select_solvers(traj: Trajectory):
     solvers = {
-        "vv": (VVSolver, SV, VVSolver, SV, None),
-        "ov": (OVSolver, OV, OVSolver, OV, None),
-        "rkn4": (RKNSolver, RKN4, RKNSolver, RKN4, None),
-        "rkn6": (RKNSolver, RKN6, RKNSolver, RKN6, None),
-        "rkn8": (RKNSolver, RKN8, RKNSolver, RKN8, None),
-        "sy4": (RKNSolver, RKN4, SYSolver, SY4, AM4),
-        "sy6": (RKNSolver, RKN6, SYSolver, SY6, AM6),
-        "sy8": (RKNSolver, RKN8, SYSolver, SY8, AM8),
-        "sy8b": (RKNSolver, RKN8, SYSolver, SY8b, AM8),
-        "sy8c": (RKNSolver, RKN8, SYSolver, SY8c, AM8)
+        "vv": (RKNSolver, RKN4, 0, VVSolver, SV, None),
+        "ov": (RKNSolver, RKN4, 0, OVSolver, OV, None),
+        "arkn3": (RKNSolver, RKN4, 2, ARKN3Solver, SY4, None),
+        "rkn4": (RKNSolver, RKN4, 0, RKNSolver, RKN4, None),
+        "rkn6": (RKNSolver, RKN6, 0, RKNSolver, RKN6, None),
+        "rkn8": (RKNSolver, RKN8, 0, RKNSolver, RKN8, None),
+        "sy4": (RKNSolver, RKN4, 4, SYSolver, SY4, AM4),
+        "sy6": (RKNSolver, RKN6, 6, SYSolver, SY6, AM6),
+        "sy8": (RKNSolver, RKN8, 8, SYSolver, SY8, AM8),
+        "sy8b": (RKNSolver, RKN8, 8, SYSolver, SY8b, AM8),
+        "sy8c": (RKNSolver, RKN8, 8, SYSolver, SY8c, AM8)
     }
     temp = solvers.get(traj.geo.scheme_name)
     if temp is None: raise SolverTypeNotFoundError
-    traj.geo.init_solver, traj.geo.init_scheme, traj.geo.loop_solver, traj.geo.loop_scheme_x, traj.geo.loop_scheme_v = temp
+    traj.geo.init_solver, traj.geo.init_scheme, traj.ctrl.init_steps, traj.geo.loop_solver, traj.geo.loop_scheme_x, traj.geo.loop_scheme_v = temp
 
 def select_force_updater(traj: Trajectory):
     updaters = {
@@ -80,7 +81,7 @@ def select_coeff_propagator(traj: Trajectory):
     }
     temp = propagators.get(traj.est.propagator_name)
     if temp is None: raise PropagatorTypeNotFoundError
-    traj.est.nacs_setter = temp
+    traj.est.propagator = temp
 
 def const(traj: Trajectory, inp: float):
     return traj.ctrl.dt_max
