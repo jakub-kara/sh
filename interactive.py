@@ -97,6 +97,8 @@ def main():
     config["electronic"]["initstate"] = set_value(lambda: int(input() or -1))
     print("Skip states [0]")
     config["electronic"]["skip"] = set_value(lambda: int(input() or -1), 0)
+    print("Wavefunction coefficients propagator [propmat]")
+    config["electronic"]["propmat"] = set_value(lambda: input().lower(), "propmat")
     print("EST Program [molpro]")
     config["electronic"]["program"] = set_value(lambda: input().lower(), "molpro")
     if config["electronic"]["program"] != "model":

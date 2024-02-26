@@ -735,8 +735,6 @@ def propagator_matrix(c_in: np.ndarray, arg: np.ndarray):
     return expm(arg) @ c_in
 
 def integrate_quantum(traj: Trajectory):
-
-
     traj.est.coeff_mns[-1,0,:] = traj.est.coeff_mns[-2,0,:]
 
     for i in range(traj.par.n_states):
@@ -866,17 +864,11 @@ def integrate_quantum(traj: Trajectory):
     else:
         print('what the fuck else did you want?')
 
-
-
-
-
     for traj.ctrl.qstep in range(traj.par.n_qsteps):
         frac = (traj.ctrl.qstep+0.5)/traj.par.n_qsteps
         energy_ss = frac*traj.pes.ham_diag_mnss[-1,0] + (1-frac)*traj.pes.ham_diag_mnss[-2,0]
 
         arg = -(1.j*energy_ss + ddts[traj.ctrl.qstep])*traj.ctrl.dt/traj.par.n_qsteps
-
-
         traj.est.coeff_mns[-1,0] = traj.est.propagator(traj.est.coeff_mns[-1,0], arg)
 
         if traj.par.type == "sh" and traj.hop.target == traj.hop.active: 
