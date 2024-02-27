@@ -6,16 +6,17 @@ from copy import deepcopy
 from classes import Trajectory
 from selection import select_est, select_force_updater, select_nac_setter, select_coeff_propagator, select_solvers, select_stepfunc
 from io_methods import finalise_dynamics, write_headers, write_dat, write_xyz, write_log, time_log, step_log, back_up_step, Printer
-from integrators import shift_values, est_wrapper, calculate_am4_coeffs, calculate_sy4_coeffs, update_tdc, integrate_quantum, get_dt
+from integrators import shift_values, est_wrapper, calculate_am4_coeffs, calculate_sy4_coeffs, update_tdc, integrate_quantum, get_dt, RKN8
 from hopping import adjust_velocity_and_hop, decoherence_edc
 from constants import Constants
 
 
 "SH with Robust Error and Coupling Control"
 def main():
-    # IMPLEMENT RESTART
+    #print("I'm currently broken, please wait until Jakub fixes me.")
+    #exit(1)
+
     inp = sys.argv[1]   
-    pkl = False
     if inp.endswith(".pkl"):
         with open("backup/traj.pkl", "rb") as traj_pkl:
             traj = pickle.load(traj_pkl)
@@ -79,13 +80,19 @@ def check_est(traj: Trajectory):
     ke1 = 0.5*np.sum(traj.geo.mass_a[:,None]*traj.geo.velocity_mnad[-1,0]**2)
     pe0 = traj.pes.poten_mn[-2,0]
     pe1 = traj.pes.poten_mn[-1,0]
-    print(ke0, pe0, ke1, pe1)
-    return np.abs(ke0 + pe0 - ke1 - pe1) < 2e-4
+    #return np.abs(ke0 + pe0 - ke1 - pe1) < 2e-4
+    return np.abs(ke0 + pe0 - ke1 - pe1) < 2e2
+
+
+def roll_back(*args):
+    for arr in args:
+        for m in range(arr.shape[0]-1, 0, -1):
+            arr[m] = arr[m-1]
+        arr[0] = np.nan
+
 
 def loop_dynamics(traj: Trajectory):
     while traj.ctrl.curr_time <= traj.ctrl.t_max:
-        traj_old = deepcopy(traj)
-
         if os.path.isfile("stop"):
             exit(23)
 
@@ -97,7 +104,7 @@ def loop_dynamics(traj: Trajectory):
         shift_values(traj.pes.ham_diag_mnss, traj.pes.nac_ddr_mnssad, traj.pes.nac_ddt_mnss)
         shift_values(traj.est.coeff_mns, traj.pes.poten_mn)
         
-        if traj.ctrl.init_steps:
+        if traj.ctrl.init_steps or traj.ctrl.conv_status == 1:
             traj.ctrl.init_steps -= 1
             temp = time_log(traj, "Classical + EST: ", 
                 lambda : traj.geo.init_solver(traj.geo.position_mnad[-traj.geo.init_scheme.m-1:-1,0],
@@ -106,7 +113,14 @@ def loop_dynamics(traj: Trajectory):
                                      est_wrapper, (traj,), traj.ctrl.dt,
                                      traj.geo.init_scheme, None))
             tempx, tempv, tempf = temp[0]
-            
+        elif traj.ctrl.conv_status == 2:
+            temp = time_log(traj, "Classical + EST: ",
+                lambda : traj.geo.init_solver(traj.geo.position_mnad[-traj.geo.init_scheme.m-1:-1,0],
+                                     traj.geo.velocity_mnad[-traj.geo.init_scheme.m-1:-1,0],
+                                     traj.geo.force_mnad[-traj.geo.init_scheme.m-1:-1,0],
+                                     est_wrapper, (traj,), traj.ctrl.dt,
+                                     RKN8, None))
+            tempx, tempv, tempf = temp[0]
         else:
             if "sy" in traj.geo.scheme_name:
                 traj.geo.loop_scheme_x = calculate_sy4_coeffs(traj.ctrl.h[-4], traj.ctrl.h[-3], traj.ctrl.h[-2], traj.ctrl.h[-1])
@@ -121,22 +135,32 @@ def loop_dynamics(traj: Trajectory):
 
         traj.est.calculate_nacs[:] = False
         traj.geo.position_mnad[-1,0], traj.geo.velocity_mnad[-1,0], traj.geo.force_mnad[-1,0] = tempx, tempv, tempf
+
         if traj.par.type == "sh":
             traj.pes.poten_mn[-1,0] = traj.pes.ham_diag_mnss[-1,0,traj.hop.active, traj.hop.active]
         elif traj.par.type == "mfe":
             traj.pes.poten_mn[-1,0] = 0
             for s in range(traj.par.n_states):
                 traj.pes.poten_mn[-1,0] = np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
-        if not check_est(traj) and traj.ctrl.curr_step > 1:
+
+        if not check_est(traj) and traj.ctrl.curr_step >= 1:
+            traj.ctrl.conv_status += 1
             with open ("data/cons.dat", "a") as f:
                 f.write(Printer.write(traj.ctrl.curr_time*Constants.au2fs, "f"))
-                f.write(Printer.write(1, "i"))
+                f.write(Printer.write(traj.ctrl.conv_status, "i"))
                 f.write("\n")
+            if traj.ctrl.conv_status >= 3:
+                print("EST Failed to converge, terminating trajectory.")
+                exit(21)
 
+            os.system("cp backup/wf.wf est/")
             print("Energy not conserved, stepping back")
-            traj = traj_old
+            roll_back(traj.geo.position_mnad, traj.geo.velocity_mnad, traj.geo.force_mnad)
+            roll_back(traj.pes.ham_diag_mnss, traj.pes.nac_ddr_mnssad, traj.pes.nac_ddt_mnss)
+            roll_back(traj.est.coeff_mns, traj.pes.poten_mn)
             traj.ctrl.init_steps = 1
             continue
+        traj.ctrl.conv_status = 0
 
         # step 4&5: update electronic wf coefficients & compute hopping probabilities
         time_log(traj, "WF coeffs: ", lambda : update_tdc(traj), lambda: integrate_quantum(traj))

@@ -120,7 +120,9 @@ class Control:
     def __init__(self, config: dict, par: Params):
         self.substep = 0
         self.qstep = 0
-        self.init_steps = par.n_steps # set init_steps later
+        self.init_steps = par.n_steps
+        self.conv_status = 0
+
 
         temp = 1 if config["control"]["tunit"] == "au" else 1/Constants.au2fs
         self.t_max = config["control"]["tmax"] * temp
