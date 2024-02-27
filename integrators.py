@@ -735,19 +735,151 @@ def propagator_matrix(c_in: np.ndarray, arg: np.ndarray):
     return expm(arg) @ c_in
 
 def integrate_quantum(traj: Trajectory):
+
+
+    traj.est.coeff_mns[-1,0,:] = traj.est.coeff_mns[-2,0,:]
+
+    for i in range(traj.par.n_states):
+        traj.pes.overlap_mnss[-1,0,i,:] *= traj.pes.phase_s[i]
+
+
+    # phase the overlaps here for now, but should create phasing module probably...
+    phase_vec = np.ones(traj.par.n_states)
+    for i in range(traj.par.n_states):
+        if traj.pes.overlap_mnss[-1,0,i,i] < 0:
+            phase_vec[i] *= -1
+            traj.pes.overlap_mnss[-1,0,:,i] *= -1
+
+
+    traj.pes.phase_s = phase_vec
+
+
+    # If precalc required (Constant throughout substeps)
+    #TODO Maybe precalculate quantities before the integration steps...
+
+    options = ['hst','nacme','npi', 'npi_sharc','npi_meek','hst_sharc', 'local_diabatisation'] # need to rename these...
+
+    ddts = np.zeros((traj.par.n_qsteps,traj.par.n_states, traj.par.n_states))
+
+    option = 'local_diabatisation'
+    if option == 'hst':
+        # Classic Hammes-Schiffer-Tully mid point approximation
+        ddts[:] = 1/(2*traj.ctrl.dt) * (traj.pes.overlap_mnss[-1,0,:,:] - traj.pes.overlap_mnss[-1,0,:,:].T)
+
+    elif option == 'nacme':
+        # ddt = nacme . velocity (i.e. original Tully 1990 paper model)
+        for traj.ctrl.qstep in range(traj.par.n_qsteps):
+            frac = (traj.ctrl.qstep+0.5)/traj.par.n_qsteps
+            ddts[traj.ctrl.qstep] = frac*traj.pes.nac_ddt_mnss[-1,0] + (1-frac)*traj.pes.nac_ddt_mnss[-2,0]
+
+    elif option == 'npi':
+        # Meek and Levine's norm preserving interpolation, but integrated across the time-step
+        for traj.ctrl.qstep in range(traj.par.n_qsteps):
+            frac = (traj.ctrl.qstep+0.5)/traj.par.n_qsteps
+            U = np.eye(traj.par.n_states)*np.cos(np.arccos(traj.pes.overlap_mnss[-1,0,:,:])*frac)
+            U += -1*(np.eye(traj.par.n_states)-1)*np.sin(np.arcsin(traj.pes.overlap_mnss[-1,0,:,:])*frac)
+            dU = np.eye(traj.par.n_states)*(-np.sin(np.arccos(traj.pes.overlap_mnss[-1,0,:,:])*frac)*np.arccos(traj.pes.overlap_mnss[-1,0,:,:])/traj.ctrl.dt)
+            dU += -1*(np.eye(traj.par.n_states)-1)*(np.cos(np.arcsin(traj.pes.overlap_mnss[-1,0,:,:])*frac)*np.arcsin(traj.pes.overlap_mnss[-1,0,:,:])/traj.ctrl.dt)
+
+            ddts[traj.ctrl.qstep] = (U.T @ dU) * -1*(np.eye(traj.par.n_states)-1) # to get rid of non-zero diagonal elements
+
+    elif option == 'npi_sharc':
+        # NPI sharc mid-point averaged 
+        Utot = np.zeros_like(traj.pes.overlap_mnss[-1,0,:,:])
+        
+        for i in range(traj.par.n_qsteps):
+            U   =     np.eye(traj.par.n_states)    *   np.cos(np.arccos(traj.pes.overlap_mnss[-1,0,:,:])*i/traj.par.n_qsteps)
+            U  += -1*(np.eye(traj.par.n_states)-1) *   np.sin(np.arcsin(traj.pes.overlap_mnss[-1,0,:,:])*i/traj.par.n_qsteps)
+            dU  =     np.eye(traj.par.n_states)    * (-np.sin(np.arccos(traj.pes.overlap_mnss[-1,0,:,:])*i/traj.par.n_qsteps)*np.arccos(traj.pes.overlap_mnss[-1,0,:,:])/traj.ctrl.dt)
+            dU += -1*(np.eye(traj.par.n_states)-1) * ( np.cos(np.arcsin(traj.pes.overlap_mnss[-1,0,:,:])*i/traj.par.n_qsteps)*np.arcsin(traj.pes.overlap_mnss[-1,0,:,:])/traj.ctrl.dt)
+            Utot += np.matmul(U.T, dU)
+
+        Utot /= traj.par.n_qsteps
+        ddts[:] = Utot*(np.eye(traj.par.n_states)-1)*-1
+
+
+    elif option ==  'npi_meek':
+        # NPI Meek and Levine mid-point averaged
+        def sinc(x):
+            if np.abs(x) < 1e-9:
+                return 1
+            else:
+                return np.sin(x)/x
+
+        if traj.ctrl.curr_step > 2:
+            w = traj.pes.overlap_mnss[-1,0,:,:]
+            for k in range(traj.par.n_states):
+                for j in range(traj.par.n_states):
+                    if k == j:
+                        continue
+                    A = -sinc(np.arccos(w[j,j])-np.arcsin(w[j,k]))
+                    B =  sinc(np.arccos(w[j,j])+np.arcsin(w[j,k]))
+                    C =  sinc(np.arccos(w[k,k])-np.arcsin(w[k,j]))
+                    D =  sinc(np.arccos(w[k,k])+np.arcsin(w[k,j]))
+                    E = 0.
+                    if traj.par.n_states != 2:
+                        sqarg = 1-w[j,j]**2 - w[k,j]**2
+                        if sqarg > 1e-6:
+                            wlj = np.sqrt(sqarg)
+                            wlk = -(w[j,k]*w[j,j] + w[k,k]*w[k,j])/wlj
+                            if np.abs(wlk - wlj) > 1e-6:
+                                E = wlj**2
+                            else:
+                                E = 2*np.arcsin(wlj)*(wlj*wlk*np.arcsin(wlj)+(np.sqrt((1-wlj**2)*(1-wlk**2))-1)*np.arcsin(wlk))/(np.arcsin(wlj)**2-np.arcsin(wlk)**2)
+
+                    traj.pes.nac_ddt_mnss[-1,0,k,j] = 1/(2*traj.ctrl.dt) * (np.arccos(w[j,j])*(A+B)+np.arcsin(w[k,j])*(C+D) +E)
+            ddts[:] = traj.pes.nac_ddt_mnss[-1,0,:,:]
+
+
+    elif option == 'hst_sharc':
+        # SHARC HST end-point finite difference, linearly interpolated across the region
+        ddt_ini = 1/(4*traj.ctrl.dt) * (3*(traj.pes.overlap_mnss[-2,0,:,:] - traj.pes.overlap_mnss[-2,0,:,:].T)-(traj.pes.overlap_mnss[-3,0,:,:]-traj.pes.overlap_mnss[-3,0,:,:].T))
+        ddt_fin = 1/(4*traj.ctrl.dt) * (3*(traj.pes.overlap_mnss[-1,0,:,:] - traj.pes.overlap_mnss[-1,0,:,:].T)-(traj.pes.overlap_mnss[-2,0,:,:]-traj.pes.overlap_mnss[-2,0,:,:].T))
+        for traj.ctrl.qstep in range(traj.par.n_qsteps):
+            frac = (traj.ctrl.qstep+0.5)/traj.par.n_qsteps
+            ddts[traj.ctrl.qstep] = frac*ddt_ini+ (1-frac)*ddt_fin
+
+
+    elif option == 'local_diabatisation':
+        # local diabatisation
+        # this is a bit of a hacky way to do it, not advised for beginners...
+        if traj.ctrl.curr_step < 2:
+            return
+        R = np.eye(traj.par.n_states)
+        H_tr = traj.pes.overlap_mnss[-1,0] @ traj.pes.ham_diag_mnss[-1,0] @ traj.pes.overlap_mnss[-1,0].T
+        for traj.ctrl.qstep in range(traj.par.n_qsteps):
+            frac = (traj.ctrl.qstep+0.5)/traj.par.n_qsteps
+            H = traj.pes.ham_diag_mnss[-2,0] + frac*(H_tr-traj.pes.ham_diag_mnss[-2,0])
+
+            R = expm(-1j*H*traj.ctrl.dt/traj.par.n_qsteps) @ R
+
+        R = traj.pes.overlap_mnss[-1,0].T @ R
+        print(R)
+        print(R@np.conj(R.T))
+
+        traj.est.coeff_mns[-1,0] = R @ traj.est.coeff_mns[-1,0]
+        if traj.par.type == "sh" and traj.hop.target == traj.hop.active: 
+            get_hopping_prob_ddr(traj)
+            check_hop(traj)
+
+        return
+    else:
+        print('what the fuck else did you want?')
+
+
+
+
+
     for traj.ctrl.qstep in range(traj.par.n_qsteps):
         frac = (traj.ctrl.qstep+0.5)/traj.par.n_qsteps
-        if True:
-            energy_ss = frac*traj.pes.ham_diag_mnss[-1,0] + (1-frac)*traj.pes.ham_diag_mnss[-2,0]
-            nac_ddt_ss = frac*traj.pes.nac_ddt_mnss[-1,0] + (1-frac)*traj.pes.nac_ddt_mnss[-2,0]
+        energy_ss = frac*traj.pes.ham_diag_mnss[-1,0] + (1-frac)*traj.pes.ham_diag_mnss[-2,0]
 
-            arg = -(1.j*energy_ss + nac_ddt_ss)*traj.ctrl.dt/traj.par.n_qsteps
-        traj.est.coeff_mns[-1,0] = traj.est.propagator(traj.est.coeff_mns[-2,0], arg)
-        if traj.par.type != "sh":
-            continue
-        #continue
+        arg = -(1.j*energy_ss + ddts[traj.ctrl.qstep])*traj.ctrl.dt/traj.par.n_qsteps
 
-        if traj.hop.target == traj.hop.active: 
+
+        traj.est.coeff_mns[-1,0] = traj.est.propagator(traj.est.coeff_mns[-1,0], arg)
+
+        if traj.par.type == "sh" and traj.hop.target == traj.hop.active: 
             get_hopping_prob_ddr(traj)
             check_hop(traj)
 

@@ -291,12 +291,16 @@ def read_wf_overlap(out_file, no_states):
     S_mat = np.zeros((no_states, no_states))
     with open(out_file,'r') as f:
         for line in f:
-            if 'Orthonormalized overlap matrix' in line:
-            #  if 'Overlap matrix' in line:
+            #  if 'Orthonormalized overlap matrix' in line:
+            if 'Overlap matrix' in line:
                 f.readline()
                 for i in range(no_states):
                     S_mat[i,:] = [float(j) for j in f.readline().split()[2:]]
 
+    U, _, Vh = np.linalg.svd(S_mat)
+
+
+    S_mat = U@Vh
     return S_mat
 
 def move_old_files():
