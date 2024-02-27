@@ -10,7 +10,7 @@ def create_input_molcas_main(file_root: str, config: dict, calculate_nacs: np.nd
 
     with open(f"{file_root}.input", "w") as file:
         file.write("&GATEWAY\n")
-        file.write(f"XYZ={file_root}.xyz\n")
+        file.write(f"COORD={file_root}.xyz\n")
         #  if SOC:
             #  f.write("AMFI")
         # Need to change to angstrom
@@ -67,7 +67,7 @@ def create_input_molcas_nac(file_root: str, config: dict, calculate_nacs: np.nda
 
     with open(f"{file_root}_{nacidx1}_{nacidx2}.input", "w") as file:
         file.write("&GATEWAY\n")
-        file.write(f"XYZ={file_root}.xyz\n")
+        file.write(f"COORD={file_root}.xyz\n")
         #  if SOC:
             #  f.write("AMFI")
         # Need to change to angstrom
@@ -126,16 +126,42 @@ def read_output_molcas_ham(file_name: str, config: dict):
             else:
                 if config.get("caspt2", False):
                     if 'ms-caspt2 energies' in line:
-                        while (line := file.readline()):
+                        #  while (line := file.readline()):
+                        for i in range(config['sa']):
                             data = line.strip().split()
-                            yield int(data[-4]), float(data[-1])
+                            yield int(data[-4])-1, float(data[-1])
 
                 else:
                     if 'final state energy(ies)' in line:
                         for i in range(2): file.readline()
-                        while (line := file.readline()):
+                        for i in range(config['sa']):
+                        #  while (line := file.readline()):
+                            line = file.readline()
+                            print(line)
                             data = line.strip().split()
-                            yield int(data[-4]), int(data[-4]), float(data[-1])
+                            print(data)
+                            yield int(data[-4])-1, int(data[-4])-1, float(data[-1])
+
+def read_output_molcas_prop(file_name: str, config: dict):
+    ovlp = np.zeros((config['sa']*2,config['sa']*2))
+    with open(file_name, 'r') as file:
+        for line in file:
+            if 'OVERLAP MATRIX FOR THE ORIGINAL' in line:
+                file.readline()
+                for i in range(config['sa']*2):
+                    data = file.readline().split()
+                    for j in range(i//5):
+                        data += file.readline().split()
+
+                    print(data)
+                    ovlp[i,:len(data)] = [float(q) for q in data]
+
+        ovlp =ovlp[config['sa']:,:config['sa']] 
+        U,_,Vt = np.linalg.svd(ovlp)
+        ovlp = U@Vt
+
+    return ovlp
+
 
 def read_output_molcas_grad(file_name: str, config: dict):
     with open(file_name, 'r') as file:
@@ -144,7 +170,6 @@ def read_output_molcas_grad(file_name: str, config: dict):
             if not line:
                 break
 
-            line = line.strip().lower()
 
             if 'RLXROOT' in line:
                 state = int(line.split('=')[-1]) - 1
@@ -153,9 +178,9 @@ def read_output_molcas_grad(file_name: str, config: dict):
                 for i in range(7): file.readline()
                 
                 a = 0
-                while (line := file.readline()):
-                    data = line.strip().split()
+                while len(data := file.readline().split()) > 1:
                     yield state, state, a, [float(x) for x in data[1:]]
+                    a+=1
 
 def read_output_molcas_nac(file_name, i, j):
     with open(file_name, 'r') as file:
@@ -171,13 +196,11 @@ def read_output_molcas_nac(file_name, i, j):
             line = file.readline()
             if not line:
                 break
-
-            line = line.strip().lower()
             if 'Total derivative coupling' in line or 'Molecular gradients' in line:
                 for i in range(7): file.readline()
 
                 a = 0
-                while (line := file.readline()):
-                    data = line.strip().split()
+                while len(data := file.readline().split()) > 1:
                     yield state1, state2, a, [float(x) for x in data[1:]]
                     yield state2, state1, a, [-float(x) for x in data[1:]]
+                    a+=1

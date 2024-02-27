@@ -8,7 +8,7 @@ from constants import Constants
 import fmodules.models_f as models_f
 
 from molpro_est import create_input_molpro, read_output_molpro_ham, read_output_molpro_nac, run_wfoverlap_molpro
-from molcas_est import create_input_molcas_main, create_input_molcas_nac, read_output_molcas_ham, read_output_molcas_grad, read_output_molcas_nac
+from molcas_est import create_input_molcas_main, create_input_molcas_nac, read_output_molcas_ham, read_output_molcas_grad, read_output_molcas_nac, read_output_molcas_prop
 
 
 def set_est_sh(traj: Trajectory, nacs=True):
@@ -150,6 +150,8 @@ def run_molpro(traj: Trajectory):
     traj.est.file = f"{traj.est.program}"
     os.chdir("est")
 
+    #  traj.est.calculate_nacs *= np.eye(traj.par.n_states)
+
     write_xyz(traj)
     create_input_molpro(traj.est.file, traj.est.config, traj.est.calculate_nacs, traj.est.skip, False)
 
@@ -191,11 +193,13 @@ def run_molcas(traj: Trajectory):
     '''
     Runs and reads molcas output file
     '''
+    traj.est.file = f"{traj.est.program}"
 
     os.chdir("est")
     skip = traj.est.skip
 
 
+    #  traj.est.calculate_nacs *= np.eye(traj.par.n_states)
     write_xyz(traj)
     create_input_molcas_main(traj.est.file, traj.est.config, traj.est.calculate_nacs, skip)
     for i in range(traj.par.n_states):
@@ -218,12 +222,20 @@ def run_molcas(traj: Trajectory):
     for i, j, val in read_output_molcas_ham('molcas.log', traj.est.config):
         if i-skip >= 0 and j-skip >= 0 and i-skip < traj.par.n_states and j-skip < traj.par.n_states:
             traj.pes.ham_diab_mnss[-1,0,i-skip,j-skip] = val
+
+    traj.pes.overlap_mnss[-1,0,:,:] = read_output_molcas_prop('molcas.log', traj.est.config)
+
     for s1 in range(traj.par.n_states):
-        for s2 in range(i + 1, traj.par.n_states):
-            if traj.est.calculate_nacs[i, j]:
-                for i, j, a, val in read_output_molcas_nac(f"molcas_{i}_{j}.log", i, j): traj.pes.nac_ddr_mnssad[-1,0,i-skip,j-skip,a] = val
+        for s2 in range(s1+1):
+            if traj.est.calculate_nacs[s1, s2]:
+                if s1 == s2:
+                    print(s1,s2)
+                    for i, i, a, val in read_output_molcas_grad(f"molcas.log", traj.est.config): traj.pes.nac_ddr_mnssad[-1,0,i-skip, i-skip, a] = val
+                else:
+                    for i, j, a, val in read_output_molcas_nac(f"molcas_{s2}_{s1}.log", s2, s1): traj.pes.nac_ddr_mnssad[-1,0,i-skip,j-skip,a] = val
 
     os.chdir("..")
+
 
     if traj.pes.diagonalise:
         diagonalise_hamiltonian(traj)
