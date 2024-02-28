@@ -92,6 +92,7 @@ class PotentialEnergySurface:
         self.nac_ddt_mnss = np.zeros((par.n_steps, par.n_substeps, par.n_states, par.n_states))
         self.overlap_mnss = np.zeros((par.n_steps, par.n_substeps, par.n_states, par.n_states))
         self.nac_flip = np.zeros((par.n_states, par.n_states), dtype=bool)
+        self.phase_s = np.ones(par.n_states)
 
 class Hopping:
     def __init__(self, config: dict, traj: Trajectory):
