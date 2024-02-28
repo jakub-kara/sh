@@ -18,7 +18,7 @@ def main():
 
     inp = sys.argv[1]   
     if inp.endswith(".pkl"):
-        with open("backup/traj.pkl", "rb") as traj_pkl:
+        with open(inp, "rb") as traj_pkl:
             traj = pickle.load(traj_pkl)
     else:
         with open(inp, "r") as infile: config = json.load(infile)

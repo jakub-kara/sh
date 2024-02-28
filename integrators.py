@@ -755,8 +755,6 @@ def integrate_quantum(traj: Trajectory):
     # If precalc required (Constant throughout substeps)
     #TODO Maybe precalculate quantities before the integration steps...
 
-    options = ['hst','nacme','npi', 'npi_sharc','npi_meek','hst_sharc', 'local_diabatisation'] # need to rename these...
-
     ddts = np.zeros((traj.par.n_qsteps,traj.par.n_states, traj.par.n_states))
 
     option = 'local_diabatisation'
