@@ -9,6 +9,7 @@ import fmodules.models_f as models_f
 
 from molpro_est import create_input_molpro, read_output_molpro_ham, read_output_molpro_nac, run_wfoverlap_molpro
 from molcas_est import create_input_molcas_main, create_input_molcas_nac, read_output_molcas_ham, read_output_molcas_grad, read_output_molcas_nac, read_output_molcas_prop
+from pyscf_est import run_pyscf_mcscf, run_pyscf_cisd
 
 
 def set_est_sh(traj: Trajectory, nacs=True):
@@ -180,10 +181,27 @@ def run_molpro(traj: Trajectory):
     adjust_energy(traj)
     adjust_nacmes(traj)
 
+    print(traj.pes.nac_ddr_mnssad[-1,0,1,1,:,:])
 
     os.chdir("..")
         
 
+
+def run_pyscf_wrapper(traj: Trajectory):
+    os.chdir('est')
+    if traj.est.config['type'] == 'cisd':
+        run_pyscf_cisd(traj, traj.est.config)
+    else:
+        run_pyscf_mcscf(traj, traj.est.config)
+    os.chdir('..')
+    if traj.pes.diagonalise:
+        diagonalise_hamiltonian(traj)
+    else:
+        traj.pes.ham_diag_mnss[-1, traj.ctrl.substep] = traj.pes.ham_diab_mnss[-1, traj.ctrl.substep]
+        traj.pes.ham_transform_mnss[-1, traj.ctrl.substep] = np.identity(traj.par.n_states)
+
+    adjust_energy(traj)
+    adjust_nacmes(traj)
 
 """
 Created by Joseph Charles Cooper
