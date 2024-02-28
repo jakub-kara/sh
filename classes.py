@@ -63,6 +63,8 @@ class ElectronicStructure:
         self.first = True
         self.skip = config["electronic"]["skip"]
 
+        self.tdc_updater = config["electronic"]['tdc']
+
         self.calculate_nacs = np.zeros((par.n_states, par.n_states), dtype=bool)
         self.nacs_setter = Callable[[Trajectory], None]
         self.coeff_mns = np.zeros((par.n_steps, par.n_substeps, par.n_states), dtype=np.complex128)

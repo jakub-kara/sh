@@ -757,7 +757,7 @@ def integrate_quantum(traj: Trajectory):
 
     ddts = np.zeros((traj.par.n_qsteps,traj.par.n_states, traj.par.n_states))
 
-    option = 'local_diabatisation'
+    option = traj.est.tdc_updater
     if option == 'hst':
         # Classic Hammes-Schiffer-Tully mid point approximation
         ddts[:] = 1/(2*traj.ctrl.dt) * (traj.pes.overlap_mnss[-1,0,:,:] - traj.pes.overlap_mnss[-1,0,:,:].T)
