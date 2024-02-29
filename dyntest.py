@@ -307,7 +307,7 @@ class Menu():
                 else: return child.input_type(out)
             else:
                 temp = child.to_dict()
-                d[child.text] = temp
+                d[child.tag] = temp
         return d
 
 class Selectable(Menu):
@@ -360,10 +360,10 @@ class TextField():
 
             # enter
             if ord(char) == 13:
-                print("\033[E", end="", flush=True)
-                self.lines.append("")
-                self.y += 1
-                self.x = 0
+                #print("\033[E", end="", flush=True)
+                #self.lines.append("")
+                #self.y += 1
+                #self.x = 0
                 continue
 
             # backspace
@@ -484,7 +484,6 @@ def main():
         menu.construct(tree)
     else:
         menu.deselect_children()
-    breakpoint()
     menu.selected_child = menu.children[0]
     menu.display()
     active = menu
