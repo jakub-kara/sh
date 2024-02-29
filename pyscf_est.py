@@ -1,4 +1,3 @@
-
 import numpy as np
 from functools import reduce
 from pyscf import gto, scf, mcscf, lib, tools, ci, grad

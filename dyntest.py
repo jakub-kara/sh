@@ -19,56 +19,170 @@ BG = {
 }
 
 DEFAULT = {
-    "General": {
-        "Trajectory type [sh]": "sh",
-        "Path to ensemble [.]": ".",
-        "Name of molecule [x]": "x",
-        "Quantities to record [pes]": "pes",
-        "Input units [au]": "au",
-        "Total time": None,
-        "Adaptive stepsize [n]": "n",
-        "Stepsize": None,
-        "Max stepsize": None,
-        "Min stepsize": None,
-        "Stepsize function [tanh]": "tanh",
-        "Stepsize variable [nac**2]": "nac**2",
-        "Stepsize parameters": None,
-        "Number of quantum substeps [20]": "20" 
+    "control": {
+        "text": "General",
+        "children": {
+            "type": {
+                "text": "Trajectory type",
+                "default": "sh",
+                "type": str
+            },
+            "location": {
+                "text": "Path to ensemble",
+                "default": ".",
+                "type": str
+            },
+            "name": {
+                "text": "Name of molecule",
+                "default": "x",
+                "type": str                            
+            },
+            "record": {
+                "text": "Quantities to record", 
+                "default": "pes", 
+                "type": list
+            },
+            "tunit": {
+                "text": "Input units",
+                "default": "au",
+                "type": str
+            },
+            "tmax": {
+                "text": "Total time",
+                "default": None,
+                "type": int
+            },
+            "adapt": {
+                "text": "Adaptive stepsize",
+                "default": "n",
+                "type": bool
+            },
+            "step": {
+                "text": "Stepsize",
+                "default": None,
+                "type": float
+            },
+            "stepmax": {
+                "text": "Max stepsize",
+                "default": None,
+                "type": float
+            },
+            "stepmin": {
+                "text": "Min stepsize",
+                "default": None,
+                "type": float
+            },
+            "stepfunc": {
+                "text": "Stepsize function",
+                "default": "tanh",
+                "type": str
+            },
+            "stepvar": {
+                "text": "Stepsize variable",
+                "default": "nac**2",
+                "type": str
+            },
+            "stepparams": {
+                "text": "Stepsize parameters",
+                "default": None,
+                "type": list
+            },
+            "qres": {
+                "text": "Number of quantum substeps",
+                "default": "20",
+                "type": int
+            }
+        }
     },
-    "Nuclear": {
-        "Input format [xyz]": "xyz",
-        "Nuclear propagator [vv]": "vv"
+    "nuclear": {
+        "text": "Nuclear",
+        "children": {
+            "format": {
+                "text": "Input format",
+                "default": "xyz",
+                "type": str
+            },
+            "integrator": {
+                "text": "Nuclear integrator",
+                "default": "vv",
+                "type": str
+            }
+        }
     },
-    "Electronic": {
-        "Number of states": None,
-        "Initial state (0-based)": None,
-        "Skip states [0]": "0",
-        "WF coefficients propagator [propmat]": "propmat",
-        "Program [molpro]": "molpro",
-        "Input file": None
+    "electronic": {
+        "text": "Electronic",
+        "children": {
+            "nstates": {
+                "text": "Number of states",
+                "default": None,
+                "type": int
+            },
+            "initstate": {
+                "text": "Initial state (0-indexed)",
+                "default": None,
+                "type": int
+            },
+            "skip": {
+                "text": "Skip states",
+                "default": "0",
+                "type": int
+            },
+            "propmat": {
+                "text": "WF coefficients propagator",
+                "default": "propmat",
+                "type": str
+            },
+            "program": {
+                "text": "Program",
+                "default": "molpro",
+                "type": str
+            },
+            "programpath": {
+                "text": "Path to program",
+                "default": None,
+                "type": str
+            },
+            "input": {
+                "text": "Input file",
+                "default": "input.est",
+                "type": str
+            }
+        }
     },
-    "Surface Hopping": {
-        "Hopping type [fssh]": "fssh",
-        "Decoherence [edc]": "edc"
+    "hopping": {
+        "text": "Surface Hopping",
+        "children": {
+            "type": {
+                "text": "Hopping type",
+                "default": "fssh",
+                "type": str
+            },
+            "decoherence": {
+                "text": "Decoherence",
+                "default": "edc",
+                "type": str
+            }
+
+        }
     }
 }
 
 adaptive = {
     "on": [
-        "Stepsize function [tanh]",
-        "Stepsize variable [nac**2]",
-        "Max stepsize",
-        "Min stepsize",
-        "Stepsize parameters",
+        "stepfunc",
+        "stepvar",
+        "stepmax",
+        "stepmin",
+        "stepparams",
     ],
     "off": [
-        "Stepsize",
+        "step",
     ]
 }
 
 sh = {
     "on": [
-        "Surface Hopping"
+        "hopping"
     ],
     "off": [
 
@@ -85,11 +199,14 @@ class Menu():
 
     def construct(self, tree: dict):
         for key, val in tree.items():
-            child = Selectable(key)
-            if isinstance(val, dict):
-                child.construct(val)
+            default = val.get("default", "")
+            text = val.get("text")
+            if default: text += f" [{default}]"
+            child = Selectable(key, text)
+            if children := val.get("children"):
+                child.construct(children)
             else:
-                child.append_child(TextField(val or ""))
+                child.append_child(TextField(text=default, tp=val.get("type")))
             self.append_child(child)
         self.vis_children = self.children
     
@@ -115,9 +232,9 @@ class Menu():
     
     def alter_visibility(self, on: list, off: list, rev: bool):
         for name in on:
-            self.get_child_by_text(name).visible = not rev
+            self.get_child_by_tag(name).visible = not rev
         for name in off:
-            self.get_child_by_text(name).visible = rev
+            self.get_child_by_tag(name).visible = rev
 
     def append_child(self, child):
         self.children.append(child)
@@ -133,6 +250,16 @@ class Menu():
             
             if (temp := child.get_child_by_text(text)) is None: continue
             else: return temp
+
+    def get_child_by_tag(self, text: str):
+        for child in self.children:
+            if isinstance(child, TextField): continue
+
+            if text == child.tag:
+                return child
+            
+            if (temp := child.get_child_by_tag(text)) is None: continue
+            else: return temp    
     
     def remove_child(self, child):
         for i, other in enumerate(self.children):
@@ -160,7 +287,6 @@ class Menu():
                 return
             else:
                 child.deselect_children()
-                
 
     def get_status(self):
         self.vis_children = [c for c in self.children if c.visible]
@@ -175,14 +301,18 @@ class Menu():
         d = {}
         for child in self.vis_children:
             if isinstance(child, TextField):
-                return "\n".join(child.lines)
+                out = "\n".join(child.lines)
+                if child.input_type == bool: return out in Constants.true
+                elif child.input_type == list: return out.split()
+                else: return child.input_type(out)
             else:
                 temp = child.to_dict()
                 d[child.text] = temp
         return d
 
 class Selectable(Menu):
-    def __init__(self, text):
+    def __init__(self, tag: str, text: str):
+        self.tag = tag
         self.text = text
         self.parent: Selectable | Menu = None
         self.children: list[Selectable | TextField] = []
@@ -194,14 +324,15 @@ class Selectable(Menu):
         self.visible = True
 
 class TextField():    
-    def __init__(self, text = ""):
-        self.lines = [text]
+    def __init__(self, text: str = "", tp: type = str):
+        self.lines = [text or ""]
         self.parent: Selectable = None
         self.y = len(self.lines) - 1
         self.x = len(self.lines[self.y])
         self.check_text = None
         self.visible = True
         self.status = bool(text)
+        self.input_type = tp
 
     def update_input(self):
         set_position(0,20)
@@ -224,6 +355,7 @@ class TextField():
 
             # Ctrl + C
             if ord(char) == 3:
+                self.status = check_input(self.lines[0], self.input_type)
                 break
 
             # enter
@@ -285,10 +417,10 @@ class TextField():
                 self.x += 1
                 print(f"{char}", flush=True, end="")
 
-            for line in self.lines:
+            """for line in self.lines:
                 if line != "":
                     self.status = 2
-                    break
+                    break"""
 
     def get_status(self):
         return self.status
@@ -311,6 +443,17 @@ def merge(into: dict, ref: dict):
             into[key] = merge(into[key], ref[key])
     return into
 
+def check_input(inp: str, tp: type):
+    if tp == bool:
+        if inp in Constants.true or Constants.false: return 2
+        else: return 0
+    try:
+        tp(inp)
+        if inp: return 2
+        else: return 0
+    except:
+        return 0
+
 def cursor_on(): print('\033[?25h', end="")
 def cursor_off(): print('\033[?25l', end="")
 def set_position(x, y): print(f"\033[{y+1};{x+1}H", flush=True, end="")
@@ -320,7 +463,7 @@ def main():
         inp = sys.argv[1]
         if inp.endswith(".pkl"):
             with open(inp, "rb") as f:
-                menu = pickle.load(f)
+                menu: Menu = pickle.load(f)
 
         elif inp.endswith(".json"): 
             with open(sys.argv[1], "r") as f: tree = json.load(f)
@@ -341,6 +484,7 @@ def main():
         menu.construct(tree)
     else:
         menu.deselect_children()
+    breakpoint()
     menu.selected_child = menu.children[0]
     menu.display()
     active = menu
@@ -360,12 +504,14 @@ def main():
 
         # Ctrl + S
         if ord(char) == 19:
-            with open("input.json", "w") as f:
-                json.dump(menu.to_dict(), f, indent=4)
+            with open("save.pkl", "wb") as f:
+                pickle.dump(menu, f)
+
+            if menu.status > 0:               
+                with open("input.json", "w") as f:
+                    json.dump(menu.to_dict(), f, indent=4)
             
-                with open("save.pkl", "wb") as f:
-                    pickle.dump(menu, f)
-        
+            
         # escape
         if ord(char) == 27:
             while True:
@@ -382,6 +528,7 @@ def main():
                 if isinstance(active.children[0], TextField):
                     cursor_on()
                     active.children[0].get_input()
+                    menu.display()
                     cursor_off()
                     active = active.parent
                 else:
