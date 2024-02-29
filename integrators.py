@@ -870,6 +870,7 @@ def integrate_quantum(traj: Trajectory):
         traj.est.coeff_mns[-1,0] = traj.est.propagator(traj.est.coeff_mns[-1,0], arg)
 
         if traj.par.type == "sh" and traj.hop.target == traj.hop.active: 
+            continue
             get_hopping_prob_ddr(traj)
             check_hop(traj)
 

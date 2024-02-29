@@ -22,7 +22,7 @@ DEFAULT = {
     "control": {
         "text": "General",
         "children": {
-            "type": {
+            "trajtype": {
                 "text": "Trajectory type",
                 "default": "sh",
                 "type": str
@@ -128,7 +128,7 @@ DEFAULT = {
                 "type": int
             },
             "propmat": {
-                "text": "WF coefficients propagator",
+                "text": "WF propagator",
                 "default": "propmat",
                 "type": str
             },
@@ -142,17 +142,57 @@ DEFAULT = {
                 "default": None,
                 "type": str
             },
-            "input": {
-                "text": "Input file",
-                "default": "input.est",
-                "type": str
+            "config": {
+                "text": "Config",
+                "children": {
+                    "nel": {
+                        "text": "Number of electrons",
+                        "default": None,
+                        "type": int
+                    },
+                    "closed": {
+                        "text": "Closed orbitals",
+                        "default": None,
+                        "type": int
+                    },
+                    "active": {
+                        "text": "Active orbitals",
+                        "default": None,
+                        "type": int
+                    },
+                    "basis": {
+                        "text": "Basis",
+                        "default": None,
+                        "type": str
+                    },
+                    "sa": {
+                        "text": "State average",
+                        "default": None,
+                        "type": int
+                    },
+                    "df": {
+                        "text": "Density fitting",
+                        "default": "n",
+                        "type": bool
+                    },
+                    "dfbasis": {
+                        "text": "Basis for density fitting",
+                        "default": None,
+                        "type": str
+                    },
+                    "mld": {
+                        "text": "Write molden",
+                        "default": None,
+                        "type": int
+                    }
+                }
             }
         }
     },
     "hopping": {
         "text": "Surface Hopping",
         "children": {
-            "type": {
+            "shtype": {
                 "text": "Hopping type",
                 "default": "fssh",
                 "type": str
@@ -189,6 +229,13 @@ sh = {
     ]
 }
 
+df = {
+    "on": [
+        "dfbasis"
+    ],
+    "off": []
+}
+
 class Menu():
     def __init__(self, text):
         self.text = text
@@ -217,12 +264,15 @@ class Menu():
         print("\033[H", end="")
         print(f"\033[4m{self.text}\033[0m")
         print("Navigation: arrow keys; Exit: Ctrl + C; Save: Ctrl + S; Toggle help (not implemented): Ctrl + H.")
-        self.alter_visibility(adaptive["on"], adaptive["off"], not self.get_child_by_text("Adaptive stepsize [n]").children[0].lines[0] in Constants.true)
+        self.alter_visibility(adaptive["on"], adaptive["off"], self.get_child_by_tag("adapt").children[0].lines[0] in Constants.true)
+        self.alter_visibility(sh["on"], sh["off"], self.get_child_by_tag("trajtype").children[0].lines[0] == "sh")
+        self.alter_visibility(df["on"], df["off"], self.get_child_by_tag("df").children[0].lines[0] in Constants.true)
+
         self.display_children(0)
 
     def display_children(self, depth: int):
         for i, child in enumerate(self.vis_children):
-            set_position(20*depth, i+2)
+            set_position(40*depth, i+2)
             if child == self.selected_child:
                 print(f"\033[30m{BG[child.status]}{child.text}\033[0m")
                 if child.selected_child is not None and not isinstance(child.selected_child, TextField):
@@ -230,11 +280,11 @@ class Menu():
             else:
                 print(f"{FG[child.status]}{child.text}{FG[-1]}")
     
-    def alter_visibility(self, on: list, off: list, rev: bool):
+    def alter_visibility(self, on: list, off: list, orig: bool):
         for name in on:
-            self.get_child_by_tag(name).visible = not rev
+            self.get_child_by_tag(name).visible = orig
         for name in off:
-            self.get_child_by_tag(name).visible = rev
+            self.get_child_by_tag(name).visible = not orig
 
     def append_child(self, child):
         self.children.append(child)
@@ -355,15 +405,15 @@ class TextField():
 
             # Ctrl + C
             if ord(char) == 3:
-                self.status = check_input(self.lines[0], self.input_type)
+                self.status = check_input(''.join([line.strip() for line in self.lines]), self.input_type)
                 break
 
             # enter
             if ord(char) == 13:
-                #print("\033[E", end="", flush=True)
-                #self.lines.append("")
-                #self.y += 1
-                #self.x = 0
+                print("\033[E", end="", flush=True)
+                self.lines.append("")
+                self.y += 1
+                self.x = 0
                 continue
 
             # backspace

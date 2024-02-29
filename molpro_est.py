@@ -12,11 +12,10 @@ def create_input_molpro(file_root: str, config: dict, calculate_nacs: np.ndarray
     with open(file, "w") as f:
         #File and threshold section
         f.write(f"***\n")
-        f.write(f"file,2,wf.wf\n")
+        f.write(f"file,2,{file_root}.wf\n")
         f.write("memory,100,m\n")
         f.write("gprint,orbital=2,civector,angles=-1,distance=-1\n")
         f.write(" gthresh,twoint=1.0d-13,energy=1.0d-10,gradient=1.0d-10,printci=0.000000009,thrprint=0\n") # TODO add thresholds
-        f.write(f"punch,{file_root}.pun,new\n")
 
         # Basis and geometry section
         f.write(f"basis={config['basis']}\n")
@@ -37,7 +36,7 @@ def create_input_molpro(file_root: str, config: dict, calculate_nacs: np.ndarray
         f.write(f"closed,{config['closed']};\n")
         f.write(f"wf,{config['nel']},1,0;\n")
         f.write(f"state,{config['sa']};\n")
-        f.write("print, orbitals;")
+        f.write("print, orbitals;\n")
 
         record = 5100.1
         for i in range(n_states):

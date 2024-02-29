@@ -80,7 +80,7 @@ def check_est(traj: Trajectory):
     ke1 = 0.5*np.sum(traj.geo.mass_a[:,None]*traj.geo.velocity_mnad[-1,0]**2)
     pe0 = traj.pes.poten_mn[-2,0]
     pe1 = traj.pes.poten_mn[-1,0]
-    #return np.abs(ke0 + pe0 - ke1 - pe1) < 2e-4
+    return np.abs(ke0 + pe0 - ke1 - pe1) < 2e-4
     return np.abs(ke0 + pe0 - ke1 - pe1) < 2e2
 
 
@@ -159,6 +159,8 @@ def loop_dynamics(traj: Trajectory):
             roll_back(traj.pes.ham_diag_mnss, traj.pes.nac_ddr_mnssad, traj.pes.nac_ddt_mnss)
             roll_back(traj.est.coeff_mns, traj.pes.poten_mn)
             traj.ctrl.init_steps = 1
+            traj.ctrl.curr_time -= traj.ctrl.dt
+            traj.ctrl.curr_step -= 1
             continue
         traj.ctrl.conv_status = 0
 
