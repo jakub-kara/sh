@@ -78,14 +78,6 @@ def select_nac_setter(traj: Trajectory):
 def select_coeff_propagator(traj: Trajectory):
     propagators = {
         "propmat" : propagator_matrix,
-        "hst": hst,
-        "nacme": nacme,
-        "npi": npi,
-        "npi_n": npi_n,
-        "npi_meek": npi_meek,
-        "hst_n": hst_n,
-        "ld": ld
-
     }
     temp = propagators.get(traj.est.propagator_name)
     if temp is None: raise PropagatorTypeNotFoundError
