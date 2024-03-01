@@ -125,7 +125,7 @@ class Control:
         self.qstep = 0
         self.init_steps = par.n_steps
         self.conv_status = 0
-
+        self.en_thresh = config["control"]["enthresh"]
 
         temp = 1 if config["control"]["tunit"] == "au" else 1/Constants.au2fs
         self.t_max = config["control"]["tmax"] * temp

@@ -76,12 +76,14 @@ def initialise_dynamics(traj: Trajectory):
         f.write("\n")
 
 def check_est(traj: Trajectory):
+    if traj.ctrl.curr_step < 1: return True
     ke0 = 0.5*np.sum(traj.geo.mass_a[:,None]*traj.geo.velocity_mnad[-2,0]**2)
     ke1 = 0.5*np.sum(traj.geo.mass_a[:,None]*traj.geo.velocity_mnad[-1,0]**2)
     pe0 = traj.pes.poten_mn[-2,0]
     pe1 = traj.pes.poten_mn[-1,0]
-    return np.abs(ke0 + pe0 - ke1 - pe1) < 2e-4
-    return np.abs(ke0 + pe0 - ke1 - pe1) < 2e2
+    diff = np.abs(ke0 + pe0 - ke1 - pe1)
+    if diff < traj.ctrl.en_thresh[0]: return True
+    return  diff < traj.ctrl.en_thresh[1]
 
 
 def roll_back(*args):
@@ -143,7 +145,7 @@ def loop_dynamics(traj: Trajectory):
             for s in range(traj.par.n_states):
                 traj.pes.poten_mn[-1,0] = np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
 
-        if not check_est(traj) and traj.ctrl.curr_step >= 1:
+        if not check_est(traj):
             traj.ctrl.conv_status += 1
             with open ("data/cons.dat", "a") as f:
                 f.write(Printer.write(traj.ctrl.curr_time*Constants.au2fs, "f"))
