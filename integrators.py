@@ -868,9 +868,9 @@ def integrate_quantum(traj: Trajectory):
 
         arg = -(1.j*energy_ss + ddts[traj.ctrl.qstep])*traj.ctrl.dt/traj.par.n_qsteps
         traj.est.coeff_mns[-1,0] = traj.est.propagator(traj.est.coeff_mns[-1,0], arg)
+        traj.pes.nac_ddt_mnss[-1,0] = ddts[traj.ctrl.qstep]
 
         if traj.par.type == "sh" and traj.hop.target == traj.hop.active: 
-            continue
             get_hopping_prob_ddr(traj)
             check_hop(traj)
 
