@@ -35,16 +35,18 @@ def create_input_molcas_main(file_root: str, config: dict, calculate_nacs: np.nd
         file.write(">>> COPY molcas.JobIph JOB001\n")
         file.write(">>> COPY molcas.JobIph JOBOLD\n")
 
-        if config.get("caspt2", False):
+        if config['type'] == 'caspt2':
             file.write(f"&CASPT2\n")
             file.write(f"GRDT\n")
             file.write(f"imag={config['imag']}\n")
             file.write(f"shift={config['shift']}\n")
-            file.write("convergence = 1e-8\n")
-            file.write(f"ipea=0.0\n")
-            if config["caspt2_type"].upper()[0] == 'R':
+            file.write(f"ipea={config['ipea']}\n")
+            file.write(f"sig2={config['sig2']}\n")
+            if config['ipea'] > 0:
+                file.write('DORT\n')
+            if config["ms_type"].upper()[0] == 'R':
                 file.write(f"RMUL=all\n\n")
-            elif config["caspt2_type"].upper()[0] == 'M':
+            elif config["ms_type"].upper()[0] == 'M':
                 file.write(f"MULT=all\n\n")
             else:
                 file.write(f"XMUL=all\n\n")
@@ -90,7 +92,7 @@ def create_input_molcas_nac(file_root: str, config: dict, calculate_nacs: np.nda
 
         file.write(">>> COPY molcas.JobIph JOB001\n")
 
-        if config.get("caspt2", False):
+        if config['type'] == 'caspt2':
             file.write(f"&CASPT2\n")
             file.write(f"GRDT\n")
             if nacidx1 != nacidx2:
@@ -98,10 +100,13 @@ def create_input_molcas_nac(file_root: str, config: dict, calculate_nacs: np.nda
             file.write("convergence = 1e-8\n")
             file.write(f"imag={config['imag']}\n")
             file.write(f"shift={config['shift']}\n")
-            file.write(f"ipea=0.0\n")
-            if config["caspt2_type"].upper()[0] == 'R':
+            file.write(f"ipea={config['ipea']}\n")
+            file.write(f"sig2={config['sig2']}\n")
+            if config['ipea'] > 0:
+                file.write('DORT\n')
+            if config["ms_type"].upper()[0] == 'R':
                 file.write(f"RMUL=all\n\n")
-            elif config["caspt2_type"].upper()[0] == 'M':
+            elif config["ms_type"].upper()[0] == 'M':
                 file.write(f"MULT=all\n\n")
             else:
                 file.write(f"XMUL=all\n\n")
@@ -124,12 +129,13 @@ def read_output_molcas_ham(file_name: str, config: dict):
             if False: #SOC
                 pass
             else:
-                if config.get("caspt2", False):
+                if config["type"] == 'caspt2':
                     if 'ms-caspt2 energies' in line:
                         #  while (line := file.readline()):
                         for i in range(config['sa']):
-                            data = line.strip().split()
-                            yield int(data[-4])-1, float(data[-1])
+                            data = file.readline().strip().split()
+                            print(data)
+                            yield int(data[-4])-1, int(data[-4])-1, float(data[-1])
 
                 else:
                     if 'final state energy(ies)' in line:
