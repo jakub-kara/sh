@@ -10,6 +10,7 @@ import fmodules.models_f as models_f
 from molpro_est import create_input_molpro, read_output_molpro_ham, read_output_molpro_nac, run_wfoverlap_molpro
 from molcas_est import create_input_molcas_main, create_input_molcas_nac, read_output_molcas_ham, read_output_molcas_grad, read_output_molcas_nac, read_output_molcas_prop
 from pyscf_est import run_pyscf_mcscf, run_pyscf_cisd
+from turbomole_est import run_ricc2
 
 
 def set_est_sh(traj: Trajectory, nacs=True):
@@ -174,7 +175,7 @@ def run_molpro(traj: Trajectory):
         traj.pes.ham_diag_mnss[-1, traj.ctrl.substep] = traj.pes.ham_diab_mnss[-1, traj.ctrl.substep]
         traj.pes.ham_transform_mnss[-1, traj.ctrl.substep] = np.identity(traj.par.n_states)
 
-    overlap = False
+    overlap = True
     if overlap and not traj.est.first:
         traj.pes.overlap_mnss[-1,0,:,:] = run_wfoverlap_molpro(traj.est.file, traj.geo.name_a, traj.geo.position_mnad[-1,0,:,:], traj.geo.position_mnad[-2,0,:,:], traj.est.config['basis'] , traj.par.n_states)
 
@@ -183,6 +184,21 @@ def run_molpro(traj: Trajectory):
 
     os.chdir("..")
         
+
+
+def run_turbo(traj: Trajectory):
+    os.chdir('est')
+    run_ricc2(traj, traj.est.config)
+    os.chdir('..')
+    if traj.pes.diagonalise:
+        diagonalise_hamiltonian(traj)
+    else:
+        traj.pes.ham_diag_mnss[-1, traj.ctrl.substep] = traj.pes.ham_diab_mnss[-1, traj.ctrl.substep]
+        traj.pes.ham_transform_mnss[-1, traj.ctrl.substep] = np.identity(traj.par.n_states)
+
+    adjust_energy(traj)
+    adjust_nacmes(traj)
+
 
 
 def run_pyscf_wrapper(traj: Trajectory):
@@ -215,7 +231,7 @@ def run_molcas(traj: Trajectory):
     skip = traj.est.skip
 
 
-    #  traj.est.calculate_nacs *= np.eye(traj.par.n_states)
+    traj.est.calculate_nacs *= np.eye(traj.par.n_states)
     write_xyz(traj)
     create_input_molcas_main(traj.est.file, traj.est.config, traj.est.calculate_nacs, skip)
     for i in range(traj.par.n_states):
@@ -247,6 +263,7 @@ def run_molcas(traj: Trajectory):
                 if s1 == s2:
                     print(s1,s2)
                     for i, i, a, val in read_output_molcas_grad(f"molcas.log", traj.est.config): traj.pes.nac_ddr_mnssad[-1,0,i-skip, i-skip, a] = val
+                    print(traj.pes.nac_ddr_mnssad[-1,0,i-skip, i-skip,:,:], np.linalg.norm(traj.pes.nac_ddr_mnssad[-1,0,i-skip, i-skip,:,:]))
                 else:
                     for i, j, a, val in read_output_molcas_nac(f"molcas_{s2}_{s1}.log", s2, s1): traj.pes.nac_ddr_mnssad[-1,0,i-skip,j-skip,a] = val
 
