@@ -1,6 +1,7 @@
 import sys, os
 import termios, tty
 import json, pickle
+import readline
 
 from constants import Constants
 
@@ -40,7 +41,8 @@ DEFAULT = {
             "record": {
                 "text": "Quantities to record", 
                 "default": "pes", 
-                "type": list
+                "type": str,
+                "list": True
             },
             "tunit": {
                 "text": "Input units",
@@ -85,12 +87,19 @@ DEFAULT = {
             "stepparams": {
                 "text": "Stepsize parameters",
                 "default": None,
-                "type": list
+                "type": float,
+                "list": True
             },
             "qres": {
                 "text": "Number of quantum substeps",
                 "default": "20",
                 "type": int
+            },
+            "enthresh": {
+                "text": "Energy thresholds",
+                "default": None,
+                "type": float,
+                "list": True
             }
         }
     },
@@ -113,9 +122,10 @@ DEFAULT = {
         "text": "Electronic",
         "children": {
             "nstates": {
-                "text": "Number of states",
+                "text": "Number of states (S D T)",
                 "default": None,
-                "type": int
+                "type": int,
+                "list": True
             },
             "initstate": {
                 "text": "Initial state (0-indexed)",
@@ -127,7 +137,7 @@ DEFAULT = {
                 "default": "0",
                 "type": int
             },
-            "propmat": {
+            "propagator": {
                 "text": "WF propagator",
                 "default": "propmat",
                 "type": str
@@ -140,6 +150,16 @@ DEFAULT = {
             "programpath": {
                 "text": "Path to program",
                 "default": None,
+                "type": str
+            },
+            "esttype": {
+                "text": "EST calculation type",
+                "default": "casscf",
+                "type": str
+            },
+            "tdc": {
+                "text": "TDC method",
+                "default": "npi",
                 "type": str
             },
             "config": {
@@ -243,6 +263,7 @@ class Menu():
         self.vis_children: list[Selectable | TextField] = []
         self.selected_child = None
         self.status = 0
+        self.modified = False
 
     def construct(self, tree: dict):
         for key, val in tree.items():
@@ -253,12 +274,12 @@ class Menu():
             if children := val.get("children"):
                 child.construct(children)
             else:
-                child.append_child(TextField(text=default, tp=val.get("type")))
+                child.append_child(TextField(text=default, tp=val.get("type"), lst=val.get("list", False)))
             self.append_child(child)
         self.vis_children = self.children
     
     def display(self):
-        os.system("clear")
+        os.system("clear && printf '\e[3J'")
         self.get_status()
 
         print("\033[H", end="")
@@ -343,7 +364,8 @@ class Menu():
         stat = 2
         for child in self.vis_children:
             stat = min(child.get_status(), stat)
-
+        
+        self.modified = self.status != stat
         self.status = stat
         return self.status
 
@@ -351,10 +373,7 @@ class Menu():
         d = {}
         for child in self.vis_children:
             if isinstance(child, TextField):
-                out = "\n".join(child.lines)
-                if child.input_type == bool: return out in Constants.true
-                elif child.input_type == list: return out.split()
-                else: return child.input_type(out)
+                return child.convert()
             else:
                 temp = child.to_dict()
                 d[child.tag] = temp
@@ -372,9 +391,10 @@ class Selectable(Menu):
         self.parent: Selectable | Menu = None
         self.status = 0
         self.visible = True
+        self.modified = False
 
 class TextField():    
-    def __init__(self, text: str = "", tp: type = str):
+    def __init__(self, text: str = "", tp: type = str, lst: bool = False):
         self.lines = [text or ""]
         self.parent: Selectable = None
         self.y = len(self.lines) - 1
@@ -383,6 +403,7 @@ class TextField():
         self.visible = True
         self.status = bool(text)
         self.input_type = tp
+        self.lst = lst
 
     def update_input(self):
         set_position(0,20)
@@ -391,10 +412,30 @@ class TextField():
         set_position(0,20)
         print("Input: ", end="", flush=True)
         for line in self.lines:
-            print("\n", flush=True, end="")
+            print("\033[E", flush=True, end="")
             print(line, flush=True, end="")
         set_position(self.x, self.y + 21)
+
+    def convert(self):
+        def cnv(inp: str):
+            if self.input_type == bool: return inp in Constants.true
+            else: return self.input_type(inp)
+
+        if self.lst:
+            out = " ".join(self.lines)
+            return [cnv(i) for i in out.split()]
+        else:
+            out = "\n".join(self.lines)
+            return cnv(out)
     
+    def check_input(self):
+        try:
+            inp = self.convert()
+            if inp: return 2
+            else: return 0
+        except:
+            return 0
+
     def get_input(self):
         print("\033[?7l", end="", flush=True)
         
@@ -403,15 +444,17 @@ class TextField():
 
             char = getchar()
 
-            # Ctrl + C
-            if ord(char) == 3:
-                self.status = check_input(''.join([line.strip() for line in self.lines]), self.input_type)
+            # Ctrl + S
+            if ord(char) == 19:
+                self.status = self.check_input()
                 break
 
             # enter
             if ord(char) == 13:
                 print("\033[E", end="", flush=True)
-                self.lines.append("")
+                temp = self.lines[self.y][self.x:]
+                self.lines[self.y] = self.lines[self.y][:self.x]
+                self.lines.append(temp)
                 self.y += 1
                 self.x = 0
                 continue
@@ -493,17 +536,6 @@ def merge(into: dict, ref: dict):
             into[key] = merge(into[key], ref[key])
     return into
 
-def check_input(inp: str, tp: type):
-    if tp == bool:
-        if inp in Constants.true or Constants.false: return 2
-        else: return 0
-    try:
-        tp(inp)
-        if inp: return 2
-        else: return 0
-    except:
-        return 0
-
 def cursor_on(): print('\033[?25h', end="")
 def cursor_off(): print('\033[?25l', end="")
 def set_position(x, y): print(f"\033[{y+1};{x+1}H", flush=True, end="")
@@ -544,7 +576,7 @@ def main():
         # Ctrl + C
         if ord(char) == 3:
             cursor_on()
-            os.system("clear")
+            os.system("clear && printf '\033[3J'")
             exit()
         
         # Ctrl + D, for testing
@@ -559,8 +591,8 @@ def main():
             if menu.status > 0:               
                 with open("input.json", "w") as f:
                     json.dump(menu.to_dict(), f, indent=4)
-            
-            
+            continue
+
         # escape
         if ord(char) == 27:
             while True:

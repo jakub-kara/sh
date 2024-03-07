@@ -22,11 +22,13 @@ class Params:
     def __init__(self, config: dict):
         self.id = 0
         self.name = config["control"]["name"]
-        self.type = config["control"]["type"]
+        self.type = config["control"]["trajtype"]
 
         self.n_steps = 5
         self.n_substeps = 1
-        self.n_states = config["electronic"]["nstates"]
+        temp = np.trim_zeros(np.array(config["electronic"]["nstates"]), "b")
+        self.states = temp*(np.arange(temp.shape[0]) + 1)
+        self.n_states = np.sum(self.states)
         with open("geom.xyz", "r") as geomfile: self.n_atoms = int(geomfile.readline().strip())
         self.n_qsteps = config["control"]["qres"]
 
@@ -57,13 +59,13 @@ class Geometry:
 class ElectronicStructure:
     def __init__(self, config: dict, par: Params):
         self.program = config["electronic"]["program"]
-        self.type = config["electronic"].get("type", "cas")
+        self.type = config["electronic"]["esttype"]
         self.run: Callable[[Trajectory], None] = None
         self.file = ""
         self.first = True
         self.skip = config["electronic"]["skip"]
 
-        self.tdc_updater = config["electronic"]['tdc']
+        self.tdc_updater = config["electronic"]["tdc"]
 
         self.calculate_nacs = np.zeros((par.n_states, par.n_states), dtype=bool)
         self.nacs_setter = Callable[[Trajectory], None]
@@ -94,12 +96,14 @@ class PotentialEnergySurface:
         self.nac_flip = np.zeros((par.n_states, par.n_states), dtype=bool)
         self.phase_s = np.ones(par.n_states)
 
+        self.order = np.zeros(par.n_states, dtype=int)
+
 class Hopping:
     def __init__(self, config: dict, traj: Trajectory):
         self.seed = np.random.seed()
         self.active = config["electronic"]["initstate"] - config["electronic"]["skip"]
 
-        self.type = config["hopping"]["type"]
+        self.type = config["hopping"]["shtype"]
         self.decoherence = config["hopping"]["decoherence"]
 
 
@@ -132,11 +136,15 @@ class Control:
 
         temp = 1 if config["control"]["tunit"] == "au" else 1/Constants.au2fs
         self.t_max = config["control"]["tmax"] * temp
-        self.dt_name = config["control"]["stepfunc"]
         self.dt_func: Callable[[Trajectory, float], float] = None
-        self.dt_max = config["control"]["stepmax"] * temp
-        self.dt_min = config["control"].get("stepmin", config["control"]["stepmax"]) * temp
-        self.dt_params = config["control"].get("stepparams", [])
+        if config["control"]["adapt"]:
+            self.dt_name = config["control"]["stepfunc"]
+            self.dt_max = config["control"]["stepmax"] * temp
+            self.dt_min = config["control"]["stepmin"] * temp
+            self.dt_params = config["control"]["stepparams"]
+        else:
+            self.dt_name = "const"
+            self.dt_max = config["control"]["step"] * temp
         self.dt = 0
         self.h = np.zeros(par.n_steps)
         self.dtq = self.dt/par.n_qsteps

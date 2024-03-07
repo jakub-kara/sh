@@ -5,8 +5,17 @@ from errors import *
 from classes import Trajectory
 from constants import Constants
 
-def create_input_molpro(file_root: str, config: dict, calculate_nacs: np.ndarray, skip: int, mld: bool = False):
-    n_states = calculate_nacs.shape[0]
+multiplets = {
+    "singlet": 0,
+    "doublet": 1,
+    "triplet": 2,
+    "quartet": 3,
+    "quintet": 4,
+}
+
+def create_input_molpro(states: np.ndarray, file_root: str, config: dict, calculate_nacs: np.ndarray, skip: int, mld: bool = False):
+    n_states = np.sum(states)
+    soc = states.shape[0] > 1
 
     file = f"{file_root}.inp"
     with open(file, "w") as f:
@@ -33,35 +42,102 @@ def create_input_molpro(file_root: str, config: dict, calculate_nacs: np.ndarray
             f.write("{multi, so;\n")
         f.write("maxiter,40;\n")
         f.write(f"occ,{config['active']};\n")
-        f.write(f"closed,{config['closed']};\n")
-        f.write(f"wf,{config['nel']},1,0;\n")
-        f.write(f"state,{config['sa']};\n")
-        f.write("print, orbitals;\n")
+        f.write(f"closed,{config['closed']};\n\n")
+        
+        for s, n in enumerate(states):
+            if n == 0: continue
+            f.write(f"wf,{config['nel']},1,{s};\n")
+            if soc:
+                f.write(f"state,{n//(s+1)};\n")
+            else:
+                f.write(f"state,{config['sa']};\n")
 
-        record = 5100.1
-        for i in range(n_states):
-            if calculate_nacs[i, i]:
-                f.write(f"CPMCSCF,GRAD,{i+skip+1}.1,accu=1.0d-12,record={record};\n")
-                record += 1
+        if not soc: f.write("print,orbitals;\n")
 
-        for i in range(n_states):
-            for j in range(i + 1, n_states):
-                if calculate_nacs[i, j]:
-                    f.write(f"CPMCSCF,NACM,{i+skip+1}.1,{j+skip+1}.1,accu=1.0d-12,record={record};\n")
-                    record += 1
+        # gradients, clean up
+        if soc:
+            for s, n in enumerate(states):
+                if n == 0: continue
+                for i in range(n//(s+1)):
+                    record = 5000 + (s+1)*100 + i
+                    f.write(f"CPMCSCF,GRAD,{i+1}.1,ms2={s},accu=1.0d-12,record={record}.1;\n")
+        else:
+            for s, n in enumerate(states):
+                for i in range(n//(s+1)):
+                    if calculate_nacs[i, i]:
+                        record = 5000 + (s+1)*100 + i
+                        f.write(f"CPMCSCF,GRAD,{i+skip+1}.1,ms2={s},accu=1.0d-12,record={record}.1;\n")
+
+        # nacmes
+        if soc:
+            for s, n in enumerate(states):
+                if n == 0: continue
+                for i in range(n//(s+1)):
+                    for j in range(i):
+                        record = 6000 + (s+1)*100 + i*(i-1)//2 + j
+                        f.write(f"CPMCSCF,NACM,{j+1}.1,{i+1}.1,ms2={s},accu=1.0d-12,record={record}.1;\n")
+
+        else:
+            for s, n in enumerate(states):
+                for i in range(n//(s+1)):
+                    for j in range(i):
+                        if calculate_nacs[i, j]:
+                            record = 6000 + (s+1)*100 + i*(i-1)//2 + j
+                            f.write(f"CPMCSCF,NACM,{j+skip+1}.1,{i+skip+1}.1,ms2={s},accu=1.0d-12,record={record}.1;\n")
+                            record += 1
         f.write("}\n")
 
-        record = 5100.1
-        for i in range(n_states):
-            if calculate_nacs[i, i]:
-                f.write(f"{{FORCES;SAMC,{record}}};\n")
-                record += 1
+        # samc gradients
+        # text in format spin (0/1/2) state state; state takes skip into account
+        if soc:
+            for s, n in enumerate(states):
+                for i in range(n//(s+1)):
+                    record = 5000 + (s+1)*100 + i
+                    f.write(f"text,calc grad {s} {i} {i}\n")
+                    f.write(f"{{FORCES;SAMC,{record}.1}};\n")
+        else:
+            for s, n in enumerate(states):
+                for i in range(n//(s+1)):
+                    if calculate_nacs[i, i]:
+                        record = 5000 + (s+1)*100 + i
+                        f.write(f"text,calc grad {s} {i} {i}\n")
+                        f.write(f"{{FORCES;SAMC,{record}.1}};\n")
 
-        for i in range(n_states):
-            for j in range(i + 1, n_states):
-                if calculate_nacs[i, j]:
-                    f.write(f"{{FORCES;SAMC,{record}}};\n")
-                    record += 1
+        # samc nacmes
+        if soc:
+            for s, n in enumerate(states):
+                for i in range(n//(s+1)):
+                    for j in range(i):
+                        record = 6000 + (s+1)*100 + i*(i-1)//2 + j
+                        f.write(f"text,calc nacm {s} {j} {i}\n")
+                        f.write(f"{{FORCES;SAMC,{record}.1}};\n")
+        else:
+            for s, n in enumerate(states):
+                for i in range(n//(s+1)):
+                    for j in range(i):
+                        if calculate_nacs[i, j]:
+                            record = 6000 + (s+1)*100 + i*(i-1)//2 + j
+                            f.write(f"text,calc nacm {s} {j} {i}\n")
+                            f.write(f"{{FORCES;SAMC,{record}.1}};\n")
+                            record += 1
+
+        if soc:
+            records = []
+            for s, n in enumerate(states):
+                if n == 0: continue
+                f.write("{ci;\n")
+                f.write(f"wf,{config['nel']},1,{s};\n")
+                record = 4000 + (s+1)*100
+                records.append(record)
+                f.write(f"save,{record}.1;\n")
+                f.write(f"state,{n//(s+1)};\n")
+                f.write("noexc;}\n")
+            
+            f.write("lsint\n")
+            f.write("{ci;\n")
+            f.write(f"hlsmat,ls,{','.join([str(i) + '.1' for i in records])};\n")
+            f.write("option,matel=1,hlstrans=1;\n")
+            f.write("print,hls=2;}")
 
         if mld:
             f.write(f"put,molden, {file_root}.mld\n")
@@ -76,14 +152,44 @@ def read_output_molpro_ham(file_root: str):
 
             line = line.strip().lower()
 
-            if line.startswith("results for state "):
-                state = int(line.split()[-1].split(".")[0]) - 1
-                file.readline()
+            if line.startswith("!mcscf state") and "energy" in line:
+                data = line.split()
+                if len(data) == 5: spin = 0
+                else: spin = multiplets[data[-3]]
+                state = int(data[2].split(".")[0]) - 1
+                for s in range(spin+1):
+                    yield spin, spin, state+s, state+s, float(data[-1])
+
+            if line.startswith("symmetry of spin-orbit operator"):
                 line = file.readline().strip()
                 data = line.split()
-                yield state, state, float(data[-1])
+                s1 = int(float(data[-3]))
+                m1 = int(float(data[-1]))
+                line = file.readline().strip()
+                data = line.split()
+                s2 = int(float(data[-3]))
+                m2 = int(float(data[-1]))
 
-            #SOC ham elements read here
+                while not "breit-pauli" in file.readline().lower(): pass
+                file.readline()
+                while (line := file.readline().strip().lower()):
+                    data = line.split()
+                    braket = data[2].replace(">", "").replace("<", "").split("|")
+                    i = int(braket[0].split(".")[0]) - 1
+                    j = int(braket[2].split(".")[0]) - 1
+                    coup = complex(data[3].replace("i", "j"))
+                    yield s1, s2, i*(s1+1) + s1-m1, j*(s2+1) + s2-m2, coup
+                    yield s2, s1, j*(s2+1) + s2-m2, i*(s1+1) + s1-m1, coup.conjugate()
+                    if m1 != 0 and m2 != 0:
+                        yield s1, s2, i*(s1+1) + s1+m1, j*(s2+1) + s2+m2, coup
+                        yield s2, s1, j*(s2+1) + s2+m2, i*(s1+1) + s1+m1, coup.conjugate()
+                    if np.abs(m1+m2) <= 1:
+                        if m1 != 0: 
+                            yield s1, s2, i*(s1+1) + s1+m1, j*(s2+1) + s2-m2, coup.conjugate()
+                            yield s2, s1, j*(s2+1) + s2-m2, i*(s1+1) + s1+m1, coup
+                        if m2 != 0:
+                            yield s1, s2, i*(s1+1) + s1-m1, j*(s2+1) + s2+m2, coup.conjugate()
+                            yield s2, s1, j*(s2+1) + s2+m2, i*(s1+1) + s1-m1, coup
 
 def read_output_molpro_nac(file_root: str):
     with open(f"{file_root}.out", "r") as file:
@@ -94,26 +200,34 @@ def read_output_molpro_nac(file_root: str):
 
             line = line.strip().lower()
 
-            if line.startswith("sa-mc gradient for"):
-                state = int(line.split()[-1].split(".")[0]) - 1
-                for i in range(3): file.readline()
+            if "*** calc grad" in line:
+                data = line.strip().split()
+                spin = int(data[-3])
+                state = int(data[-1])
+                while not file.readline().strip().lower().startswith("sa-mc gradient"): pass
+                for _ in range(3): file.readline()
                 
                 a = 0
                 while (line := file.readline().strip()):
                     data = line.strip().split()
-                    yield state, state, a, [float(x) for x in data[1:]]
+                    for s in range(spin+1):
+                        yield spin, state+s, state+s, a, [float(x) for x in data[1:]]
                     a += 1
 
-            if line.strip().startswith("sa-mc nacme for"):
-                state1 = int(line.split()[-3].split(".")[0]) - 1
-                state2 = int(line.split()[-1].split(".")[0]) - 1
-                for i in range(3): file.readline()
+            if "*** calc nacm" in line:
+                data = line.strip().split()
+                spin = int(data[-3])
+                state1 = int(data[-2])
+                state2 = int(data[-1])
+                while not file.readline().strip().lower().startswith("sa-mc nacme"): pass
+                for _ in range(3): file.readline()
                 
                 a = 0
                 while (line := file.readline().strip()):
                     data = line.strip().split()
-                    yield state1, state2, a, [float(x) for x in data[1:]]
-                    yield state2, state1, a, [-float(x) for x in data[1:]]
+                    for s in range(spin+1):
+                        yield spin, state1+s, state2+s, a, [float(x) for x in data[1:]]
+                        yield spin, state2+s, state1+s, a, [-float(x) for x in data[1:]]
                     a += 1
 
 

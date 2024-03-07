@@ -862,6 +862,7 @@ def integrate_quantum(traj: Trajectory):
     else:
         print('what the fuck else did you want?')
 
+    traj.est.coeff_mns[-1,0] = traj.pes.ham_transform_mnss[-1,0] @ traj.est.coeff_mns[-1,0]
     for traj.ctrl.qstep in range(traj.par.n_qsteps):
         frac = (traj.ctrl.qstep+0.5)/traj.par.n_qsteps
         energy_ss = frac*traj.pes.ham_diag_mnss[-1,0] + (1-frac)*traj.pes.ham_diag_mnss[-2,0]
@@ -875,6 +876,9 @@ def integrate_quantum(traj: Trajectory):
         if traj.par.type == "sh" and traj.hop.target == traj.hop.active: 
             get_hopping_prob_ddr(traj)
             check_hop(traj)
+    traj.est.coeff_mns[-1,0] = traj.pes.ham_transform_mnss[-1,0].conj().T @ traj.est.coeff_mns[-1,0]
+
+
 
 def get_dt(traj: Trajectory):
     def get_inp(x,coeff):

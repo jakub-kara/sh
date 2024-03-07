@@ -99,10 +99,10 @@ def write_headers(traj: Trajectory):
                 dat_file.write(Printer.write('Active State', "s"))
             if "pop" == record:
                 for s in range(traj.par.n_states):
-                    dat_file.write(Printer.write(f'S{s+traj.est.skip} Population', "s"))
+                    dat_file.write(Printer.write(f'{s+traj.est.skip} Population', "s"))
             if "pes" == record:
                 for s in range(traj.par.n_states):
-                    dat_file.write(Printer.write(f'S{s+traj.est.skip} Pot En [eV]', "s"))
+                    dat_file.write(Printer.write(f'{s+traj.est.skip} Pot En [eV]', "s"))
             if "pen" == record:
                 dat_file.write(Printer.write('Total Pot En [eV]', "s"))
             if "ken" == record:
@@ -116,12 +116,11 @@ def write_headers(traj: Trajectory):
                         dat_file.write("Flip? ")
             if "coeff" == record:
                 for s in range(traj.par.n_states):
-                    dat_file.write(Printer.write(f'S{s+traj.est.skip} State Coeff', f" <{Printer.field_length*2+1}"))
+                    dat_file.write(Printer.write(f'{s+traj.est.skip} State Coeff', f" <{Printer.field_length*2+1}"))
             if "prob" == record:
                 for s in range(traj.par.n_states):
-                    dat_file.write(Printer.write(f'S{s+traj.est.skip} Hopping Prob', "s"))
+                    dat_file.write(Printer.write(f'{s+traj.est.skip} Hopping Prob', "s"))
         dat_file.write("\n")
-
 
 def time_log(traj: Trajectory, msg: str, *funcs):
     with open(traj.io.log_file, "a") as log_file:

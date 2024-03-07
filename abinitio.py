@@ -108,10 +108,10 @@ def interpolate_est(traj: Trajectory, x1):
 
 def adjust_energy(traj: Trajectory):
     if traj.est.first:
-        traj.par.ref_en = traj.pes.ham_diag_mnss[-1,0,0,0]
+        traj.par.ref_en = traj.pes.ham_diab_mnss[-1,0,0,0]
         traj.est.first = False
     for s in range(traj.par.n_states):
-        traj.pes.ham_diag_mnss[-1, traj.ctrl.substep, s, s] -= traj.par.ref_en
+        traj.pes.ham_diab_mnss[-1, traj.ctrl.substep, s, s] -= traj.par.ref_en
 
 
 def adjust_nacmes(traj: Trajectory):
@@ -139,9 +139,6 @@ def write_xyz(traj: Trajectory):
                          {traj.geo.position_mnad[-1,0,a,1]*Constants.bohr2A} \
                          {traj.geo.position_mnad[-1,0,a,2]*Constants.bohr2A}\n")
 
-
-
-
 def run_molpro(traj: Trajectory):
     '''
     Runs molpro 202X calculation and reads the results
@@ -155,22 +152,36 @@ def run_molpro(traj: Trajectory):
     #  traj.est.calculate_nacs *= np.eye(traj.par.n_states)
 
     write_xyz(traj)
-    create_input_molpro(traj.est.file, traj.est.config, traj.est.calculate_nacs, traj.est.skip, False)
+    create_input_molpro(traj.par.states, traj.est.file, traj.est.config, traj.est.calculate_nacs, traj.est.skip, False)
 
     err = os.system(f"molpro -W . -I . -d ./tmp_molpro -s {traj.est.file}.inp")
     if err > 0:
         print(f'Error in MOLPRO, exit code {err}')
         raise EstCalculationBrokenError
 
-    skip = traj.est.skip
-    for i, j, val in read_output_molpro_ham(traj.est.file): 
-        if i-skip >= 0 and j-skip >= 0 and i-skip < traj.par.n_states and j-skip < traj.par.n_states:
-            traj.pes.ham_diab_mnss[-1,0,i-skip,j-skip] = val
-    for i, j, a, val in read_output_molpro_nac(traj.est.file): traj.pes.nac_ddr_mnssad[-1,0,i-skip,j-skip,a] = val
+    ssum = np.cumsum(traj.par.states) - traj.par.states
+    traj.pes.ham_diab_mnss[-1,0] = 0
+    traj.pes.ham_diag_mnss[-1,0] = 0
+    traj.pes.nac_ddr_mnssad[-1,0] = 0
+    for s1, s2, i, j, val in read_output_molpro_ham(traj.est.file):
+        if i < traj.par.n_states and j < traj.par.n_states:
+            traj.pes.ham_diab_mnss[-1,0,i+ssum[s1],j+ssum[s2]] += val
+    for s, i, j, a, val in read_output_molpro_nac(traj.est.file): traj.pes.nac_ddr_mnssad[-1,0,i+ssum[s],j+ssum[s],a] = val
 
-
+    adjust_energy(traj)
     if traj.pes.diagonalise:
         diagonalise_hamiltonian(traj)
+
+        # soc transformations, move later
+        g_diab = np.zeros((traj.par.n_states, traj.par.n_states, traj.par.n_atoms, 3), dtype=np.complex128)
+        for i in range(traj.par.n_states):
+            for j in range(traj.par.n_states):
+                g_diab[i,j] = (i == j)*traj.pes.nac_ddr_mnssad[-1,0,i,i] - (traj.pes.ham_diab_mnss[-1,0,i,i] - traj.pes.ham_diab_mnss[-1,0,j,j])*traj.pes.nac_ddr_mnssad[-1,0,i,j]
+        g_diag = np.einsum("ij,jkad,kl->ilad", traj.pes.ham_transform_mnss[-1,0].conj().T, g_diab, traj.pes.ham_transform_mnss[-1,0])
+
+        for i in range(traj.par.n_states):
+            traj.pes.nac_ddr_mnssad[-1,0,i,i] = np.real(g_diag[i,i])
+
     else:
         traj.pes.ham_diag_mnss[-1, traj.ctrl.substep] = traj.pes.ham_diab_mnss[-1, traj.ctrl.substep]
         traj.pes.ham_transform_mnss[-1, traj.ctrl.substep] = np.identity(traj.par.n_states)
@@ -179,12 +190,10 @@ def run_molpro(traj: Trajectory):
     if overlap and not traj.est.first:
         traj.pes.overlap_mnss[-1,0,:,:] = run_wfoverlap_molpro(traj.est.file, traj.geo.name_a, traj.geo.position_mnad[-1,0,:,:], traj.geo.position_mnad[-2,0,:,:], traj.est.config['basis'] , traj.par.n_states)
 
-    adjust_energy(traj)
     adjust_nacmes(traj)
 
     os.chdir("..")
-        
-
+    
 
 def run_turbo(traj: Trajectory):
     os.chdir('est')
@@ -278,4 +287,3 @@ def run_molcas(traj: Trajectory):
 
     adjust_energy(traj)
     adjust_nacmes(traj)
-
