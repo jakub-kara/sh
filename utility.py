@@ -60,7 +60,7 @@ def read_initial_conditions(input_file):
             if i == 0:
                 assert len(line.split()) == 1
                 n_atoms = int(line)
-                atom_name_a = np.full(n_atoms, "00")
+                atom_name_a = np.full(n_atoms, "000")
                 position_ad = np.zeros((n_atoms, 3), order='F')
                 velocity_ad = np.zeros((n_atoms, 3), order='F')
                 mass_a = np.zeros(n_atoms)
@@ -71,7 +71,7 @@ def read_initial_conditions(input_file):
                 if len(line_list) > 0:
                     assert len(line_list) == 7, "wrong xyz file format"
                     atom_name_a[i-2] = line_list[0]
-                    mass_a[i-2] = Constants.atomic_masses[line_list[0]]*Constants.amu
+                    mass_a[i-2] = Constants.atomic_masses[line_list[0].split('_')[0]]*Constants.amu
                     position_ad[i-2,:] = [float(num.replace('d', 'e')) for num in line_list[1:4]]
                     velocity_ad[i-2,:] = [float(num.replace('d', 'e')) for num in line_list[4:7]]
 
