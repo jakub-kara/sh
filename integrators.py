@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Callable
 from scipy.linalg import expm
 
-from hopping import get_hopping_prob_ddr, check_hop
+from hopping import get_hopping_prob_ddr, check_hop, get_hopping_prob_LD
 from classes import Trajectory
 from constants import Constants
 
@@ -836,7 +836,7 @@ def integrate_quantum(traj: Trajectory):
             ddts[traj.ctrl.qstep] = frac*ddt_ini+ (1-frac)*ddt_fin
 
 
-    elif option == 'local_diabatisation':
+    elif option == 'local_diabatisation' or option == 'ld':
         # local diabatisation
         # this is a bit of a hacky way to do it, not advised for beginners...
         if traj.ctrl.curr_step < 2:
@@ -855,7 +855,7 @@ def integrate_quantum(traj: Trajectory):
 
         traj.est.coeff_mns[-1,0] = R @ traj.est.coeff_mns[-1,0]
         if traj.par.type == "sh" and traj.hop.target == traj.hop.active: 
-            get_hopping_prob_ddr(traj)
+            get_hopping_prob_LD(traj, R)
             check_hop(traj)
 
         return
@@ -869,26 +869,29 @@ def integrate_quantum(traj: Trajectory):
         arg = -(1.j*energy_ss + ddts[traj.ctrl.qstep])*traj.ctrl.dt/traj.par.n_qsteps
         traj.est.coeff_mns[-1,0] = traj.est.propagator(traj.est.coeff_mns[-1,0], arg)
         traj.pes.nac_ddt_mnss[-1,0] = ddts[traj.ctrl.qstep]
+        if traj.ctrl.qstep == 0:
+            print(ddts[0])
 
         if traj.par.type == "sh" and traj.hop.target == traj.hop.active: 
             get_hopping_prob_ddr(traj)
             check_hop(traj)
 
 def get_dt(traj: Trajectory):
-    def get_inp(x):
+    def get_inp(x,coeff):
         inp = 0
         for i in range(traj.par.n_states):
             for j in range(i):
-                inp += np.sum(x[i,j]**2)
+                inp += np.sum(x[i,j]**2)*(np.abs(coeff[i])**2+np.abs(coeff[j])**2)
         inp = np.sqrt(inp)
         return inp
     
     traj.ctrl.h[-1] = traj.ctrl.h[-2]
     t = np.cumsum(traj.ctrl.h)
 
-    f0 = traj.ctrl.dt_func(traj, get_inp(traj.pes.nac_ddt_mnss[-1,0]))
-    d = interpolate(t[:-1], traj.pes.nac_ddt_mnss[1:,0], t[-1])
-    f1 = traj.ctrl.dt_func(traj, get_inp(d))
+    f0 = traj.ctrl.dt_func(traj, get_inp(traj.pes.nac_ddt_mnss[-1,0], traj.est.coeff_mns[-1,0]))
+    #  d = interpolate(t[:-1], traj.pes.nac_ddt_mnss[1:,0], t[-1])
+    f1 = f0
+    #  f1 = traj.ctrl.dt_func(traj, get_inp(d))
     traj.ctrl.h[-1] = 0.5*(f0 + f1)
     traj.ctrl.dt = traj.ctrl.h[-1]
 
