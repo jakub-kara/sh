@@ -111,6 +111,9 @@ class Hopping:
         elif self.type == "fssh":
             self.rescale = "ddr"
             traj.est.coeff_mns[-1,0,self.active] = 1.
+            if traj.est.tdc_updater != 'nacme':
+                print('setting rescale to velocity')
+                self.rescale = ''
         else:
             raise HoppingTypeNotFoundError
 

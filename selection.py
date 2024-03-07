@@ -96,7 +96,7 @@ def gauss(traj: Trajectory, inp: float):
 
 def tanh(traj: Trajectory, inp: float):
     temp = inp/traj.ctrl.dt_params[0]**2
-    return (traj.ctrl.dt_max - traj.ctrl.dt_min) * (1 - np.tanh(temp)) + traj.ctrl.dt_min
+    return (traj.ctrl.dt_max - traj.ctrl.dt_min) * (1 - np.tanh(temp-3)) + traj.ctrl.dt_min
 
 def logistic(traj: Trajectory, inp: float):
     temp = -inp**2/2/traj.ctrl.dt_params[0]**2
