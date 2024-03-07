@@ -14,6 +14,17 @@ def get_hopping_prob_ddr(traj: Trajectory):
             prob *= -2 * traj.ctrl.dtq / np.abs( traj.est.coeff_mns[-1,0,traj.hop.active])**2 # check timestep changes with variable timestep
             traj.hop.prob_s[s] = max(0, prob)
 
+
+def get_hopping_prob_LD(traj: Trajectory, R):
+    for s in range(traj.par.n_states):
+        if s == traj.hop.active:
+            traj.hop.prob_s[s] = 0
+        else:
+            prob = (1 - np.abs(traj.est.coeff_mns[-1,0,traj.hop.active])**2/np.abs(traj.est.coeff_mns[-2,0,traj.hop.active])**2) 
+            prob *= np.real(traj.est.coeff_mns[-1,0,s]*np.conj(R[s,traj.hop.target])*np.conj(traj.est.coeff_mns[-2,0,traj.hop.active]))
+            prob /= (np.abs(traj.est.coeff_mns[-2,0,traj.hop.active])**2-np.real(traj.est.coeff_mns[-1,0,traj.hop.active]*np.conj(R[traj.hop.active, traj.hop.active])*np.conj(traj.est.coeff_mns[-2,0,traj.hop.active])))
+            traj.hop.prob_s[s] = max(0, prob)
+
 def check_hop(traj: Trajectory):
     if traj.hop.type == 'mash':
         check_hop_mash(traj)
@@ -31,6 +42,7 @@ def check_hop_fssh(traj: Trajectory):
         if r < cum_prob:
             traj.hop.target = s
             return
+
 
 def check_hop_mash(traj: Trajectory):
     if traj.ctrl.qstep + 1 == traj.par.n_qsteps:  # to be renamed!
@@ -75,7 +87,7 @@ def adjust_velocity_and_hop(traj: Trajectory):
     a = 0.5 * np.sum(traj.geo.mass_a[:, None] * delta * delta)
     b = -np.sum(traj.geo.mass_a[:, None] * traj.geo.velocity_mnad[-1,0] * delta)
     c = -ediff
-    reverse = True
+    reverse = False
 
     D = b**2 - 4 * a * c
     if D < 0:
@@ -87,6 +99,8 @@ def adjust_velocity_and_hop(traj: Trajectory):
         gamma = -(b + np.sqrt(D)) / (2 * a)
     elif b >= 0:
         gamma = -(b - np.sqrt(D)) / (2 * a)
+    
+    print(D)
 
     traj.geo.velocity_mnad[-1,0,:,:] -= gamma * delta
 
@@ -94,7 +108,7 @@ def adjust_velocity_and_hop(traj: Trajectory):
         traj.hop.active = traj.hop.target
         traj.est.nacs_setter(traj, False)
         traj.geo.force_mnad = -traj.pes.nac_ddr_mnssad[:,:,traj.hop.active,traj.hop.active,:,:]/traj.geo.mass_a[None,None,:,None]
-        traj.ctrl.init_steps = traj.par.n_steps
+        traj.ctrl.init_steps = 0#traj.par.n_steps
         print("Hop succeeded")
         write_log(traj, "Hop succeeded\n")
     else:
