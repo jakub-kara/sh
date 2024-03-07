@@ -7,6 +7,7 @@ from constants import Constants
 
 def create_input_molcas_main(file_root: str, config: dict, calculate_nacs: np.ndarray, skip: int):
     n_states = calculate_nacs.shape[0]
+    os.system('rm A_PT2 GAMMA*')
 
     with open(f"{file_root}.input", "w") as file:
         file.write("&GATEWAY\n")
@@ -18,6 +19,9 @@ def create_input_molcas_main(file_root: str, config: dict, calculate_nacs: np.nd
         file.write("GROUP=NOSYM\n")
         file.write("RICD\n")
         file.write(f"BASIS={config['basis']}\n\n")
+
+        file.write(">>> copy wf.wf JOBOLD\n")
+
         file.write("&SEWARD\n\n")
         file.write("&RASSCF\n")
         file.write("JOBIPH\nCIRESTART\n")
@@ -34,6 +38,7 @@ def create_input_molcas_main(file_root: str, config: dict, calculate_nacs: np.nd
         file.write(">>> COPY JOB001 JOB002\n")
         file.write(">>> COPY molcas.JobIph JOB001\n")
         file.write(">>> COPY molcas.JobIph JOBOLD\n")
+        file.write(">>> COPY molcas.JobIph wf.wf\n")
 
         if config['type'] == 'caspt2':
             file.write(f"&CASPT2\n")
@@ -42,6 +47,7 @@ def create_input_molcas_main(file_root: str, config: dict, calculate_nacs: np.nd
             file.write(f"shift={config['shift']}\n")
             file.write(f"ipea={config['ipea']}\n")
             file.write(f"sig2={config['sig2']}\n")
+            file.write(f"threshold =  1e-8 1e-6\n")
             if config['ipea'] > 0:
                 file.write('DORT\n')
             if config["ms_type"].upper()[0] == 'R':
@@ -134,7 +140,6 @@ def read_output_molcas_ham(file_name: str, config: dict):
                         #  while (line := file.readline()):
                         for i in range(config['sa']):
                             data = file.readline().strip().split()
-                            print(data)
                             yield int(data[-4])-1, int(data[-4])-1, float(data[-1])
 
                 else:
@@ -143,9 +148,7 @@ def read_output_molcas_ham(file_name: str, config: dict):
                         for i in range(config['sa']):
                         #  while (line := file.readline()):
                             line = file.readline()
-                            print(line)
                             data = line.strip().split()
-                            print(data)
                             yield int(data[-4])-1, int(data[-4])-1, float(data[-1])
 
 def read_output_molcas_prop(file_name: str, config: dict):
@@ -159,7 +162,6 @@ def read_output_molcas_prop(file_name: str, config: dict):
                     for j in range(i//5):
                         data += file.readline().split()
 
-                    print(data)
                     ovlp[i,:len(data)] = [float(q) for q in data]
 
         ovlp =ovlp[config['sa']:,:config['sa']] 
