@@ -11,8 +11,11 @@ import os
 
 
 
+def clean_dir():
+    os.system('rm control exstates')
+
 def run_ricc2(traj: Trajectory, config):
-    os.system('rm control')
+    clean_dir()
     if True:
         os.system('cp mos old_mos')
 
@@ -21,6 +24,8 @@ def run_ricc2(traj: Trajectory, config):
         if traj.est.calculate_nacs[i,i]:
             grad_state = i
             break
+
+
 
     make_control_script(config, traj.geo.name_a, traj.geo.position_mnad[-1,0], grad_state)
 
@@ -32,6 +37,10 @@ def run_ricc2(traj: Trajectory, config):
     traj.pes.ham_diab_mnss[-1,0], traj.pes.nac_ddr_mnssad[-1,0,traj.hop.active, traj.hop.active,:,:], d1 = read_ricc2_out(config)
     os.chdir('..')
     write_log(traj, f"D1 diag. = {d1}"+"\n")
+
+    if config['sa'] > 1:
+        return
+
     os.chdir('est')
 
     get_dets(config['sa'])
@@ -159,6 +168,9 @@ def make_control_script(config, atoms, geom1, grad_state):
 
     if grad_state >= 1:
         add_option('control', 'excitations', f'xgrad states=(a {grad_state} 1)')
+    else:
+        add_section('control', '$response')
+        add_option('control', 'response', 'gradient')
 
     change_option('control', 'scfiterlimit', '$scfiterlimit   100')
 
@@ -169,26 +181,58 @@ def read_ricc2_out(config):
     def str2float(string):
         return float(string.replace('-.','-0.').replace('D','E'))
 
+
+    ens = np.zeros(config['sa']-1)
+    natoms = 6
+    gradient = np.zeros((natoms, 3))
+    gradient_found=False
+
+    try:
+        f = open('exstates', 'r') 
+        for line in f:
+            if '$excitation_energies_ADC(2)' in line:
+                for i in range(config['sa']-1):
+                    ens[i] = f.readline().split()[-1]
+
+            #  if 'gradient' in line:
+                #  gradient_found = True
+                #  for i in range(natoms):
+                    #  data = f.readline().split()[:3]
+                    #  gradient[i,:] = [str2float(q) for q in data]
+    except:
+        FileNotFoundError
+
     with open('ricc2.out','r') as f:
         for line in f:
             if 'Final MP2 energy' in line:
                 mp2_energy = float(line.split()[-2])
             if 'D1 diagnostic' in line:
                 d1 = float(line.split()[-2])
+                break
+        if not gradient_found:
+            for line in f:
+                if 'cartesian gradient of the en' in line:
+                    grad = []
+                    f.readline()
+                    f.readline()
+                    f.readline()
+                    for i in range(3):
+                        grad.append([float(q.replace('D','E')) for q in f.readline().split()[1:]])
+                        
+                    for p in range(natoms//5):
+                        f.readline()
+                        f.readline()
+                        for i in range(3):
+                            grad[i] += [float(q.replace('D','E')) for q in f.readline().split()[1:]]
 
-    ens = np.zeros(config['sa']-1)
-    natoms = 6
-    gradient = np.zeros((natoms, 3))
-    with open('exstates', 'r') as f:
-        for line in f:
-            if '$excitation_energies_ADC(2)' in line:
-                for i in range(config['sa']-1):
-                    ens[i] = f.readline().split()[-1]
+            gradient = np.array(grad).T
+            
+            
 
-            if 'gradient' in line:
-                for i in range(natoms):
-                    data = f.readline().split()[:3]
-                    gradient[i,:] = [str2float(q) for q in data]
+    print(gradient)
+        
+
+
     ham = np.zeros((config['sa'],)*2)
     ham[0,0] = mp2_energy
     for i in range(config['sa']-1):
