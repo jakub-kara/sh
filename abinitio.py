@@ -186,7 +186,7 @@ def run_molpro(traj: Trajectory):
         traj.pes.ham_diag_mnss[-1, traj.ctrl.substep] = traj.pes.ham_diab_mnss[-1, traj.ctrl.substep]
         traj.pes.ham_transform_mnss[-1, traj.ctrl.substep] = np.identity(traj.par.n_states)
 
-    overlap = True
+    overlap = False
     if overlap and not traj.est.first:
         traj.pes.overlap_mnss[-1,0,:,:] = run_wfoverlap_molpro(traj.est.file, traj.geo.name_a, traj.geo.position_mnad[-1,0,:,:], traj.geo.position_mnad[-2,0,:,:], traj.est.config['basis'] , traj.par.n_states)
 
@@ -270,9 +270,7 @@ def run_molcas(traj: Trajectory):
         for s2 in range(s1+1):
             if traj.est.calculate_nacs[s1, s2]:
                 if s1 == s2:
-                    print(s1,s2)
                     for i, i, a, val in read_output_molcas_grad(f"molcas.log", traj.est.config): traj.pes.nac_ddr_mnssad[-1,0,i-skip, i-skip, a] = val
-                    print(traj.pes.nac_ddr_mnssad[-1,0,i-skip, i-skip,:,:], np.linalg.norm(traj.pes.nac_ddr_mnssad[-1,0,i-skip, i-skip,:,:]))
                 else:
                     for i, j, a, val in read_output_molcas_nac(f"molcas_{s2}_{s1}.log", s2, s1): traj.pes.nac_ddr_mnssad[-1,0,i-skip,j-skip,a] = val
 

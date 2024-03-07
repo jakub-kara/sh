@@ -106,24 +106,24 @@ def loop_dynamics(traj: Trajectory):
         shift_values(traj.pes.ham_diag_mnss, traj.pes.nac_ddr_mnssad, traj.pes.nac_ddt_mnss)
         shift_values(traj.est.coeff_mns, traj.pes.poten_mn)
         
-        if traj.ctrl.init_steps > 0:
+        if traj.ctrl.init_steps > 0 or traj.ctrl.conv_status == 1:
             traj.ctrl.init_steps -= 1
-            if traj.ctrl.conv_status == 1:
-                temp = time_log(traj, "Classical + EST: ", 
-                    lambda : traj.geo.init_solver(traj.geo.position_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                        traj.geo.velocity_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                        traj.geo.force_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                        est_wrapper, (traj,), traj.ctrl.dt,
-                                        traj.geo.init_scheme, None))
-                tempx, tempv, tempf = temp[0]
-            elif traj.ctrl.conv_status == 2:
-                temp = time_log(traj, "Classical + EST: ",
-                    lambda : traj.geo.init_solver(traj.geo.position_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                        traj.geo.velocity_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                        traj.geo.force_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                        est_wrapper, (traj,), traj.ctrl.dt,
-                                        RKN8, None))
-                tempx, tempv, tempf = temp[0]
+            temp = time_log(traj, "Classical + EST: ", 
+                lambda : traj.geo.init_solver(traj.geo.position_mnad[-traj.geo.init_scheme.m-1:-1,0],
+                                    traj.geo.velocity_mnad[-traj.geo.init_scheme.m-1:-1,0],
+                                    traj.geo.force_mnad[-traj.geo.init_scheme.m-1:-1,0],
+                                    est_wrapper, (traj,), traj.ctrl.dt,
+                                    traj.geo.init_scheme, None))
+            tempx, tempv, tempf = temp[0]
+        elif traj.ctrl.conv_status == 2:
+            traj.ctrl.init_steps -= 1
+            temp = time_log(traj, "Classical + EST: ",
+                lambda : traj.geo.init_solver(traj.geo.position_mnad[-traj.geo.init_scheme.m-1:-1,0],
+                                    traj.geo.velocity_mnad[-traj.geo.init_scheme.m-1:-1,0],
+                                    traj.geo.force_mnad[-traj.geo.init_scheme.m-1:-1,0],
+                                    est_wrapper, (traj,), traj.ctrl.dt,
+                                    RKN8, None))
+            tempx, tempv, tempf = temp[0]
         else:
             if "sy" in traj.geo.scheme_name:
                 traj.geo.loop_scheme_x = calculate_sy4_coeffs(traj.ctrl.h[-4], traj.ctrl.h[-3], traj.ctrl.h[-2], traj.ctrl.h[-1])
@@ -161,7 +161,6 @@ def loop_dynamics(traj: Trajectory):
             roll_back(traj.geo.position_mnad, traj.geo.velocity_mnad, traj.geo.force_mnad)
             roll_back(traj.pes.ham_diag_mnss, traj.pes.nac_ddr_mnssad, traj.pes.nac_ddt_mnss)
             roll_back(traj.est.coeff_mns, traj.pes.poten_mn)
-            traj.ctrl.init_steps = 1
             traj.ctrl.curr_time -= traj.ctrl.dt
             traj.ctrl.curr_step -= 1
             continue

@@ -112,7 +112,7 @@ def write_headers(traj: Trajectory):
             if "nacme" == record:
                 for s1 in range(traj.par.n_states):
                     for s2 in range(s1):
-                        dat_file.write(Printer.write(f'S{s2+traj.est.skip}-S{s1+traj.est.skip} NAC [au]', "s"))
+                        dat_file.write(Printer.write(f'{s2+traj.est.skip}-{s1+traj.est.skip} NAC [au]', "s"))
                         dat_file.write("Flip? ")
             if "coeff" == record:
                 for s in range(traj.par.n_states):

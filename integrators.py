@@ -850,8 +850,6 @@ def integrate_quantum(traj: Trajectory):
             R = expm(-1j*H*traj.ctrl.dt/traj.par.n_qsteps) @ R
 
         R = traj.pes.overlap_mnss[-1,0].T @ R
-        print(R)
-        print(R@np.conj(R.T))
 
         traj.est.coeff_mns[-1,0] = R @ traj.est.coeff_mns[-1,0]
         if traj.par.type == "sh" and traj.hop.target == traj.hop.active: 
@@ -870,15 +868,12 @@ def integrate_quantum(traj: Trajectory):
         arg = -(1.j*energy_ss + ddts[traj.ctrl.qstep])*traj.ctrl.dt/traj.par.n_qsteps
         traj.est.coeff_mns[-1,0] = traj.est.propagator(traj.est.coeff_mns[-1,0], arg)
         traj.pes.nac_ddt_mnss[-1,0] = ddts[traj.ctrl.qstep]
-        if traj.ctrl.qstep == 0:
-            print(ddts[0])
 
-        if traj.par.type == "sh" and traj.hop.target == traj.hop.active: 
+        if traj.par.type == "sh" and traj.hop.target == traj.hop.active:
+            #continue
             get_hopping_prob_ddr(traj)
             check_hop(traj)
     traj.est.coeff_mns[-1,0] = traj.pes.ham_transform_mnss[-1,0].conj().T @ traj.est.coeff_mns[-1,0]
-
-
 
 def get_dt(traj: Trajectory):
     def get_inp(x,coeff):

@@ -43,7 +43,6 @@ def check_hop_fssh(traj: Trajectory):
             traj.hop.target = s
             return
 
-
 def check_hop_mash(traj: Trajectory):
     if traj.ctrl.qstep + 1 == traj.par.n_qsteps:  # to be renamed!
         traj.hop.target = np.argmax(np.abs(traj.est.coeff_mns[-1,0]))
@@ -100,8 +99,6 @@ def adjust_velocity_and_hop(traj: Trajectory):
     elif b >= 0:
         gamma = -(b - np.sqrt(D)) / (2 * a)
     
-    print(D)
-
     traj.geo.velocity_mnad[-1,0,:,:] -= gamma * delta
 
     if D > 0:
