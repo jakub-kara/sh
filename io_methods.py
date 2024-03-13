@@ -83,7 +83,7 @@ def back_up_step(traj: Trajectory):
         pickle.dump(traj, traj_pkl)
 
     if traj.est.program != "model":
-        os.system("cp est/wf.wf backup/")
+        os.system(f"cp est/{traj.est.program}.wf backup/")
 
 def write_headers(traj: Trajectory):
     with open(traj.io.log_file, "w") as log_file:

@@ -156,7 +156,7 @@ def loop_dynamics(traj: Trajectory):
                 print("EST Failed to converge, terminating trajectory.")
                 exit(21)
 
-            os.system("cp backup/wf.wf est/")
+            os.system(f"cp backup/{traj.est.program}.wf est/")
             print("Energy not conserved, stepping back")
             roll_back(traj.geo.position_mnad, traj.geo.velocity_mnad, traj.geo.force_mnad)
             roll_back(traj.pes.ham_diag_mnss, traj.pes.nac_ddr_mnssad, traj.pes.nac_ddt_mnss)
