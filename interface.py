@@ -335,6 +335,7 @@ class Menu():
     def display(self):
         self.get_status()
 
+        box.menu.clear()
         box.menu.addstr(0, 0, self.text, curses.A_UNDERLINE)
         box.menu.addstr(1, 0, "Navigation: arrow keys; Exit: Ctrl + C; Save: Ctrl + S.")
         self.alter_visibility(adaptive["on"], adaptive["off"], self.get_child_by_tag("adapt").children[0].text in Constants.true)
@@ -354,10 +355,20 @@ class Menu():
                 box.menu.addstr(i+2, 40*depth, child.text, STAT[child.status])
     
     def display_help(self):
+        box.hlp.clear()
         lines = [s for s in self.hlp.split("\n") if s]
         box.hlp.addstr(0, 0, "Help", curses.A_UNDERLINE)
         for i, line in enumerate(lines):
             box.hlp.addstr(1 + i, 0, line)
+        box.hlp.refresh()
+
+    def display_input(self):
+        box.inph.clear()
+        box.inph.refresh()
+
+        box.inp.clear()
+        box.inp.refresh()
+
     
     def alter_visibility(self, on: list, off: list, orig: bool):
         for name in on:
@@ -482,15 +493,20 @@ class TextField():
             else: return 0
         except:
             return 0
-
-    def get_input(self):
+        
+    def display_input(self):
+        box.inph.clear()
         box.inph.addstr(0, 0, "Input", curses.A_UNDERLINE)
         box.inph.refresh()
 
-        txt = curses.textpad.Textbox(box.inp)
         box.inp.clear()
         box.inp.addstr(0, 0, self.text)
         box.inp.refresh()
+
+    def get_input(self):
+        self.display_input()
+
+        txt = curses.textpad.Textbox(box.inp)
         curses.curs_set(1)
         txt.edit()
 
@@ -584,10 +600,10 @@ def main(stdscr):
     else:
         menu.deselect_children()
     menu.selected_child = menu.children[0]
-    menu.display()
-
-    
     active = menu
+    active.selected_child.display_help()
+
+    menu.display()
     active.selected_child.display_help()
 
     while True:
@@ -618,8 +634,12 @@ def main(stdscr):
         # arrows
         elif key == "KEY_UP":
             active.prev_child()
+            if isinstance(active.selected_child.children[0], TextField):
+                active.selected_child.children[0].display_input()
         elif key == "KEY_DOWN":
             active.next_child()
+            if isinstance(active.selected_child.children[0], TextField):
+                active.selected_child.children[0].display_input()
         elif key == "KEY_RIGHT":
             active = active.selected_child
             if isinstance(active.children[0], TextField):
@@ -628,16 +648,13 @@ def main(stdscr):
                 active = active.parent
             else:
                 active.selected_child = active.vis_children[0]
+                if isinstance(active.selected_child.children[0], TextField):
+                    active.selected_child.children[0].display_input()
         elif key == "KEY_LEFT" and active != menu:
             active.selected_child = None
             active = active.parent
-        box.menu.clear()
         menu.display()
-        box.menu.refresh()
-
-        box.hlp.clear()
         active.selected_child.display_help()
-        box.hlp.refresh()
 
 if __name__ == "__main__":
     wrapper(main)

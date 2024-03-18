@@ -109,11 +109,15 @@ def write_headers(traj: Trajectory):
                 dat_file.write(Printer.write('Total Kin En [eV]', "s"))
             if "en" == record:
                 dat_file.write(Printer.write('Total En [eV]', "s"))
-            if "nacme" == record:
+            if "nacdr" == record:
                 for s1 in range(traj.par.n_states):
                     for s2 in range(s1):
-                        dat_file.write(Printer.write(f'{s2+traj.est.skip}-{s1+traj.est.skip} NAC [au]', "s"))
+                        dat_file.write(Printer.write(f'{s2+traj.est.skip}-{s1+traj.est.skip} NACdr [au]', "s"))
                         dat_file.write("Flip? ")
+            if "nacdt" == record:
+                for s1 in range(traj.par.n_states):
+                    for s2 in range(s1):
+                        dat_file.write(Printer.write(f'{s2+traj.est.skip}-{s1+traj.est.skip} NACdt [au]', "s"))
             if "coeff" == record:
                 for s in range(traj.par.n_states):
                     dat_file.write(Printer.write(f'{s+traj.est.skip} State Coeff', f" <{Printer.field_length*2+1}"))
@@ -171,13 +175,17 @@ def write_dat(traj: Trajectory):
                 dat_file.write(Printer.write(get_kinetic_energy(traj)*Constants.eh2ev, "f"))
             if record == "en":
                 dat_file.write(Printer.write((get_kinetic_energy(traj) + traj.pes.ham_diag_mnss[-1,0,traj.hop.active,traj.hop.active])*Constants.eh2ev, "f"))
-            if record == "nacme":
+            if record == "nacdr":
                 for s1 in range(traj.par.n_states):
                     for s2 in range(s1):
                         nac = np.sum(traj.pes.nac_ddr_mnssad[-1,0,s1,s2,:,:]**2)
                         nac = np.sqrt(nac)
                         dat_file.write(Printer.write(nac, "f")) 
                         dat_file.write(Printer.write(traj.pes.nac_flip[s1,s2], "b"))
+            if record == "nacdt":
+                for s1 in range(traj.par.n_states):
+                    for s2 in range(s1):
+                        dat_file.write(Printer.write(traj.pes.nac_ddt_mnss[-1,0,s1,s2], "f")) 
             if record == "coeff":
                 for s in range(traj.par.n_states):
                     dat_file.write(Printer.write(traj.est.coeff_mns[-1,0,s], "z"))
