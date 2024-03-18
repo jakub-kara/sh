@@ -21,7 +21,7 @@ def create_input_molpro(states: np.ndarray, file_root: str, config: dict, calcul
     with open(file, "w") as f:
         #File and threshold section
         f.write(f"***\n")
-        f.write(f"file,2,wf.wf\n")
+        f.write(f"file,2,{file_root}.wf\n")
         f.write("memory,100,m\n")
         f.write("gprint,orbital=2,civector,angles=-1,distance=-1\n")
         f.write(" gthresh,twoint=1.0d-13,energy=1.0d-10,gradient=1.0d-10,printci=0.000000009,thrprint=0\n") # TODO add thresholds
