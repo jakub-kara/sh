@@ -332,7 +332,7 @@ def get_ci_and_orb_molpro(filename, lumorb_filename, ci_filename):
 
     # first get the molecular orbitals
 
-    with open('molpro.out', 'r') as f:
+    with open(filename, 'r') as f:
         for line in f:
             if 'NUMBER OF CONTRACTIONS:' in line:
                 no_ao = int(line.split()[3])
@@ -381,7 +381,7 @@ def get_ci_and_orb_molpro(filename, lumorb_filename, ci_filename):
     lf.write(f'#INPORB 2.2\n\n\n0 1 0\n{no_ao}\n{nocc}\n#ORB\n')
     for mo in range(nocc):
         lf.write(f'* ORBITAL   1   {mo+1}\n')
-        for i in range(no_ao//5+1):  # first case
+        for i in range((no_ao-1)//5+1):  # first case
             lf.write(
                 ''.join(["%22.14E" % elem for elem in mo_coeff[mo][i]])+'\n')
 
@@ -425,7 +425,7 @@ def move_old_files():
 def run_wfoverlap_molpro(output_filename, atoms, geom1, geom2, basis, no_states):
     """wrapper function to run all calculations from given inputs"""
     move_old_files()
-    get_ci_and_orb_molpro(output_filename, 'lumorb_a', 'dets_a')
+    get_ci_and_orb_molpro(output_filename+".out", 'lumorb_a', 'dets_a')
 
     input_file_string = '''
 a_mo=lumorb_a.old
