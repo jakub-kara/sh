@@ -1,7 +1,7 @@
 import sys, os
 import termios, tty
 import json, pickle
-import unicodedata
+import string
 
 from constants import Constants
 
@@ -298,7 +298,8 @@ pt2 = {
     "off": []
 }
 
-MENUBOX = (1, 1, os.get_terminal_size()[0]-1, 19)
+MENUHDR = (1, 1, os.get_terminal_size()[0]-1, 3)
+MENUBOX = (1, 3, os.get_terminal_size()[0]-1, 19)
 INPUTBOX = (1, 20, os.get_terminal_size()[0]//2, os.get_terminal_size()[1]-1)
 HELPBOX = (os.get_terminal_size()[0]-os.get_terminal_size()[0]//2+1, 20, os.get_terminal_size()[0]-1, os.get_terminal_size()[1]-1)
 
@@ -494,7 +495,7 @@ class TextField():
         while True:
             self.update_input(redraw)
             redraw = []
-
+            
             char = getchar()
 
             # Ctrl + S
@@ -508,15 +509,15 @@ class TextField():
                 if self.y + 2 >= INPUTBOX[3] - INPUTBOX[1]: continue
                 temp = self.lines[self.y][self.x:]
                 self.lines[self.y] = self.lines[self.y][:self.x]
-                redraw.append(self.y)
-                self.lines.append(temp)
+                redraw = [i for i in range(self.y, len(self.lines))]
+                self.lines.insert(self.y+1, temp)
                 if temp: redraw.append(self.y + 1)
                 self.y += 1
                 self.x = 0
                 continue
 
             # backspace
-            if ord(char) == 8:
+            """if ord(char) == 8:
                 if self.x == 0:
                     if self.y > 0:
                         redraw = [i for i in range(self.y-1, len(self.lines))]
@@ -529,13 +530,28 @@ class TextField():
                     self.lines[self.y] = self.lines[self.y][:self.x-1] + self.lines[self.y][self.x:]
                     self.x -= 1
                     print("\033[D", end="", flush=True)
+                continue"""
+            if ord(char) == 8:
+                if self.x == 0:
+                    if self.y > 0 and len(self.lines[self.y]) == 0:
+                        redraw = [i for i in range(self.y-1, len(self.lines))]
+                        self.y -= 1
+                        self.x = len(self.lines[self.y])
+                        self.lines.pop(self.y + 1)
+                else:
+                    redraw.append(self.y)
+                    self.lines[self.y] = self.lines[self.y][:self.x-1] + self.lines[self.y][self.x:]
+                    self.x -= 1
+                    print("\033[D", end="", flush=True)
                 continue
+
 
             # escape sequence
             if ord(char) == 27:
                 while True:
-                    seq = sys.stdin.read(1)
+                    seq = getchar()
                     if ord(seq) == 27: continue
+                    if seq == "q": exit()
                     if seq.isalpha() or seq == "~":
                         break
 
@@ -557,22 +573,40 @@ class TextField():
                     print("\033[D", end="", flush=True)
 
                 # delete
-                if seq == "~":
+                """if seq == "~":
                     if self.x == len(self.lines[self.y]) and self.y < len(self.lines) - 1:
                         redraw = [i for i in range(self.y, len(self.lines))]
                         self.lines[self.y] += self.lines[self.y + 1]
                         self.lines.pop(self.y + 1)
                     else:
                         self.lines[self.y] = self.lines[self.y][:self.x] + self.lines[self.y][self.x+1:]
+                        redraw.append(self.y)"""
+                if seq == "~":
+                    if self.x == len(self.lines[self.y]):
+                        if self.y < len(self.lines) - 1 and len(self.lines[self.y]) == 0:
+                            redraw = [i for i in range(self.y, len(self.lines))]
+                            self.lines.pop(self.y)
+                    else:
+                        self.lines[self.y] = self.lines[self.y][:self.x] + self.lines[self.y][self.x+1:]
                         redraw.append(self.y)
 
             else:
-                if is_printable(ord(char)):
+                if char in string.printable:
                     if len(self.lines[self.y]) < INPUTBOX[2] - INPUTBOX[0]:
                         if self.lines[self.y][self.x:]: redraw.append(self.y)
                         self.lines[self.y] = self.lines[self.y][:self.x] + char + self.lines[self.y][self.x:]
                         self.x += 1
                         print(f"{char}", flush=True, end="")
+
+
+                    elif char != " " and len(self.lines[self.y]) == INPUTBOX[2] - INPUTBOX[0]:
+                        redraw = [i for i in range(self.y, len(self.lines))]
+                        self.lines.insert(self.y+1, char)
+                        self.y += 1
+                        self.x = 0
+                        set_position(self.x+1, self.y + 21)
+                        print(f"{char}", flush=True, end="")
+                        self.x += 1
 
             """for line in self.lines:
                 if line != "":
@@ -638,9 +672,6 @@ def print_borders(hsplit: int, vsplit: int):
     \u255a\u2550\u255d
     '''
 
-def is_printable(num: int):
-    return unicodedata.category(chr(num)) in ["Ll", "Lu", "Nd", "Zs"]
-
 def main():
     if len(sys.argv) > 1:
         inp = sys.argv[1]
@@ -705,7 +736,7 @@ def main():
         # escape
         if ord(char) == 27:
             while True:
-                char = sys.stdin.read(1)
+                char = getchar()
                 if char.isalpha() or char == "~":
                     break
             

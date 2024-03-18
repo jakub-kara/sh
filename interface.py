@@ -480,10 +480,9 @@ class TextField():
             else: return self.input_type(inp)
 
         if self.lst:
-            out = " ".join(self.lines)
-            return [cnv(i) for i in out.split()]
+            return [cnv(i) for i in self.text.replace("\n", " ").split()]
         else:
-            out = "\n".join(self.lines)
+            out = "\n".join(self.text.replace("\n", " ").split())
             return cnv(out)
     
     def check_input(self):
@@ -513,9 +512,7 @@ class TextField():
         self.text = txt.gather()
         curses.curs_set(0)
 
-        box.inp.clear()
-        box.inp.addstr(repr(self.text))
-        box.inp.refresh()
+        self.status = self.check_input()
 
 
     def get_status(self):
