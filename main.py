@@ -46,7 +46,7 @@ def initialise_dynamics(traj: Trajectory):
     select_solvers(traj)
 
     write_headers(traj)
-    traj.est.nacs_setter(traj, True)
+    traj.est.nacs_setter(traj, nacs=traj.est.tdc_updater=='nacme')
     time_log(traj, "Initial EST: ", lambda : traj.est.run(traj))
     traj.est.first = False
     traj.geo.force_updater(traj)

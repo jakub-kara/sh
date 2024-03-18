@@ -111,7 +111,7 @@ def run_molpro(traj: Trajectory):
         traj.pes.ham_transform_mnss[-1, 0] = np.identity(traj.par.n_states)
 
     overlap = True
-    if overlap and not traj.est.first:
+    if overlap and traj.ctrl.substep == 0 and not traj.est.first:
         traj.pes.overlap_mnss[-1,0,:,:] = run_wfoverlap_molpro(traj.est.file, traj.geo.name_a, traj.geo.position_mnad[-1,0,:,:], traj.geo.position_mnad[-2,0,:,:], traj.est.config['basis'] , traj.par.n_states)
 
     adjust_nacmes(traj)
