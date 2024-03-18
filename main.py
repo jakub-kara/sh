@@ -94,7 +94,7 @@ def roll_back(*args):
 
 
 def loop_dynamics(traj: Trajectory):
-    while traj.ctrl.curr_time <= traj.ctrl.t_max:
+    while traj.ctrl.curr_time < traj.ctrl.t_max:
         if os.path.isfile("stop"):
             exit(23)
 
@@ -107,7 +107,6 @@ def loop_dynamics(traj: Trajectory):
         shift_values(traj.est.coeff_mns, traj.pes.poten_mn)
         
         if traj.ctrl.init_steps > 0 or traj.ctrl.conv_status == 1:
-            traj.ctrl.init_steps -= 1
             temp = time_log(traj, "Classical + EST: ", 
                 lambda : traj.geo.init_solver(traj.geo.position_mnad[-traj.geo.init_scheme.m-1:-1,0],
                                     traj.geo.velocity_mnad[-traj.geo.init_scheme.m-1:-1,0],
@@ -116,7 +115,6 @@ def loop_dynamics(traj: Trajectory):
                                     traj.geo.init_scheme, None))
             tempx, tempv, tempf = temp[0]
         elif traj.ctrl.conv_status == 2:
-            traj.ctrl.init_steps -= 1
             temp = time_log(traj, "Classical + EST: ",
                 lambda : traj.geo.init_solver(traj.geo.position_mnad[-traj.geo.init_scheme.m-1:-1,0],
                                     traj.geo.velocity_mnad[-traj.geo.init_scheme.m-1:-1,0],
@@ -135,6 +133,7 @@ def loop_dynamics(traj: Trajectory):
                                      est_wrapper, (traj,), traj.ctrl.dt,
                                      traj.geo.loop_scheme_x, traj.geo.loop_scheme_v))
             tempx, tempv, tempf = temp[0]
+        if traj.ctrl.init_steps > 0: traj.ctrl.init_steps -= 1
 
         traj.est.calculate_nacs[:] = False
         traj.geo.position_mnad[-1,0], traj.geo.velocity_mnad[-1,0], traj.geo.force_mnad[-1,0] = tempx, tempv, tempf

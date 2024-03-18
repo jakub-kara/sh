@@ -547,8 +547,9 @@ SY8c = AB(
     b = np.array([0, 13207, -8934, 42873, -33812, 42873, -8934, 13207, 0])/8640
 )
 
-def est_wrapper(x: np.ndarray, nacs: bool, traj: Trajectory):
-    traj.est.nacs_setter(traj, nacs)
+def est_wrapper(x: np.ndarray, substep: int, traj: Trajectory):
+    traj.est.nacs_setter(traj, substep==0)
+    traj.ctrl.substep = substep
     temp = traj.geo.position_mnad[-1,0]
     traj.geo.position_mnad[-1,0] = x
     traj.est.run(traj)
@@ -589,7 +590,7 @@ def RKNSolver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, fa
 
     y1 = y0 + dt*v0 + dt**2*np.einsum("j,j...->...", scheme.b, F)
     v1 = v0 + dt*np.einsum("j,j...->...", scheme.d, F)
-    f1 = func(y1, True, *fargs)
+    f1 = func(y1, i, *fargs)
     
     return y1, v1, f1
 

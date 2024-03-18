@@ -1,7 +1,8 @@
 import numpy as np
 
 from classes import Trajectory
-from abinitio import harm, spin_boson, tully_1, tully_2, tully_3, tully_n, tully_s, sub_2, sub_s, sub_x, lvc_wrapper, run_molcas, run_molpro, set_est_mfe, set_est_sh, run_pyscf_wrapper, run_turbo
+from abinitio import run_molcas, run_molpro, set_est_mfe, set_est_sh, run_pyscf_wrapper, run_turbo, run_model
+from model_est import harm, spin_boson, tully_1, tully_2, tully_3, tully_n, tully_s, sub_2, sub_s, sub_x, lvc_wrapper
 from errors import *
 from integrators import SV, OV, RKN4, RKN6, RKN8, SY4, SY6, SY8, SY8b, SY8c, AM4, AM6, AM8, VVSolver, OVSolver, RKNSolver, ARKN3Solver, SYSolver, update_force_mfe, update_force_sh, propagator_matrix
 

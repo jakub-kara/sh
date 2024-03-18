@@ -123,7 +123,7 @@ def decoherence_edc(traj: Trajectory, c=0.1):
         if s == traj.hop.active:
             continue
         else:
-            decay_rate = 1/np.abs(traj.pes.ham_diag_mnss[-1, -1, s, s] - traj.pes.ham_diag_mnss[-1, -1, traj.hop.active, traj.hop.active])*(1 + c/kinetic_energy)
+            decay_rate = 1/np.abs(traj.pes.ham_diag_mnss[-1, 0, s, s] - traj.pes.ham_diag_mnss[-1, 0, traj.hop.active, traj.hop.active])*(1 + c/kinetic_energy)
             traj.est.coeff_mns[-1,0,s] *= np.exp(-traj.ctrl.dt/decay_rate)
             amp_sum += np.abs(traj.est.coeff_mns[-1,0,s])**2
 

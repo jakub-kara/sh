@@ -5,8 +5,6 @@ from errors import *
 from classes import Trajectory
 from constants import Constants
 
-import fmodules.models_f as models_f
-
 from molpro_est import create_input_molpro, read_output_molpro_ham, read_output_molpro_nac, run_wfoverlap_molpro
 from molcas_est import create_input_molcas_main, create_input_molcas_nac, read_output_molcas_ham, read_output_molcas_grad, read_output_molcas_nac, read_output_molcas_prop
 from pyscf_est import run_pyscf_mcscf, run_pyscf_cisd
@@ -27,92 +25,16 @@ def set_est_mfe(traj: Trajectory, nacs=True):
         traj.est.calculate_nacs = np.identity(traj.par.n_states)
 
 def diagonalise_hamiltonian(traj: Trajectory):
-    eval, evec = np.linalg.eigh(traj.pes.ham_diab_mnss[-1, traj.ctrl.substep])
-    traj.pes.ham_transform_mnss[-1, traj.ctrl.substep] = evec
-    traj.pes.ham_diag_mnss[-1, traj.ctrl.substep] = np.diag(eval)
-
-def harm(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,traj.ctrl.substep,0,0] = 0.5*traj.geo.position_mnad[-1,traj.ctrl.substep,0,0]**2
-    traj.pes.ham_diag_mnss[-1,traj.ctrl.substep] = traj.pes.ham_diab_mnss[-1,traj.ctrl.substep]
-    traj.pes.nac_ddr_mnssad[-1,traj.ctrl.substep,0,0] = traj.geo.position_mnad[-1,traj.ctrl.substep]
-
-def spin_boson(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,traj.ctrl.substep], gradH_ssad = models_f.spin_boson(traj.geo.position_mnad[-1, traj.ctrl.substep])
-    diagonalise_hamiltonian(traj)
-    traj.pes.nac_ddr_mnssad[-1, traj.ctrl.substep] = models_f.get_nac_and_gradient(traj.pes.ham_diag_mnss[-1, traj.ctrl.substep], traj.pes.ham_transform_mnss[-1, traj.ctrl.substep], gradH_ssad)
-    #adjust_nacmes(traj)
-
-def tully_1(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,traj.ctrl.substep], gradH_ssad = models_f.tully_1(traj.geo.position_mnad[-1, traj.ctrl.substep])
-    diagonalise_hamiltonian(traj)
-    traj.pes.nac_ddr_mnssad[-1, traj.ctrl.substep] = models_f.get_nac_and_gradient(traj.pes.ham_diag_mnss[-1, traj.ctrl.substep], traj.pes.ham_transform_mnss[-1, traj.ctrl.substep], gradH_ssad)
-    #adjust_nacmes(traj)
-
-def tully_s(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,traj.ctrl.substep], gradH_ssad = models_f.tully_s(traj.geo.position_mnad[-1, traj.ctrl.substep])
-    diagonalise_hamiltonian(traj)
-    traj.pes.nac_ddr_mnssad[-1, traj.ctrl.substep] = models_f.get_nac_and_gradient(traj.pes.ham_diag_mnss[-1, traj.ctrl.substep], traj.pes.ham_transform_mnss[-1, traj.ctrl.substep], gradH_ssad)
-    adjust_nacmes(traj)
-
-def tully_n(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,traj.ctrl.substep], gradH_ssad = models_f.tully_n(traj.geo.position_mnad[-1, traj.ctrl.substep])
-    diagonalise_hamiltonian(traj)
-    traj.pes.nac_ddr_mnssad[-1, traj.ctrl.substep] = models_f.get_nac_and_gradient(traj.pes.ham_diag_mnss[-1, traj.ctrl.substep], traj.pes.ham_transform_mnss[-1, traj.ctrl.substep], gradH_ssad)
-    adjust_nacmes(traj)
-
-def tully_2(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,traj.ctrl.substep], gradH_ssad = models_f.tully_2(traj.geo.position_mnad[-1, traj.ctrl.substep])
-    diagonalise_hamiltonian(traj)
-    traj.pes.nac_ddr_mnssad[-1, traj.ctrl.substep] = models_f.get_nac_and_gradient(traj.pes.ham_diag_mnss[-1, traj.ctrl.substep], traj.pes.ham_transform_mnss[-1, traj.ctrl.substep], gradH_ssad)
-    adjust_nacmes(traj)
-
-def tully_3(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,traj.ctrl.substep], gradH_ssad = models_f.tully_3(traj.geo.position_mnad[-1, traj.ctrl.substep])
-    diagonalise_hamiltonian(traj)
-    traj.pes.nac_ddr_mnssad[-1, traj.ctrl.substep] = models_f.get_nac_and_gradient(traj.pes.ham_diag_mnss[-1, traj.ctrl.substep], traj.pes.ham_transform_mnss[-1, traj.ctrl.substep], gradH_ssad)
-    adjust_nacmes(traj)
-
-def sub_x(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,traj.ctrl.substep], gradH_ssad = models_f.sub_x(traj.geo.position_mnad[-1, traj.ctrl.substep])
-    diagonalise_hamiltonian(traj)
-    traj.pes.nac_ddr_mnssad[-1, traj.ctrl.substep] = models_f.get_nac_and_gradient(traj.pes.ham_diag_mnss[-1, traj.ctrl.substep], traj.pes.ham_transform_mnss[-1, traj.ctrl.substep], gradH_ssad)
-    adjust_nacmes(traj)
-
-def sub_s(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,traj.ctrl.substep], gradH_ssad = models_f.sub_s(traj.geo.position_mnad[-1, traj.ctrl.substep])
-    diagonalise_hamiltonian(traj)
-    traj.pes.nac_ddr_mnssad[-1, traj.ctrl.substep] = models_f.get_nac_and_gradient(traj.pes.ham_diag_mnss[-1, traj.ctrl.substep], traj.pes.ham_transform_mnss[-1, traj.ctrl.substep], gradH_ssad)
-    adjust_nacmes(traj)
-
-def sub_2(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,traj.ctrl.substep], gradH_ssad = models_f.sub_2(traj.geo.position_mnad[-1, traj.ctrl.substep])
-    diagonalise_hamiltonian(traj)
-    traj.pes.nac_ddr_mnssad[-1, traj.ctrl.substep] = models_f.get_nac_and_gradient(traj.pes.ham_diag_mnss[-1, traj.ctrl.substep], traj.pes.ham_transform_mnss[-1, traj.ctrl.substep], gradH_ssad)
-    adjust_nacmes(traj)
-
-def lvc_wrapper(traj: Trajectory):
-    traj.pes.ham_diab_mnss[-1,0], traj.pes.ham_diag_mnss[-1,0], traj.pes.ham_transform_mnss[-1,0], traj.pes.nac_ddr_mnssad[-1,0] = \
-        LVC.get_est(traj.geo.position_mnad[-1,0].flatten())
-
-
-def interpolate_est(traj: Trajectory, x1):
-    os.remove("est/wf.wf")
-    os.system("cp backup/wf.wf est/")
-
-    x0 = traj.geo.position_mnad[-2,0]
-    n = 2
-    for i in range(n):
-        traj.geo.position_mnad[-1,0] = ((n-i)*x0 + i*x1)/n
-        traj.est.run(traj)
-    traj.geo.force_mnad[-1,0] = -traj.pes.nac_ddr_mnssad[-1,0,traj.hop.active,traj.hop.active]/traj.geo.mass_a[:,None]
+    eval, evec = np.linalg.eigh(traj.pes.ham_diab_mnss[-1, 0])
+    traj.pes.ham_transform_mnss[-1, 0] = evec
+    traj.pes.ham_diag_mnss[-1, 0] = np.diag(eval)
 
 def adjust_energy(traj: Trajectory):
     if traj.est.first:
         traj.par.ref_en = traj.pes.ham_diab_mnss[-1,0,0,0]
         traj.est.first = False
     for s in range(traj.par.n_states):
-        traj.pes.ham_diab_mnss[-1, traj.ctrl.substep, s, s] -= traj.par.ref_en
-
+        traj.pes.ham_diab_mnss[-1, 0, s, s] -= traj.par.ref_en
 
 def adjust_nacmes(traj: Trajectory):
     '''
@@ -133,11 +55,15 @@ def adjust_nacmes(traj: Trajectory):
 def write_xyz(traj: Trajectory):
     with open(f"{traj.est.file}.xyz", "w") as file:
         file.write(f"{traj.par.n_atoms}\n\n")
-        for a in range(traj.par.n_atoms): 
+        for a in range(traj.par.n_atoms):
             file.write(f"{traj.geo.name_a[a]} \
                          {traj.geo.position_mnad[-1,0,a,0]*Constants.bohr2A} \
                          {traj.geo.position_mnad[-1,0,a,1]*Constants.bohr2A} \
                          {traj.geo.position_mnad[-1,0,a,2]*Constants.bohr2A}\n")
+
+def run_model(traj: Trajectory):
+    traj.est.run(traj)
+    diagonalise_hamiltonian(traj)
 
 def run_molpro(traj: Trajectory):
     '''
@@ -145,7 +71,6 @@ def run_molpro(traj: Trajectory):
     modifies the trajectory class
     '''
 
-    #traj.est.file = f"{traj.est.program}_{traj.ctrl.curr_step}_{traj.ctrl.substep}"
     traj.est.file = f"{traj.est.program}"
     os.chdir("est")
 
@@ -183,8 +108,8 @@ def run_molpro(traj: Trajectory):
             traj.pes.nac_ddr_mnssad[-1,0,i,i] = np.real(g_diag[i,i])
 
     else:
-        traj.pes.ham_diag_mnss[-1, traj.ctrl.substep] = traj.pes.ham_diab_mnss[-1, traj.ctrl.substep]
-        traj.pes.ham_transform_mnss[-1, traj.ctrl.substep] = np.identity(traj.par.n_states)
+        traj.pes.ham_diag_mnss[-1, 0] = traj.pes.ham_diab_mnss[-1, 0]
+        traj.pes.ham_transform_mnss[-1, 0] = np.identity(traj.par.n_states)
 
     overlap = False
     if overlap and not traj.est.first:
@@ -202,8 +127,8 @@ def run_turbo(traj: Trajectory):
     if traj.pes.diagonalise:
         diagonalise_hamiltonian(traj)
     else:
-        traj.pes.ham_diag_mnss[-1, traj.ctrl.substep] = traj.pes.ham_diab_mnss[-1, traj.ctrl.substep]
-        traj.pes.ham_transform_mnss[-1, traj.ctrl.substep] = np.identity(traj.par.n_states)
+        traj.pes.ham_diag_mnss[-1, 0] = traj.pes.ham_diab_mnss[-1, 0]
+        traj.pes.ham_transform_mnss[-1, 0] = np.identity(traj.par.n_states)
 
     adjust_energy(traj)
     adjust_nacmes(traj)
@@ -220,8 +145,8 @@ def run_pyscf_wrapper(traj: Trajectory):
     if traj.pes.diagonalise:
         diagonalise_hamiltonian(traj)
     else:
-        traj.pes.ham_diag_mnss[-1, traj.ctrl.substep] = traj.pes.ham_diab_mnss[-1, traj.ctrl.substep]
-        traj.pes.ham_transform_mnss[-1, traj.ctrl.substep] = np.identity(traj.par.n_states)
+        traj.pes.ham_diag_mnss[-1, 0] = traj.pes.ham_diab_mnss[-1, 0]
+        traj.pes.ham_transform_mnss[-1, 0] = np.identity(traj.par.n_states)
 
     adjust_energy(traj)
     adjust_nacmes(traj)
@@ -280,8 +205,8 @@ def run_molcas(traj: Trajectory):
     if traj.pes.diagonalise:
         diagonalise_hamiltonian(traj)
     else:
-        traj.pes.ham_diag_mnss[-1, traj.ctrl.substep] = traj.pes.ham_diab_mnss[-1, traj.ctrl.substep]
-        traj.pes.ham_transform_mnss[-1, traj.ctrl.substep] = np.identity(traj.par.n_states)
+        traj.pes.ham_diag_mnss[-1, 0] = traj.pes.ham_diab_mnss[-1, 0]
+        traj.pes.ham_transform_mnss[-1, 0] = np.identity(traj.par.n_states)
 
     adjust_energy(traj)
     adjust_nacmes(traj)

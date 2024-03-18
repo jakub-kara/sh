@@ -1,7 +1,9 @@
+import curses
+from curses import wrapper
+import curses.textpad
 import sys, os
-import termios, tty
-import json, pickle
-import unicodedata
+import pickle, json
+import time
 
 from constants import Constants
 
@@ -298,9 +300,14 @@ pt2 = {
     "off": []
 }
 
-MENUBOX = (1, 1, os.get_terminal_size()[0]-1, 19)
-INPUTBOX = (1, 20, os.get_terminal_size()[0]//2, os.get_terminal_size()[1]-1)
-HELPBOX = (os.get_terminal_size()[0]-os.get_terminal_size()[0]//2+1, 20, os.get_terminal_size()[0]-1, os.get_terminal_size()[1]-1)
+class Box():
+    def __init__(self, scr, menubox, inpheaderbox, inpbox, hlpbox):
+        self.scr = scr
+        self.menu = menubox
+        self.inph = inpheaderbox
+        self.inp = inpbox
+        self.hlp = hlpbox
+
 
 class Menu():
     def __init__(self, text):
@@ -326,34 +333,31 @@ class Menu():
         self.vis_children = self.children
     
     def display(self):
-        clear_block(*MENUBOX)
         self.get_status()
 
-        show(f"\033[4m{self.text}\033[0m", 1, 1)
-        show("Navigation: arrow keys; Exit: Ctrl + C; Save: Ctrl + S.", 1, 2)
-        self.alter_visibility(adaptive["on"], adaptive["off"], self.get_child_by_tag("adapt").children[0].lines[0] in Constants.true)
-        self.alter_visibility(sh["on"], sh["off"], self.get_child_by_tag("trajtype").children[0].lines[0] == "sh")
-        self.alter_visibility(df["on"], df["off"], self.get_child_by_tag("df").children[0].lines[0] in Constants.true)
-        self.alter_visibility(pt2["on"], pt2["off"], self.get_child_by_tag("esttype").children[0].lines[0].lower() == "caspt2")
-
-
+        box.menu.addstr(0, 0, self.text, curses.A_UNDERLINE)
+        box.menu.addstr(1, 0, "Navigation: arrow keys; Exit: Ctrl + C; Save: Ctrl + S.")
+        self.alter_visibility(adaptive["on"], adaptive["off"], self.get_child_by_tag("adapt").children[0].text in Constants.true)
+        self.alter_visibility(sh["on"], sh["off"], "sh" in self.get_child_by_tag("trajtype").children[0].text)
+        self.alter_visibility(df["on"], df["off"], self.get_child_by_tag("df").children[0].text in Constants.true)
+        self.alter_visibility(pt2["on"], pt2["off"], "caspt2" in self.get_child_by_tag("esttype").children[0].text.lower())
         self.display_children(0)
+        box.menu.refresh()
 
     def display_children(self, depth: int):
         for i, child in enumerate(self.vis_children):
-            set_position(40*depth+1, i+3)
             if child == self.selected_child:
-                print(f"\033[30m{BG[child.status]}{child.text}\033[0m")
+                box.menu.addstr(i+2, 40*depth, child.text, STAT[child.status] | curses.A_REVERSE)
                 if child.selected_child is not None and not isinstance(child.selected_child, TextField):
                     child.display_children(depth+1)
             else:
-                print(f"{FG[child.status]}{child.text}{FG[-1]}")
+                box.menu.addstr(i+2, 40*depth, child.text, STAT[child.status])
     
     def display_help(self):
         lines = [s for s in self.hlp.split("\n") if s]
-        show("\033[4mHelp\033[0m", HELPBOX[0], HELPBOX[1])
+        box.hlp.addstr(0, 0, "Help", curses.A_UNDERLINE)
         for i, line in enumerate(lines):
-            show(line, HELPBOX[0], HELPBOX[1]+i+1)
+            box.hlp.addstr(1 + i, 0, line)
     
     def alter_visibility(self, on: list, off: list, orig: bool):
         for name in on:
@@ -450,21 +454,14 @@ class Selectable(Menu):
 
 class TextField():    
     def __init__(self, text: str = "", tp: type = str, lst: bool = False):
-        self.lines = [text or ""]
+        self.text = text or ""
+        self.vals = text
         self.parent: Selectable = None
-        self.y = len(self.lines) - 1
-        self.x = len(self.lines[self.y])
         self.check_text = None
         self.visible = True
         self.status = bool(text)
         self.input_type = tp
         self.lst = lst
-
-    def update_input(self, redraw=[]):
-        for i in redraw:
-            clear_block(1, 21+i, INPUTBOX[2]-INPUTBOX[0]+1, 22+i)
-            if i < len(self.lines): show(self.lines[i], 1, 21+i)
-        set_position(self.x+1, self.y + 21)
 
     def convert(self):
         def cnv(inp: str):
@@ -487,110 +484,26 @@ class TextField():
             return 0
 
     def get_input(self):
-        show("\033[4mInput\033[0m", 1, 20)
-        self.update_input([i for i in range(len(self.lines))])
+        box.inph.addstr(0, 0, "Input", curses.A_UNDERLINE)
+        box.inph.refresh()
 
-        redraw = []
-        while True:
-            self.update_input(redraw)
-            redraw = []
+        txt = curses.textpad.Textbox(box.inp)
+        box.inp.clear()
+        box.inp.addstr(0, 0, self.text)
+        box.inp.refresh()
+        curses.curs_set(1)
+        txt.edit()
 
-            char = getchar()
+        self.text = txt.gather()
+        curses.curs_set(0)
 
-            # Ctrl + S
-            if ord(char) == 19:
-                clear_block(*INPUTBOX)
-                self.status = self.check_input()
-                break
+        box.inp.clear()
+        box.inp.addstr(repr(self.text))
+        box.inp.refresh()
 
-            # enter
-            if ord(char) == 13:
-                if self.y + 2 >= INPUTBOX[3] - INPUTBOX[1]: continue
-                temp = self.lines[self.y][self.x:]
-                self.lines[self.y] = self.lines[self.y][:self.x]
-                redraw.append(self.y)
-                self.lines.append(temp)
-                if temp: redraw.append(self.y + 1)
-                self.y += 1
-                self.x = 0
-                continue
-
-            # backspace
-            if ord(char) == 8:
-                if self.x == 0:
-                    if self.y > 0:
-                        redraw = [i for i in range(self.y-1, len(self.lines))]
-                        self.y -= 1
-                        self.x = len(self.lines[self.y])
-                        self.lines[self.y] += self.lines[self.y + 1]
-                        self.lines.pop(self.y + 1)
-                else:
-                    redraw.append(self.y)
-                    self.lines[self.y] = self.lines[self.y][:self.x-1] + self.lines[self.y][self.x:]
-                    self.x -= 1
-                    print("\033[D", end="", flush=True)
-                continue
-
-            # escape sequence
-            if ord(char) == 27:
-                while True:
-                    seq = sys.stdin.read(1)
-                    if ord(seq) == 27: continue
-                    if seq.isalpha() or seq == "~":
-                        break
-
-                if seq == "A" and self.y > 0:
-                    self.y -= 1
-                    print("\033[A", end="", flush=True)
-                    if self.x > len(self.lines[self.y]):
-                        self.x = len(self.lines[self.y])
-                if seq == "B" and self.y < len(self.lines) - 1:
-                    self.y += 1
-                    print("\033[B", end="", flush=True)
-                    if self.x > len(self.lines[self.y]):
-                        self.x = len(self.lines[self.y])
-                if seq == "C" and self.x < len(self.lines[self.y]):
-                    self.x += 1
-                    print("\033[C", end="", flush=True)
-                if seq == "D" and self.x > 0:
-                    self.x -= 1
-                    print("\033[D", end="", flush=True)
-
-                # delete
-                if seq == "~":
-                    if self.x == len(self.lines[self.y]) and self.y < len(self.lines) - 1:
-                        redraw = [i for i in range(self.y, len(self.lines))]
-                        self.lines[self.y] += self.lines[self.y + 1]
-                        self.lines.pop(self.y + 1)
-                    else:
-                        self.lines[self.y] = self.lines[self.y][:self.x] + self.lines[self.y][self.x+1:]
-                        redraw.append(self.y)
-
-            else:
-                if is_printable(ord(char)):
-                    if len(self.lines[self.y]) < INPUTBOX[2] - INPUTBOX[0]:
-                        if self.lines[self.y][self.x:]: redraw.append(self.y)
-                        self.lines[self.y] = self.lines[self.y][:self.x] + char + self.lines[self.y][self.x:]
-                        self.x += 1
-                        print(f"{char}", flush=True, end="")
-
-            """for line in self.lines:
-                if line != "":
-                    self.status = 2
-                    break"""
 
     def get_status(self):
         return self.status
-
-def getchar():
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    try:
-        tty.setraw(sys.stdin.fileno())
-        char = sys.stdin.read(1)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    return char
 
 def merge(into: dict, ref: dict):
     for key, val in ref.items():
@@ -600,48 +513,28 @@ def merge(into: dict, ref: dict):
             into[key] = merge(into[key], ref[key])
     return into
 
-def cursor_on(): print('\033[?25h', end="")
-def cursor_off(): print('\033[?25l', end="")
-def set_position(x, y):
-    print(f"\033[{y+1};{x+1}H", flush=True, end="")
+'''
+\u2554\u2550\u2557
+\u2551 \u2551
+\u2560\u2550\u2563
+\u2551 \u2551
+\u255a\u2550\u255d
+'''
 
-def clear_screen(): os.system("clear && printf '\e[3J'")
+def rectangle(win, uly, ulx, lry, lrx):
+    """Draw a rectangle with corners at the provided upper-left
+    and lower-right coordinates.
+    """
+    win.vline(uly+1, ulx, curses.ACS_VLINE, lry - uly - 1)
+    win.hline(uly, ulx, curses.ACS_HLINE, lrx - ulx - 1)
+    win.hline(lry, ulx, curses.ACS_HLINE, lrx - ulx - 1)
+    win.vline(uly+1, lrx, curses.ACS_VLINE, lry - uly - 1)
+    win.insch(uly, ulx, curses.ACS_ULCORNER)
+    win.insch(uly, lrx, curses.ACS_URCORNER)
+    win.insch(lry, ulx, curses.ACS_LLCORNER)
+    win.insch(lry, lrx, curses.ACS_LRCORNER)
 
-def show(text, x, y):
-    x = x % os.get_terminal_size()[0]
-    y = y % os.get_terminal_size()[1]
-    set_position(x,y)
-    print(text, end="", flush=True)
-
-def clear_block(x1, y1, x2, y2):
-    for i in range(y1, y2):
-        #show("\xa4"*(x2-x1), x1, i)
-        show(" "*(x2-x1), x1, i)
-
-def print_borders(hsplit: int, vsplit: int):
-    w, l = os.get_terminal_size()
-    show("\u2554" + (w-2)*"\u2550" + "\u2557", 0, 0)
-    for i in range(1,hsplit):
-        show("\u2551", 0, i)
-        show("\u2551", -1, i)
-    show("\u2560" + (vsplit-1)*"\u2550" + "\u2566" + (w-vsplit-2)*"\u2550" + "\u2563", 0, hsplit)
-    for i in range(hsplit+1, l-1):
-        show("\u2551", 0, i)
-        show("\u2551", vsplit, i)
-        show("\u2551", -1, i)
-    show("\u255a" + (vsplit-1)*"\u2550" + "\u2569" + (w-vsplit-2)*"\u2550" + "\u255d", 0, l-1)
-    '''
-    \u2554\u2550\u2557
-    \u2551 \u2551
-    \u2560\u2550\u2563
-    \u2551 \u2551
-    \u255a\u2550\u255d
-    '''
-
-def is_printable(num: int):
-    return unicodedata.category(chr(num)) in ["Ll", "Lu", "Nd", "Zs"]
-
-def main():
+def main(stdscr):
     if len(sys.argv) > 1:
         inp = sys.argv[1]
         if inp.endswith(".pkl"):
@@ -660,9 +553,30 @@ def main():
         tree = DEFAULT
         menu = None
 
-    cursor_off()
-    clear_screen()
-    print_borders(19, os.get_terminal_size()[0]//2)
+    curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
+    curses.init_pair(2, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+    curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    
+    global STAT
+    STAT = {
+        0: curses.color_pair(1),
+        1: curses.color_pair(2),
+        2: curses.color_pair(3)
+    }
+    
+    global box
+    box = Box(
+        stdscr, 
+        curses.newwin(curses.LINES//2-2, curses.COLS-2, 1, 1),
+        curses.newwin(1, curses.COLS//2-2, curses.LINES//2+1, 1),
+        curses.newwin(curses.LINES-curses.LINES//2-3, curses.COLS//2-2, curses.LINES//2+2, 1),
+        curses.newwin(curses.LINES-curses.LINES//2-2, curses.COLS-curses.COLS//2-3, curses.LINES//2+1, curses.COLS//2+2))
+    
+    curses.curs_set(0)
+    rectangle(box.scr, 0, 0, curses.LINES//2-1, curses.COLS-1)
+    rectangle(box.scr, curses.LINES//2, 0, curses.LINES-1, curses.COLS//2-1)
+    rectangle(box.scr, curses.LINES//2, curses.COLS//2, curses.LINES-1, curses.COLS-1)
+    box.scr.refresh()
 
     if menu is None:
         menu = Menu("Selection Menu")
@@ -671,29 +585,28 @@ def main():
         menu.deselect_children()
     menu.selected_child = menu.children[0]
     menu.display()
+
+    
     active = menu
-    clear_block(*HELPBOX)
     active.selected_child.display_help()
 
     while True:
-        char = getchar()
+        key = box.scr.getkey()
 
         # Ctrl + C
-        if ord(char) == 3:
-            cursor_on()
-            os.system("clear && printf '\033[3J'")
+        if key == "q":
             exit()
         
         # Ctrl + D, for testing
-        if ord(char) == 4:
+        elif key == "d":
             menu.alter_visibility(adaptive, False)
 
         # Ctrl + H
-        if ord(char) == 8:
+        elif key == "h":
             continue
 
         # Ctrl + S
-        if ord(char) == 19:
+        elif key == "s":
             with open("save.pkl", "wb") as f:
                 pickle.dump(menu, f)
 
@@ -702,33 +615,29 @@ def main():
                     json.dump(menu.to_dict(), f, indent=4)
             continue
 
-        # escape
-        if ord(char) == 27:
-            while True:
-                char = sys.stdin.read(1)
-                if char.isalpha() or char == "~":
-                    break
-            
-            if char == "A":
-                active.prev_child()
-            if char == "B":
-                active.next_child()
-            if char == "C":
-                active = active.selected_child
-                if isinstance(active.children[0], TextField):
-                    cursor_on()
-                    active.children[0].get_input()
-                    menu.display()
-                    cursor_off()
-                    active = active.parent
-                else:
-                    active.selected_child = active.vis_children[0]
-            if char == "D" and active != menu:
-                active.selected_child = None
+        # arrows
+        elif key == "KEY_UP":
+            active.prev_child()
+        elif key == "KEY_DOWN":
+            active.next_child()
+        elif key == "KEY_RIGHT":
+            active = active.selected_child
+            if isinstance(active.children[0], TextField):
+                active.children[0].get_input()
+                menu.display()
                 active = active.parent
+            else:
+                active.selected_child = active.vis_children[0]
+        elif key == "KEY_LEFT" and active != menu:
+            active.selected_child = None
+            active = active.parent
+        box.menu.clear()
         menu.display()
-        clear_block(*HELPBOX)
+        box.menu.refresh()
+
+        box.hlp.clear()
         active.selected_child.display_help()
+        box.hlp.refresh()
 
 if __name__ == "__main__":
-    main()
+    wrapper(main)
