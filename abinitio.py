@@ -32,7 +32,6 @@ def diagonalise_hamiltonian(traj: Trajectory):
 def adjust_energy(traj: Trajectory):
     if traj.est.first:
         traj.par.ref_en = traj.pes.ham_diab_mnss[-1,0,0,0]
-        traj.est.first = False
     for s in range(traj.par.n_states):
         traj.pes.ham_diab_mnss[-1, 0, s, s] -= traj.par.ref_en
 
@@ -111,14 +110,15 @@ def run_molpro(traj: Trajectory):
         traj.pes.ham_diag_mnss[-1, 0] = traj.pes.ham_diab_mnss[-1, 0]
         traj.pes.ham_transform_mnss[-1, 0] = np.identity(traj.par.n_states)
 
-    overlap = False
+    overlap = True
     if overlap and not traj.est.first:
         traj.pes.overlap_mnss[-1,0,:,:] = run_wfoverlap_molpro(traj.est.file, traj.geo.name_a, traj.geo.position_mnad[-1,0,:,:], traj.geo.position_mnad[-2,0,:,:], traj.est.config['basis'] , traj.par.n_states)
 
     adjust_nacmes(traj)
 
     os.chdir("..")
-    
+    traj.est.first = False
+
 
 def run_turbo(traj: Trajectory):
     os.chdir('est')
