@@ -337,7 +337,6 @@ class Menu():
         self.alter_visibility(df["on"], df["off"], self.get_child_by_tag("df").children[0].lines[0] in Constants.true)
         self.alter_visibility(pt2["on"], pt2["off"], self.get_child_by_tag("esttype").children[0].lines[0].lower() == "caspt2")
 
-
         self.display_children(0)
 
     def display_children(self, depth: int):

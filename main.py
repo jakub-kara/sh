@@ -98,8 +98,6 @@ def loop_dynamics(traj: Trajectory):
         if os.path.isfile("stop"):
             exit(23)
 
-        traj.ctrl.curr_time += traj.ctrl.dt
-        traj.ctrl.curr_step += 1
         step_log(traj)
 
         shift_values(traj.geo.position_mnad, traj.geo.velocity_mnad, traj.geo.force_mnad)
@@ -202,6 +200,8 @@ def loop_dynamics(traj: Trajectory):
 
         back_up_step(traj)
 
+        traj.ctrl.curr_time += traj.ctrl.dt
+        traj.ctrl.curr_step += 1
         
 
 if __name__ == "__main__":

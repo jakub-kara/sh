@@ -73,7 +73,7 @@ def run_molpro(traj: Trajectory):
     traj.est.file = f"{traj.est.program}"
     os.chdir("est")
 
-    #  traj.est.calculate_nacs *= np.eye(traj.par.n_states)
+    traj.est.calculate_nacs *= np.eye(traj.par.n_states)
 
     write_xyz(traj)
     create_input_molpro(traj.par.states, traj.est.file, traj.est.config, traj.est.calculate_nacs, traj.est.skip, False)
