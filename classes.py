@@ -55,7 +55,7 @@ class Geometry:
         self.velocity_mnad[-1,0] = velocity_ad
 
         self.scheme_name = config["nuclear"]["integrator"]
-        self.init_solver, self.init_scheme, self.loop_solver, self.loop_scheme_x, self.loop_scheme_v = None, None, None, None, None
+        self.init_solver, self.init_scheme, self.loop_solver, self.loop_scheme = None, None, None, None
         self.force_updater: Callable[[Trajectory], None] = None
     
 class ElectronicStructure:

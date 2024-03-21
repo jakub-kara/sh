@@ -140,7 +140,7 @@ def time_log(traj: Trajectory, msg: str, *funcs):
 
 def step_log(traj: Trajectory):
     with open(traj.io.log_file, "a") as log_file:
-        log_file.write(f"\nTime {Printer.write(traj.ctrl.curr_time*Constants.au2fs, '.4e')}, Step {Printer.write(traj.ctrl.curr_step, 'i')}\n")
+        log_file.write(f"\nTime {Printer.write(traj.ctrl.curr_time*Constants.au2fs, '.4e')} fs, Step {Printer.write(traj.ctrl.curr_step, 'i')}\n")
 
 def write_log(traj: Trajectory, msg: str):
     with open(traj.io.log_file, "a") as log_file:

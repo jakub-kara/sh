@@ -35,6 +35,14 @@ def adjust_energy(traj: Trajectory):
     for s in range(traj.par.n_states):
         traj.pes.ham_diab_mnss[-1, 0, s, s] -= traj.par.ref_en
 
+def update_potential_energy(traj: Trajectory):
+    if traj.par.type == "sh":
+        traj.pes.poten_mn[-1,0] = traj.pes.ham_diag_mnss[-1,0,traj.hop.active, traj.hop.active]
+    elif traj.par.type == "mfe":
+        traj.pes.poten_mn[-1,0] = 0
+        for s in range(traj.par.n_states):
+            traj.pes.poten_mn[-1,0] += np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
+
 def adjust_nacmes(traj: Trajectory):
     '''
     Flips nacmes by looking at simple overlap between them

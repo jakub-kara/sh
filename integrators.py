@@ -1,6 +1,6 @@
 import numpy as np    
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Any
 from scipy.linalg import expm
 
 from hopping import get_hopping_prob_ddr, check_hop, get_hopping_prob_LD
@@ -34,6 +34,7 @@ class AB:
     m: int = None
     n: int = None
     r: int = None
+    v: Any = None
     a: np.ndarray = None
     b: np.ndarray = None
     c: float = None
@@ -496,6 +497,7 @@ SY2 = AB(
     m = 2,
     n = 1,
     r = 2,
+    v = AM2,
     a = np.array([1, -2, 1]),
     b = np.array([0, 1, 0]),
     c = 1/12
@@ -506,6 +508,7 @@ SY4 = AB(
     m = 4,
     n = 1,
     r = 4,
+    v = AM4,
     a = np.array([1, -1, 0, -1, 1]),
     b = np.array([0, 5/4, 1/2, 5/4, 0])
 )
@@ -515,6 +518,7 @@ SY6 = AB(
     m = 6,
     n = 1,
     r = 6,
+    v = AM6,
     a = np.array([1, -2, 2, -2, 2, -2, 1]),
     b = np.array([0, 317/240, -31/30, 291/120, -31/30, 317/240, 0]),
     c = 275/4032
@@ -525,6 +529,7 @@ SY8 = AB(
     m = 8,
     n = 1,
     r = 8,
+    v = AM8,
     a = np.array([1, -2, 2, -1, 0, -1, 2, -2, 1]),
     b = np.array([0, 17671, -23622, 61449, -50516, 61449, -23622, 17671, 0])/12096
 )
@@ -534,6 +539,7 @@ SY8b = AB(
     m = 8,
     n = 1,
     r = 8,
+    v = AM8,
     a = np.array([1, 0, 0, -1/2, -1, -1/2, 0, 0, 1]),
     b = np.array([0, 192481, 6582, 816783, -156812, 816783, 6582, 192481, 0])/120960
 )
@@ -543,6 +549,7 @@ SY8c = AB(
     m = 8,
     n = 1,
     r = 8,
+    v = AM8,
     a = np.array([1, -1, 0, 0, 0, 0, 0, -1, 1]),
     b = np.array([0, 13207, -8934, 42873, -33812, 42873, -8934, 13207, 0])/8640
 )
@@ -669,11 +676,14 @@ def calculate_sy4_coeffs(h0, h1, h2, h3):
 
     a0 = - (a1+a2+a3+a4)
 
+    v = calculate_am4_coeffs(h1, h2, h3)
+
     return AB(
         name = "sy4v",
         m = 4,
         n = 1,
         r = 4,
+        v = v,
         a = np.array([a0,a1,a2,a3,a4]),
         b = h0/h3*SY4.b[:],
         c = None
@@ -683,11 +693,11 @@ def AMSolver(y0: np.ndarray, f0: np.ndarray, dt: float, scheme: AB, *args):
     y1 = y0[-1] + dt*np.einsum("j,j...->...", scheme.b, f0)
     return y1
 
-def SYSolver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, fargs: tuple, dt: float, schemey: AB, schemev: AB, *args):
-    y1 = -np.einsum("j,j...->...", schemey.a[:-1], y0) + dt**2*np.einsum("j,j...->...", schemey.b[:-1], f0)
-    y1 /= schemey.a[-1]
+def SYSolver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, fargs: tuple, dt: float, scheme: AB, *args):
+    y1 = -np.einsum("j,j...->...", scheme.a[:-1], y0) + dt**2*np.einsum("j,j...->...", scheme.b[:-1], f0)
+    y1 /= scheme.a[-1]
     f1 = func(y1, 0, *fargs)
-    v1 = v0[-1] + dt*np.einsum("j,j...->...", schemev.b[:-1], f0[1:]) + dt*schemev.b[-1]*f1
+    v1 = v0[-1] + dt*np.einsum("j,j...->...", scheme.v.b[:-1], f0[1:]) + dt*scheme.v.b[-1]*f1
 
     return y1, v1, f1
 

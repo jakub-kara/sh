@@ -46,21 +46,21 @@ def select_est(traj: Trajectory):
     
 def select_solvers(traj: Trajectory):
     solvers = {
-        "vv": (RKNSolver, RKN4, 0, VVSolver, SV, None),
-        "ov": (RKNSolver, RKN4, 0, OVSolver, OV, None),
-        "arkn3": (RKNSolver, RKN4, 2, ARKN3Solver, SY4, None),
-        "rkn4": (RKNSolver, RKN4, 0, RKNSolver, RKN4, None),
-        "rkn6": (RKNSolver, RKN6, 0, RKNSolver, RKN6, None),
-        "rkn8": (RKNSolver, RKN8, 0, RKNSolver, RKN8, None),
-        "sy4": (RKNSolver, RKN4, 4, SYSolver, SY4, AM4),
-        "sy6": (RKNSolver, RKN6, 6, SYSolver, SY6, AM6),
-        "sy8": (RKNSolver, RKN8, 8, SYSolver, SY8, AM8),
-        "sy8b": (RKNSolver, RKN8, 8, SYSolver, SY8b, AM8),
-        "sy8c": (RKNSolver, RKN8, 8, SYSolver, SY8c, AM8)
+        "vv": (RKNSolver, RKN4, 0, VVSolver, SV),
+        "ov": (RKNSolver, RKN4, 0, OVSolver, OV),
+        "arkn3": (RKNSolver, RKN4, 2, ARKN3Solver, SY4),
+        "rkn4": (RKNSolver, RKN4, 0, RKNSolver, RKN4),
+        "rkn6": (RKNSolver, RKN6, 0, RKNSolver, RKN6),
+        "rkn8": (RKNSolver, RKN8, 0, RKNSolver, RKN8),
+        "sy4": (RKNSolver, RKN4, 4, SYSolver, SY4),
+        "sy6": (RKNSolver, RKN6, 6, SYSolver, SY6),
+        "sy8": (RKNSolver, RKN8, 8, SYSolver, SY8),
+        "sy8b": (RKNSolver, RKN8, 8, SYSolver, SY8b),
+        "sy8c": (RKNSolver, RKN8, 8, SYSolver, SY8c)
     }
     temp = solvers.get(traj.geo.scheme_name)
     if temp is None: raise SolverTypeNotFoundError
-    traj.geo.init_solver, traj.geo.init_scheme, traj.ctrl.init_steps, traj.geo.loop_solver, traj.geo.loop_scheme_x, traj.geo.loop_scheme_v = temp
+    traj.geo.init_solver, traj.geo.init_scheme, traj.ctrl.init_steps, traj.geo.loop_solver, traj.geo.loop_scheme = temp
 
 def select_force_updater(traj: Trajectory):
     updaters = {

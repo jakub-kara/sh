@@ -2,6 +2,7 @@ import os, sys
 import pickle, json
 import numpy as np
 
+from abinitio import update_potential_energy
 from classes import Trajectory
 from selection import select_est, select_force_updater, select_nac_setter, select_coeff_propagator, select_solvers, select_stepfunc
 from io_methods import finalise_dynamics, write_headers, write_dat, write_xyz, write_log, write_mat, time_log, step_log, back_up_step, Printer
@@ -19,6 +20,7 @@ def main():
     if inp.endswith(".pkl"):
         with open(inp, "rb") as traj_pkl:
             traj = pickle.load(traj_pkl)
+            write_log(traj, "Restarting from backup at the start of interrupted step.\n")
     else:
         with open(inp, "r") as infile: config = json.load(infile)
         traj = Trajectory(config) 
@@ -51,27 +53,15 @@ def initialise_dynamics(traj: Trajectory):
     traj.geo.force_updater(traj)
     update_tdc(traj)
     traj.pes.nac_ddt_mnss[:-1] = traj.pes.nac_ddt_mnss[-1]
+    update_potential_energy(traj)
 
-    back_up_step(traj)
-    write_dat(traj)
-    write_xyz(traj)
-
-    #figure out a place to store pe
-    if traj.par.type == "sh":
-        traj.pes.poten_mn[-1,0] = traj.pes.ham_diag_mnss[-1,0,traj.hop.active, traj.hop.active]
-    elif traj.par.type == "mfe":
-        traj.pes.poten_mn[-1,0] = 0
-        for s in range(traj.par.n_states):
-            traj.pes.poten_mn[-1,0] += np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
-    
     traj.ctrl.dt = traj.ctrl.dt_func(traj, get_inp(traj.pes.nac_ddt_mnss[-1,0]))
     traj.ctrl.dtq = traj.ctrl.dt/traj.par.n_qsteps
     traj.ctrl.h[-1] = traj.ctrl.dt
 
-    with open("data/cons.dat", "w") as f:
-        f.write(Printer.write(" Time", "s"))
-        f.write(Printer.write("Redo", "s"))
-        f.write("\n")
+    back_up_step(traj)
+    write_dat(traj)
+    write_xyz(traj)
 
 def check_est(traj: Trajectory):
     if traj.ctrl.curr_step < 2: return True, 0
@@ -81,24 +71,42 @@ def check_est(traj: Trajectory):
     pe1 = traj.pes.poten_mn[-1,0]
     diff = np.abs(ke0 + pe0 - ke1 - pe1)
 
-    return diff < traj.ctrl.en_thresh[max(traj.ctrl.conv_status-1, 0)], diff
+    if diff < traj.ctrl.en_thresh[max(traj.ctrl.conv_status-1, 0)]: return True
+    else:
+        conv_status = traj.ctrl.conv_status + 4 - len(np.trim_zeros(traj.ctrl.en_thresh))
+        if traj.ctrl.conv_status >= 3:
+            print("Maximum energy difference exceeded on RKN8.")
+            print("Terminating trajectory.")
 
+            write_log(traj, "Maximum energy difference exceeded on RKN8\n")
+            write_log(traj, "Terminating trajectory\n")
+            exit(21)
 
-def roll_back(*args):
-    for arr in args:
-        for m in range(arr.shape[0]-1, 0, -1):
-            arr[m] = arr[m-1]
-        arr[0] = np.nan
+        os.system(f"cp backup/{traj.est.program}.wf est/")
+        print(f"Energy not conserved. Energy difference: {diff*Constants.eh2ev} eV.")
+        write_log(traj, f"Energy not conserved. Energy difference: {diff*Constants.eh2ev} eV.\n")
+        write_log(traj, f"Convergence status {conv_status}. Stepping back.\n")
 
+        with open("backup/traj.pkl", "rb") as traj_pkl:
+            traj = pickle.load(traj_pkl)
+            traj.ctrl.conv_status = conv_status
+        
+        return False
+                
+
+def solver_wrapper(traj: Trajectory, solver, scheme):
+    traj.geo.position_mnad[-1,0], traj.geo.velocity_mnad[-1,0], traj.geo.force_mnad[-1,0] = \
+        solver(
+            traj.geo.position_mnad[-scheme.m-1:-1,0], 
+            traj.geo.velocity_mnad[-scheme.m-1:-1,0], 
+            traj.geo.force_mnad[-scheme.m-1:-1,0], 
+            est_wrapper, (traj,), traj.ctrl.dt, scheme)
 
 def loop_dynamics(traj: Trajectory):
     while traj.ctrl.curr_time < traj.ctrl.t_max:
         print(traj.ctrl.curr_time)
         if os.path.isfile("stop"):
             exit(23)
-
-        traj.ctrl.curr_time += traj.ctrl.dt
-        traj.ctrl.curr_step += 1
         
         step_log(traj)
         shift_values(traj.geo.position_mnad, traj.geo.velocity_mnad, traj.geo.force_mnad)
@@ -106,65 +114,19 @@ def loop_dynamics(traj: Trajectory):
         shift_values(traj.est.coeff_mns, traj.pes.poten_mn)
         
         if traj.ctrl.init_steps > 0 or traj.ctrl.conv_status == 1:
-            temp = time_log(traj, "Classical + EST: ", 
-                lambda : traj.geo.init_solver(traj.geo.position_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                    traj.geo.velocity_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                    traj.geo.force_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                    est_wrapper, (traj,), traj.ctrl.dt,
-                                    traj.geo.init_scheme, None))
-            tempx, tempv, tempf = temp[0]
+            time_log(traj, "Classical + EST: ", lambda : solver_wrapper(traj, traj.geo.init_solver, traj.geo.init_scheme))
         elif traj.ctrl.conv_status == 2:
-            temp = time_log(traj, "Classical + EST: ",
-                lambda : traj.geo.init_solver(traj.geo.position_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                    traj.geo.velocity_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                    traj.geo.force_mnad[-traj.geo.init_scheme.m-1:-1,0],
-                                    est_wrapper, (traj,), traj.ctrl.dt,
-                                    RKN8, None))
-            tempx, tempv, tempf = temp[0]
+            time_log(traj, "Classical + EST: ", lambda : solver_wrapper(traj, traj.geo.init_solver, RKN8))
         else:
-            if "sy" in traj.geo.scheme_name:
-                traj.geo.loop_scheme_x = calculate_sy4_coeffs(traj.ctrl.h[-4], traj.ctrl.h[-3], traj.ctrl.h[-2], traj.ctrl.h[-1])
-                traj.geo.loop_scheme_v = calculate_am4_coeffs(traj.ctrl.h[-3], traj.ctrl.h[-2], traj.ctrl.h[-1])
-            temp = time_log(traj, "Classical + EST:  ", 
-                lambda : traj.geo.loop_solver(traj.geo.position_mnad[-traj.geo.loop_scheme_x.m-1:-1,0],
-                                     traj.geo.velocity_mnad[-traj.geo.loop_scheme_x.m-1:-1,0],
-                                     traj.geo.force_mnad[-traj.geo.loop_scheme_x.m-1:-1,0],
-                                     est_wrapper, (traj,), traj.ctrl.dt,
-                                     traj.geo.loop_scheme_x, traj.geo.loop_scheme_v))
-            tempx, tempv, tempf = temp[0]
+            if "sy" in traj.geo.scheme_name: traj.geo.loop_scheme = calculate_sy4_coeffs(traj.ctrl.h[-4], traj.ctrl.h[-3], traj.ctrl.h[-2], traj.ctrl.h[-1])
+            time_log(traj, "Classical + EST: ", lambda : solver_wrapper(traj, traj.geo.loop_solver, traj.geo.loop_scheme))
         if traj.ctrl.init_steps > 0: traj.ctrl.init_steps -= 1
 
         traj.est.calculate_nacs[:] = False
-        traj.geo.position_mnad[-1,0], traj.geo.velocity_mnad[-1,0], traj.geo.force_mnad[-1,0] = tempx, tempv, tempf
 
-        if traj.par.type == "sh":
-            traj.pes.poten_mn[-1,0] = traj.pes.ham_diag_mnss[-1,0,traj.hop.active, traj.hop.active]
-        elif traj.par.type == "mfe":
-            traj.pes.poten_mn[-1,0] = 0
-            for s in range(traj.par.n_states):
-                traj.pes.poten_mn[-1,0] = np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
+        update_potential_energy(traj)
 
-        echeck, ediff = check_est(traj)
-        if not echeck:
-            conv_status = traj.ctrl.conv_status + 4 - len(np.trim_zeros(traj.ctrl.en_thresh))
-            if traj.ctrl.conv_status >= 3:
-                print("Maximum energy difference exceeded on RKN8.")
-                print("Terminating trajectory.")
-
-                write_log(traj, "Maximum energy difference exceeded on RKN8\n")
-                write_log(traj, "Terminating trajectory\n")
-                exit(21)
-
-            os.system(f"cp backup/{traj.est.program}.wf est/")
-            print(f"Energy not conserved. Energy difference: {ediff*Constants.eh2ev} eV.")
-            write_log(traj, f"Energy not conserved. Energy difference: {ediff*Constants.eh2ev} eV.\n")
-            write_log(traj, f"Convergence status {conv_status}. Stepping back.\n")
-
-            with open("backup/traj.pkl", "rb") as traj_pkl:
-                traj = pickle.load(traj_pkl)
-                traj.ctrl.conv_status = conv_status
-                
-            continue
+        if not check_est(traj): continue
         traj.ctrl.conv_status = 0
 
         # step 4&5: update electronic wf coefficients & compute hopping probabilities
@@ -189,21 +151,18 @@ def loop_dynamics(traj: Trajectory):
         if np.any(traj.est.calculate_nacs):
             traj.est.run(traj)
             traj.geo.force_updater(traj)
-        traj.est.calculate_nacs[:] = False
-        if traj.par.type == "sh":
-            traj.pes.poten_mn[-1,0] = traj.pes.ham_diag_mnss[-1,0,traj.hop.active, traj.hop.active]
-        elif traj.par.type == "mfe":
-            traj.pes.poten_mn[-1,0] = 0
-            for s in range(traj.par.n_states):
-                traj.pes.poten_mn[-1,0] = np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
+            traj.est.calculate_nacs[:] = False
+            update_potential_energy(traj)
 
-        time_log(traj, "Backup: ", lambda : back_up_step(traj))
         
         write_dat(traj)
         write_xyz(traj)
         time_log(traj, "Saving matrices: ", lambda : write_mat(traj))
 
-        back_up_step(traj)
+        traj.ctrl.curr_time += traj.ctrl.dt
+        traj.ctrl.curr_step += 1
+        time_log(traj, "Backup: ", lambda : back_up_step(traj))
+
 
 if __name__ == "__main__":
     main()
