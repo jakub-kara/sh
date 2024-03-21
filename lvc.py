@@ -168,3 +168,5 @@ class LVC:
                 if i != j:
                     nac[i,j] /= diag[j,j] - diag[i,i]
         return nac
+
+if __name__ == "__main__": pass

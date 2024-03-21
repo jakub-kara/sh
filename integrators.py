@@ -596,7 +596,7 @@ def RKNSolver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, fa
 
 def VVSolver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, fargs: tuple, dt: float, *args):
     y1 = y0 + dt*v0 + 0.5*dt**2*f0[-1]
-    f1 = func(y1, True, *fargs)
+    f1 = func(y1, 0, *fargs)
     v1 = v0 + 0.5*dt*(f0[-1] + f1)
     return y1, v1, f1
 
@@ -686,7 +686,7 @@ def AMSolver(y0: np.ndarray, f0: np.ndarray, dt: float, scheme: AB, *args):
 def SYSolver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, fargs: tuple, dt: float, schemey: AB, schemev: AB, *args):
     y1 = -np.einsum("j,j...->...", schemey.a[:-1], y0) + dt**2*np.einsum("j,j...->...", schemey.b[:-1], f0)
     y1 /= schemey.a[-1]
-    f1 = func(y1, True, *fargs)
+    f1 = func(y1, 0, *fargs)
     v1 = v0[-1] + dt*np.einsum("j,j...->...", schemev.b[:-1], f0[1:]) + dt*schemev.b[-1]*f1
 
     return y1, v1, f1

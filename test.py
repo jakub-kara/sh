@@ -1,22 +1,25 @@
-import curses
+import numpy as np
+import pickle
+import h5py
 
-def main():
-  # Initialize curses screen
-  screen = curses.initscr()
-  curses.cbreak()  # Get chars without waiting for enter
+arr = np.arange(2**20, dtype=int)
+with open("test.b", "wb") as f:
+    f.write(arr)
 
-  # Display prompt for user input
-  screen.addstr(1, 1, "Enter your name: ")
+with open("test.pkl", "wb") as f:
+    pickle.dump(arr, f)
 
-  # Get user input using getstr
-  user_name = screen.getstr()
+f = h5py.File("test.h5", "w")
+f.create_dataset("ints", data=arr, compression="gzip", compression_opts=9)
+f.close()
 
-  # Print the entered name
-  screen.addstr(2, 1, f"Hello, {user_name}!")
-  screen.getch()  # Wait for a key press to exit
+f = h5py.File("test.h5", "a")
+f.create_dataset("ints2", data=arr, compression="gzip", compression_opts=9)
+f.close()
 
-  # Clean up
-  curses.endwin()
-
-if __name__ == "__main__":
-  main()
+exit()
+with open("test.b", "rb") as f:
+    while True:
+        data = f.read(8)
+        if not data: break
+        print(int.from_bytes(data, "little"))

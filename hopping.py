@@ -33,7 +33,6 @@ def check_hop(traj: Trajectory):
     else:
         raise HoppingTypeNotFoundError
 
-
 def check_hop_fssh(traj: Trajectory):
     r = np.random.uniform()
     cum_prob = 0

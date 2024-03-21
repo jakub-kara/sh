@@ -2,6 +2,7 @@ import sys, os
 import termios, tty
 import json, pickle
 import string
+import time
 
 from constants import Constants
 
@@ -102,7 +103,7 @@ Available trajectory types
                 "type": int
             },
             "enthresh": {
-                "text": "Energy thresholds",
+                "text": "Energy thresholds (eV)",
                 "default": None,
                 "type": float,
                 "list": True

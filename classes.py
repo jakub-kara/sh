@@ -39,6 +39,8 @@ class IO:
         self.xyz_file = f"data/traj_{par.id}.xyz"
         self.dat_file = f"data/traj_{par.id}.dat"
         self.log_file = f"data/traj_{par.id}.log"
+        self.mat_file = f"data/traj_{par.id}.mat"
+
         self.record = config["control"]["record"]
 
 class Geometry:
@@ -67,7 +69,7 @@ class ElectronicStructure:
 
         self.tdc_updater = config["electronic"]["tdc"]
 
-        self.calculate_nacs = np.zeros((par.n_states, par.n_states), dtype=bool)
+        self.calculate_nacs = np.zeros((par.n_states, par.n_states))
         self.nacs_setter = Callable[[Trajectory], None]
         self.coeff_mns = np.zeros((par.n_steps, par.n_substeps, par.n_states), dtype=np.complex128)
         self.propagator_name = config["electronic"]["propagator"]
@@ -132,7 +134,18 @@ class Control:
         self.qstep = 0
         self.init_steps = par.n_steps
         self.conv_status = 0
-        self.en_thresh = config["control"]["enthresh"]
+        self.en_thresh = np.zeros(3)
+        # 1 value => all three thresholds are the same
+        if len(config["control"]["enthresh"]) == 1:
+            self.en_thresh[:] = config["control"]["enthresh"][0]
+        # 2 values => RKN thresholds are the same
+        elif len(config["control"]["enthresh"]) == 2:
+            self.en_thresh[:2] = config["control"]["enthresh"][0]
+            self.en_thresh[2] = config["control"]["enthresh"][1]
+        # 3 values => 3 different thresholds
+        elif len(config["control"]["enthresh"]) == 3:
+            self.en_thresh[:] = config["control"]["enthresh"]
+        self.en_thresh /= Constants.eh2ev
 
         temp = 1 if config["control"]["tunit"] == "au" else 1/Constants.au2fs
         self.t_max = config["control"]["tmax"] * temp

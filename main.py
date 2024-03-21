@@ -1,11 +1,10 @@
 import os, sys
 import pickle, json
 import numpy as np
-from copy import deepcopy
 
 from classes import Trajectory
 from selection import select_est, select_force_updater, select_nac_setter, select_coeff_propagator, select_solvers, select_stepfunc
-from io_methods import finalise_dynamics, write_headers, write_dat, write_xyz, write_log, time_log, step_log, back_up_step, Printer
+from io_methods import finalise_dynamics, write_headers, write_dat, write_xyz, write_log, write_mat, time_log, step_log, back_up_step, Printer
 from integrators import shift_values, est_wrapper, calculate_am4_coeffs, calculate_sy4_coeffs, update_tdc, integrate_quantum, get_dt, RKN8
 from hopping import adjust_velocity_and_hop, decoherence_edc
 from constants import Constants
@@ -46,7 +45,7 @@ def initialise_dynamics(traj: Trajectory):
     select_solvers(traj)
 
     write_headers(traj)
-    traj.est.nacs_setter(traj, nacs=traj.est.tdc_updater=='nacme')
+    traj.est.nacs_setter(traj, False)
     time_log(traj, "Initial EST: ", lambda : traj.est.run(traj))
     traj.est.first = False
     traj.geo.force_updater(traj)
@@ -56,7 +55,6 @@ def initialise_dynamics(traj: Trajectory):
     back_up_step(traj)
     write_dat(traj)
     write_xyz(traj)
-    step_log(traj)
 
     #figure out a place to store pe
     if traj.par.type == "sh":
@@ -76,14 +74,14 @@ def initialise_dynamics(traj: Trajectory):
         f.write("\n")
 
 def check_est(traj: Trajectory):
-    if traj.ctrl.curr_step < 1: return True
+    if traj.ctrl.curr_step < 2: return True, 0
     ke0 = 0.5*np.sum(traj.geo.mass_a[:,None]*traj.geo.velocity_mnad[-2,0]**2)
     ke1 = 0.5*np.sum(traj.geo.mass_a[:,None]*traj.geo.velocity_mnad[-1,0]**2)
     pe0 = traj.pes.poten_mn[-2,0]
     pe1 = traj.pes.poten_mn[-1,0]
     diff = np.abs(ke0 + pe0 - ke1 - pe1)
-    if diff < traj.ctrl.en_thresh[0]: return True
-    return  diff < traj.ctrl.en_thresh[1]
+
+    return diff < traj.ctrl.en_thresh[max(traj.ctrl.conv_status-1, 0)], diff
 
 
 def roll_back(*args):
@@ -95,11 +93,14 @@ def roll_back(*args):
 
 def loop_dynamics(traj: Trajectory):
     while traj.ctrl.curr_time < traj.ctrl.t_max:
+        print(traj.ctrl.curr_time)
         if os.path.isfile("stop"):
             exit(23)
 
+        traj.ctrl.curr_time += traj.ctrl.dt
+        traj.ctrl.curr_step += 1
+        
         step_log(traj)
-
         shift_values(traj.geo.position_mnad, traj.geo.velocity_mnad, traj.geo.force_mnad)
         shift_values(traj.pes.ham_diag_mnss, traj.pes.nac_ddr_mnssad, traj.pes.nac_ddt_mnss)
         shift_values(traj.est.coeff_mns, traj.pes.poten_mn)
@@ -143,23 +144,26 @@ def loop_dynamics(traj: Trajectory):
             for s in range(traj.par.n_states):
                 traj.pes.poten_mn[-1,0] = np.abs(traj.est.coeff_mns[-1,0,s])**2 * traj.pes.ham_diag_mnss[-1,0,s,s]
 
-        if not check_est(traj):
-            traj.ctrl.conv_status += 1
-            with open ("data/cons.dat", "a") as f:
-                f.write(Printer.write(traj.ctrl.curr_time*Constants.au2fs, "f"))
-                f.write(Printer.write(traj.ctrl.conv_status, "i"))
-                f.write("\n")
+        echeck, ediff = check_est(traj)
+        if not echeck:
+            conv_status = traj.ctrl.conv_status + 4 - len(np.trim_zeros(traj.ctrl.en_thresh))
             if traj.ctrl.conv_status >= 3:
-                print("EST Failed to converge, terminating trajectory.")
+                print("Maximum energy difference exceeded on RKN8.")
+                print("Terminating trajectory.")
+
+                write_log(traj, "Maximum energy difference exceeded on RKN8\n")
+                write_log(traj, "Terminating trajectory\n")
                 exit(21)
 
             os.system(f"cp backup/{traj.est.program}.wf est/")
-            print("Energy not conserved, stepping back")
-            roll_back(traj.geo.position_mnad, traj.geo.velocity_mnad, traj.geo.force_mnad)
-            roll_back(traj.pes.ham_diag_mnss, traj.pes.nac_ddr_mnssad, traj.pes.nac_ddt_mnss)
-            roll_back(traj.est.coeff_mns, traj.pes.poten_mn)
-            traj.ctrl.curr_time -= traj.ctrl.dt
-            traj.ctrl.curr_step -= 1
+            print(f"Energy not conserved. Energy difference: {ediff*Constants.eh2ev} eV.")
+            write_log(traj, f"Energy not conserved. Energy difference: {ediff*Constants.eh2ev} eV.\n")
+            write_log(traj, f"Convergence status {conv_status}. Stepping back.\n")
+
+            with open("backup/traj.pkl", "rb") as traj_pkl:
+                traj = pickle.load(traj_pkl)
+                traj.ctrl.conv_status = conv_status
+                
             continue
         traj.ctrl.conv_status = 0
 
@@ -197,12 +201,9 @@ def loop_dynamics(traj: Trajectory):
         
         write_dat(traj)
         write_xyz(traj)
+        time_log(traj, "Saving matrices: ", lambda : write_mat(traj))
 
         back_up_step(traj)
-
-        traj.ctrl.curr_time += traj.ctrl.dt
-        traj.ctrl.curr_step += 1
-        
 
 if __name__ == "__main__":
     main()

@@ -113,12 +113,9 @@ def run_molpro(traj: Trajectory):
     overlap = True
     if overlap and traj.ctrl.substep == 0 and not traj.est.first:
         traj.pes.overlap_mnss[-1,0,:,:] = run_wfoverlap_molpro(traj.est.file, traj.geo.name_a, traj.geo.position_mnad[-1,0,:,:], traj.geo.position_mnad[-2,0,:,:], traj.est.config['basis'] , traj.par.n_states)
-
     adjust_nacmes(traj)
 
     os.chdir("..")
-    traj.est.first = False
-
 
 def run_turbo(traj: Trajectory):
     os.chdir('est')

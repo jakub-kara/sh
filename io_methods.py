@@ -1,5 +1,5 @@
 import os
-import pickle
+import pickle, h5py
 import time
 
 from classes import Trajectory
@@ -90,6 +90,7 @@ def write_headers(traj: Trajectory):
         log_file.write(f"Calculation of {traj.par.name} dynamics\n\n")
     
     with open(traj.io.xyz_file, "w") as xyz_file: pass
+    with h5py.File(traj.io.mat_file, "w"): pass
 
     with open(traj.io.dat_file, "w") as dat_file:
         dat_file.write(" ")
@@ -146,8 +147,6 @@ def write_log(traj: Trajectory, msg: str):
         log_file.write(f"{msg}")
 
 def write_xyz(traj: Trajectory):
-    print(traj.ctrl.curr_time)
-    
     with open(traj.io.xyz_file, "a") as xyz_file:
         xyz_file.write(f"{traj.par.n_atoms}\n")
         xyz_file.write(f"t = {traj.ctrl.curr_time*Constants.au2fs}\n")
@@ -193,6 +192,23 @@ def write_dat(traj: Trajectory):
                 for s in range(traj.par.n_states):
                     dat_file.write(Printer.write(traj.hop.prob_s[s], "f"))
         dat_file.write("\n")
+
+def write_mat(traj: Trajectory):
+    comp = "gzip"
+    comp_opt = 9
+    with h5py.File(traj.io.mat_file, "a") as f:
+        grp = f.create_group(f"{traj.ctrl.curr_step}")
+        grp.create_dataset("X", data=traj.geo.position_mnad[-1,0], compression=comp, compression_opts=comp_opt)
+        grp.create_dataset("V", data=traj.geo.velocity_mnad[-1,0], compression=comp, compression_opts=comp_opt)
+        grp.create_dataset("A", data=traj.geo.force_mnad[-1,0], compression=comp, compression_opts=comp_opt)
+
+        grp.create_dataset("Hdiag", data=traj.pes.ham_diag_mnss[-1,0], compression=comp, compression_opts=comp_opt)
+        grp.create_dataset("U", data=traj.pes.ham_transform_mnss[-1,0], compression=comp, compression_opts=comp_opt)
+        grp.create_dataset("NACdr", data=traj.pes.nac_ddr_mnssad[-1,0], compression=comp, compression_opts=comp_opt)
+        grp.create_dataset("NACdt", data=traj.pes.nac_ddt_mnss[-1,0], compression=comp, compression_opts=comp_opt)
+
+        grp.create_dataset("C", data=traj.est.coeff_mns[-1,0], compression=comp, compression_opts=comp_opt)
+
 
 def finalise_dynamics(traj: Trajectory):
     pass
