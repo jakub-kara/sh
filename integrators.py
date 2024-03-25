@@ -561,7 +561,7 @@ def est_wrapper(x: np.ndarray, substep: int, traj: Trajectory):
     traj.geo.position_mnad[-1,0] = x
     traj.est.run(traj)
     traj.geo.position_mnad[-1,0] = temp
-    traj.geo.force_mnad[-1,0] = -traj.pes.nac_ddr_mnssad[-1,0,traj.hop.active,traj.hop.active]/traj.geo.mass_a[:,None]
+    traj.geo.force_updater(traj)
     return traj.geo.force_mnad[-1,0]
 
 def ARKN3Solver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, fargs: tuple, dt: float, scheme: RKN, *args):
@@ -727,7 +727,10 @@ def update_force_mfe(traj: Trajectory):
                 traj.geo.force_mnad[-1,0,a] -= 2*np.real(np.conj(traj.est.coeff_mns[-1,0,s1])*traj.est.coeff_mns[-1,0,s2])* \
                     traj.pes.nac_ddr_mnssad[-1,0,s1,s2,a]*(traj.pes.ham_diag_mnss[-1,0,s2,s2] - traj.pes.ham_diag_mnss[-1,0,s1,s1])
 
+    traj.geo.force_mnad[-1,0,:,:] /= traj.geo.mass_a[:,None]
 def update_tdc(traj: Trajectory):
+    # create time-derivative coupling from position-derivative coupling. Only used when tdc_updater == nacme
+    
     traj.pes.nac_ddt_mnss[-1,0] = 0
     for s1 in range(traj.par.n_states):
         for s2 in range(s1):
@@ -746,6 +749,14 @@ def propagator_matrix(c_in: np.ndarray, arg: np.ndarray):
     return expm(arg) @ c_in
 
 def integrate_quantum(traj: Trajectory):
+    """
+    Calculates time-derivative couplings by various means and integrates quantum (electronic) EOMs
+
+    JCC + JK 2024
+    """
+
+    #TODO create fix_phase function
+
     traj.est.coeff_mns[-1,0,:] = traj.est.coeff_mns[-2,0,:]
 
     for i in range(traj.par.n_states):
@@ -762,15 +773,11 @@ def integrate_quantum(traj: Trajectory):
 
     traj.pes.phase_s = phase_vec
 
-
-    # If precalc required (Constant throughout substeps)
-    #TODO Maybe precalculate quantities before the integration steps...
-
     ddts = np.zeros((traj.par.n_qsteps,traj.par.n_states, traj.par.n_states))
 
     option = traj.est.tdc_updater
     if option == 'hst':
-        # Classic Hammes-Schiffer-Tully mid point approximation
+        # Classic Hammes-Schiffer-Tully mid point approximation (paper in 1994)
         ddts[:] = 1/(2*traj.ctrl.dt) * (traj.pes.overlap_mnss[-1,0,:,:] - traj.pes.overlap_mnss[-1,0,:,:].T)
 
     elif option == 'nacme':
@@ -780,7 +787,7 @@ def integrate_quantum(traj: Trajectory):
             ddts[traj.ctrl.qstep] = frac*traj.pes.nac_ddt_mnss[-1,0] + (1-frac)*traj.pes.nac_ddt_mnss[-2,0]
 
     elif option == 'npi':
-        # Meek and Levine's norm preserving interpolation, but integrated across the time-step
+        # Meek and Levine's norm preserving interpolation, but integrated across the time-step 
         for traj.ctrl.qstep in range(traj.par.n_qsteps):
             frac = (traj.ctrl.qstep+0.5)/traj.par.n_qsteps
             U = np.eye(traj.par.n_states)*np.cos(np.arccos(traj.pes.overlap_mnss[-1,0,:,:])*frac)
@@ -840,6 +847,7 @@ def integrate_quantum(traj: Trajectory):
 
     elif option == 'hst_sharc':
         # SHARC HST end-point finite difference, linearly interpolated across the region
+        # Maybe don't trust this code too much...
         ddt_ini = 1/(4*traj.ctrl.dt) * (3*(traj.pes.overlap_mnss[-2,0,:,:] - traj.pes.overlap_mnss[-2,0,:,:].T)-(traj.pes.overlap_mnss[-3,0,:,:]-traj.pes.overlap_mnss[-3,0,:,:].T))
         ddt_fin = 1/(4*traj.ctrl.dt) * (3*(traj.pes.overlap_mnss[-1,0,:,:] - traj.pes.overlap_mnss[-1,0,:,:].T)-(traj.pes.overlap_mnss[-2,0,:,:]-traj.pes.overlap_mnss[-2,0,:,:].T))
         for traj.ctrl.qstep in range(traj.par.n_qsteps):
@@ -850,6 +858,8 @@ def integrate_quantum(traj: Trajectory):
     elif option == 'local_diabatisation' or option == 'ld':
         # local diabatisation
         # this is a bit of a hacky way to do it, not advised for beginners...
+        # As the rest of the code all has the same structure (ie generate ddt and use that in the wavefunction propagation)
+        # Here we separate the local diabatisation to its own function with a return
         if traj.ctrl.curr_step < 2:
             return
         R = np.eye(traj.par.n_states)
@@ -869,21 +879,34 @@ def integrate_quantum(traj: Trajectory):
 
         return
     else:
-        print('what the fuck else did you want?')
+        print('The TDC updater requested is not implemented')
+        raise ValueError
 
+    # transform coeff into correct representation
     traj.est.coeff_mns[-1,0] = traj.pes.ham_transform_mnss[-1,0] @ traj.est.coeff_mns[-1,0]
+
+    # propagation
+
     for traj.ctrl.qstep in range(traj.par.n_qsteps):
+        # create variables for argument
         frac = (traj.ctrl.qstep+0.5)/traj.par.n_qsteps
         energy_ss = frac*traj.pes.ham_diag_mnss[-1,0] + (1-frac)*traj.pes.ham_diag_mnss[-2,0]
 
+        # we use precomputed ddts
         arg = -(1.j*energy_ss + ddts[traj.ctrl.qstep])*traj.ctrl.dt/traj.par.n_qsteps
+        
+        #propagate using matrix exponential propagator
+
         traj.est.coeff_mns[-1,0] = traj.est.propagator(traj.est.coeff_mns[-1,0], arg)
         traj.pes.nac_ddt_mnss[-1,0] = ddts[traj.ctrl.qstep]
 
+        # calculate hopping probability and hop if doing surface hopping
         if traj.par.type == "sh" and traj.hop.target == traj.hop.active:
             #continue
             get_hopping_prob_ddr(traj)
             check_hop(traj)
+
+    # transform coeff back
     traj.est.coeff_mns[-1,0] = traj.pes.ham_transform_mnss[-1,0].conj().T @ traj.est.coeff_mns[-1,0]
 
 def get_dt(traj: Trajectory):
