@@ -169,11 +169,11 @@ def write_dat(traj: Trajectory):
                 for s in range(traj.par.n_states):
                     dat_file.write(Printer.write(traj.pes.ham_diag_mnss[-1,0,s,s]*Constants.eh2ev, "f"))
             if record == "pen":
-                dat_file.write(Printer.write(traj.pes.ham_diag_mnss[-1,0,traj.hop.active,traj.hop.active]*Constants.eh2ev, "f"))
+                dat_file.write(Printer.write(traj.pes.poten_mn[-1,0]*Constants.eh2ev, "f"))
             if record == "ken":
                 dat_file.write(Printer.write(get_kinetic_energy(traj)*Constants.eh2ev, "f"))
             if record == "en":
-                dat_file.write(Printer.write((get_kinetic_energy(traj) + traj.pes.ham_diag_mnss[-1,0,traj.hop.active,traj.hop.active])*Constants.eh2ev, "f"))
+                dat_file.write(Printer.write((get_kinetic_energy(traj) + traj.pes.poten_mn[-1,0])*Constants.eh2ev, "f"))
             if record == "nacdr":
                 for s1 in range(traj.par.n_states):
                     for s2 in range(s1):
