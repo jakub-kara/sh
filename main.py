@@ -111,7 +111,7 @@ def loop_dynamics(traj: Trajectory):
         step_log(traj)
         shift_values(traj.geo.position_mnad, traj.geo.velocity_mnad, traj.geo.force_mnad)
         shift_values(traj.pes.ham_diag_mnss, traj.pes.nac_ddr_mnssad, traj.pes.nac_ddt_mnss)
-        shift_values(traj.est.coeff_mns, traj.pes.poten_mn)
+        shift_values(traj.pes.poten_mn)
         
         if traj.ctrl.init_steps > 0 or traj.ctrl.conv_status == 1:
             time_log(traj, "Classical + EST: ", lambda : solver_wrapper(traj, traj.geo.init_solver, traj.geo.init_scheme))
@@ -129,6 +129,7 @@ def loop_dynamics(traj: Trajectory):
         if not check_est(traj): continue
         traj.ctrl.conv_status = 0
 
+        shift_values(traj.est.coeff_mns)
         # step 4&5: update electronic wf coefficients & compute hopping probabilities
         time_log(traj, "WF coeffs: ", lambda : update_tdc(traj), lambda: integrate_quantum(traj))
 
