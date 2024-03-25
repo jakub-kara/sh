@@ -81,7 +81,15 @@ def run_molpro(traj: Trajectory):
     traj.est.file = f"{traj.est.program}"
     os.chdir("est")
 
-    traj.est.calculate_nacs *= np.eye(traj.par.n_states)
+
+    # These are all temporary fixes, need to be better here
+    if traj.est.tdc_updater != 'nacme':
+        traj.est.calculate_nacs *= np.eye(traj.par.n_states)
+    else:
+        print(traj.est.calculate_nacs)
+
+    if traj.par.type == 'mfe':
+        traj.est.calculate_nacs[:,:] = 1
 
     write_xyz(traj)
     create_input_molpro(traj.par.states, traj.est.file, traj.est.config, traj.est.calculate_nacs, traj.est.skip, False)
@@ -118,7 +126,7 @@ def run_molpro(traj: Trajectory):
         traj.pes.ham_diag_mnss[-1, 0] = traj.pes.ham_diab_mnss[-1, 0]
         traj.pes.ham_transform_mnss[-1, 0] = np.identity(traj.par.n_states)
 
-    overlap = True
+    overlap = True # or alternatively traj.est.tdc_updater != 'nacme'
     if overlap and traj.ctrl.substep == 0 and not traj.est.first:
         traj.pes.overlap_mnss[-1,0,:,:] = run_wfoverlap_molpro(traj.est.file, traj.geo.name_a, traj.geo.position_mnad[-1,0,:,:], traj.geo.position_mnad[-2,0,:,:], traj.est.config['basis'] , traj.par.n_states)
     adjust_nacmes(traj)
@@ -170,7 +178,8 @@ def run_molcas(traj: Trajectory):
     skip = traj.est.skip
 
 
-    traj.est.calculate_nacs *= np.eye(traj.par.n_states)
+    if traj.est.tdc_updater  != 'nacme':
+        traj.est.calculate_nacs *= np.eye(traj.par.n_states)
     write_xyz(traj)
     create_input_molcas_main(traj.est.file, traj.est.config, traj.est.calculate_nacs, skip)
     for i in range(traj.par.n_states):
