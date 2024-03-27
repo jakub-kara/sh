@@ -64,16 +64,15 @@ def initialise_dynamics(traj: Trajectory):
     write_xyz(traj)
 
 def check_est(traj: Trajectory):
-    if traj.ctrl.curr_step < 2: return True, 0
+    if traj.ctrl.curr_step < 2: return traj
     ke0 = 0.5*np.sum(traj.geo.mass_a[:,None]*traj.geo.velocity_mnad[-2,0]**2)
     ke1 = 0.5*np.sum(traj.geo.mass_a[:,None]*traj.geo.velocity_mnad[-1,0]**2)
     pe0 = traj.pes.poten_mn[-2,0]
     pe1 = traj.pes.poten_mn[-1,0]
     diff = np.abs(ke0 + pe0 - ke1 - pe1)
 
-    if diff < traj.ctrl.en_thresh[max(traj.ctrl.conv_status-1, 0)]: return True
-    else:
-        conv_status = traj.ctrl.conv_status + 4 - len(np.trim_zeros(traj.ctrl.en_thresh))
+    if diff > traj.ctrl.en_thresh[max(traj.ctrl.conv_status-1, 0)]:
+        conv_status = traj.ctrl.conv_status + 1
         if traj.ctrl.conv_status >= 3:
             print("Maximum energy difference exceeded on RKN8.")
             print("Terminating trajectory.")
@@ -89,12 +88,14 @@ def check_est(traj: Trajectory):
 
         with open("backup/traj.pkl", "rb") as traj_pkl:
             traj = pickle.load(traj_pkl)
-            traj.ctrl.conv_status = conv_status
-        
-        return False
+        traj.ctrl.conv_status = conv_status
+    else:
+        traj.ctrl.conv_status = 0
+    return traj
                 
 
 def solver_wrapper(traj: Trajectory, solver, scheme):
+    print(scheme.name, traj.ctrl.conv_status)
     traj.geo.position_mnad[-1,0], traj.geo.velocity_mnad[-1,0], traj.geo.force_mnad[-1,0] = \
         solver(
             traj.geo.position_mnad[-scheme.m-1:-1,0], 
@@ -126,8 +127,8 @@ def loop_dynamics(traj: Trajectory):
 
         update_potential_energy(traj)
 
-        if not check_est(traj): continue
-        traj.ctrl.conv_status = 0
+        traj = check_est(traj)
+        if traj.ctrl.conv_status > 0: continue
 
         shift_values(traj.est.coeff_mns)
         # step 4&5: update electronic wf coefficients & compute hopping probabilities

@@ -579,7 +579,7 @@ def ARKN3Solver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, 
     
     y1 = y0[-1] + 3/2*dt*v0[-1] + 1/2*dt*v0[-2] + dt**2*b_*(k1 - k_1)
     v1 = v0[-1] + dt*(b1*k1 - b_1*k_1 + b2*(k2 - k_2))
-    f1 = func(y1, True, *fargs)
+    f1 = func(y1, 0, *fargs)
     return y1, v1, f1
 
 def RKNSolver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, fargs: tuple, dt: float, scheme: RKN, *args):
@@ -613,16 +613,16 @@ def OVSolver(y0: np.ndarray, v0: np.ndarray, f0: np.ndarray, func: Callable, far
     #zeta = 1/2 - 1/12*(2*np.sqrt(326) + 36)**(1/3) + 1/(6*(2*np.sqrt(326) + 36)**(1/3))
 
     y1 = y0 + dt*Constants.zeta*v0
-    f1 = func(y1, False, *fargs)
+    f1 = func(y1, 1, *fargs)
     v1 = v0 + 0.5*dt*f1
 
     y1 += dt*(1 - 2*Constants.zeta)*v1
-    f1 = func(y1, False, *fargs)
+    f1 = func(y1, 1, *fargs)
     v1 += 0.5*dt*f1
 
     y1 += dt*Constants.zeta*v1
 
-    f1 = func(y1, True, *fargs)
+    f1 = func(y1, 0, *fargs)
     return y1, v1, f1
 
 def calculate_am4_coeffs(h0, h1, h2):
