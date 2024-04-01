@@ -43,7 +43,7 @@ def create_input_molpro(states: np.ndarray, file_root: str, config: dict, calcul
         f.write("maxiter,40;\n")
         f.write(f"occ,{config['active']};\n")
         f.write(f"closed,{config['closed']};\n\n")
-        f.write(f"tran,all;\n")
+        f.write(f"tran,all,DM;\n")
         
         for s, n in enumerate(states):
             if n == 0: continue
@@ -249,24 +249,13 @@ def read_output_molpro_dip(file_root: str, no_states):
             if 'Transition values' in line:
                 for d in range(3):
                     f.readline()
-                    for s1 in range(1,no_states):
-                        dm[0,s1,d] = float(f.readline().split()[3])
-                        dm[s1,0,d] = dm[0,s1,d]
+                    for s2 in range(no_states):
+                        for s1 in range(s2):
+                            dm[s2,s1,d] = float(f.readline().split()[3])
+                            dm[s1,s2,d] = dm[s2,s1,d]
                 break
 
     return dm
-
-
-def dm_to_osc_str(dm, energies):
-    no_states = energies.shape[0]
-
-    osc_str = np.zeros(energies.shape)
-    for i in range(no_states):
-        for j in range(i):
-            osc_str[i,j] = 2/3 * (energies[i,i]-energies[j,j]) * np.sum(np.square(np.abs(dm[i,j,:])))
-
-    return osc_str
-
 
 
 def get_ao_ovlp(atoms, geom1, geom2, s_filename, basis):

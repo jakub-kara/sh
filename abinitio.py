@@ -5,7 +5,7 @@ from errors import *
 from classes import Trajectory
 from constants import Constants
 
-from molpro_est import create_input_molpro, read_output_molpro_ham, read_output_molpro_nac, run_wfoverlap_molpro
+from molpro_est import create_input_molpro, read_output_molpro_ham, read_output_molpro_nac, run_wfoverlap_molpro, read_output_molpro_dip
 from molcas_est import create_input_molcas_main, create_input_molcas_nac, read_output_molcas_ham, read_output_molcas_grad, read_output_molcas_nac, read_output_molcas_prop
 from pyscf_est import run_pyscf_mcscf, run_pyscf_cisd
 from turbomole_est import run_ricc2
@@ -126,10 +126,15 @@ def run_molpro(traj: Trajectory):
         traj.pes.ham_diag_mnss[-1, 0] = traj.pes.ham_diab_mnss[-1, 0]
         traj.pes.ham_transform_mnss[-1, 0] = np.identity(traj.par.n_states)
 
-    overlap = True # or alternatively traj.est.tdc_updater != 'nacme'
+    overlap = traj.par.n_steps > 1
+    overlap = traj.par.type != 'mfe' 
     if overlap and traj.ctrl.substep == 0 and not traj.est.first:
         traj.pes.overlap_mnss[-1,0,:,:] = run_wfoverlap_molpro(traj.est.file, traj.geo.name_a, traj.geo.position_mnad[-1,0,:,:], traj.geo.position_mnad[-2,0,:,:], traj.est.config['basis'] , traj.par.n_states)
-    adjust_nacmes(traj)
+    if traj.par.n_steps > 1:
+        adjust_nacmes(traj)
+
+    traj.pes.dip_mom_mnssd[-1,0,:,:,:] = read_output_molpro_dip(traj.est.file, traj.par.n_states)
+
 
     os.chdir("..")
 
