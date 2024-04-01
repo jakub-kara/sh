@@ -4,7 +4,7 @@ from typing import List, Callable
 
 class Geo:
     def __init__(self, comm: str, n: int):
-        self.t = float(comm.replace(" ", "").replace("t=", ""))
+        self.t = 0#float(comm.replace(" ", "").replace("t=", ""))
         self.x = np.zeros((n, 3))
         self.v = np.zeros((n, 3))
         self.l = np.full(n, "00")
