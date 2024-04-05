@@ -13,20 +13,50 @@ multiplets = {
     "quintet": 4,
 }
 
-def create_input_molpro(states: np.ndarray, file_root: str, config: dict, calculate_nacs: np.ndarray, skip: int, mld: bool = False):
+def create_input_molpro(states: np.ndarray, file_root: str, config: dict, nacs: np.ndarray, skip: int, mld: bool = False):
+    """
+    Writes an input file for a molpro calculation for nonadiabatic molecular dynamics.
+    
+    Parameters
+    ----------
+    states: np.ndarray
+        number of states in each spin multiplicity to be included in the calculation
+    file_root: str
+        name that all the input/output files will share in their root
+    config: dict
+        specifics of the calculation
+    nacs: nda
+        which gradients/nacmes to calculate
+    skip: int
+        how many states should be skipped in indexing
+    mld: bool
+        should a molden file be created
+    
+    Returns
+    -------
+    None
+    
+    Modifies
+    --------
+    None
+    """
+    
+    # get total number of states
     n_states = np.sum(states)
+    # check if soc elements should be calculated
     soc = states.shape[0] > 1
 
+    # input file name
     file = f"{file_root}.inp"
     with open(file, "w") as f:
-        #File and threshold section
+        # file and threshold section
         f.write(f"***\n")
         f.write(f"file,2,{file_root}.wf\n")
         f.write("memory,100,m\n")
         f.write("gprint,orbital=2,civector,angles=-1,distance=-1\n")
-        f.write(" gthresh,twoint=1.0d-13,energy=1.0d-10,gradient=1.0d-10,printci=0.000000009,thrprint=0\n") # TODO add thresholds
+        f.write("gthresh,twoint=1.0d-13,energy=1.0d-10,gradient=1.0d-10,printci=0.000000009,thrprint=0\n") # TODO add thresholds
 
-        # Basis and geometry section
+        # basis and geometry section
         f.write(f"basis={config['basis']}\n")
         f.write("symmetry,nosym;\n")
         f.write("angstrom;\n")
@@ -34,8 +64,10 @@ def create_input_molpro(states: np.ndarray, file_root: str, config: dict, calcul
         f.write("geomtype=xyz;\n")
         f.write(f"geom={file_root}.xyz\n")
 
-        #mcscf section - with second order if needed
+        # mcscf section - with second order if needed
         # MAX 10 CPMCSCF CALLS IN ONE MULTI
+        # TODO: fix limit
+        # check for density fitting flag
         if config["df"]:
             f.write("{df-multi," + f"df_basis={config['dfbasis']}," + "so;\n")
         else:
@@ -45,32 +77,38 @@ def create_input_molpro(states: np.ndarray, file_root: str, config: dict, calcul
         f.write(f"closed,{config['closed']};\n\n")
         f.write(f"tran,all,DM;\n")
         
+        # wf calculation
         for s, n in enumerate(states):
             if n == 0: continue
             f.write(f"wf,{config['nel']},1,{s};\n")
             if soc:
+                # accounts for degeneracy
                 f.write(f"state,{n//(s+1)};\n")
             else:
+                # for singlets only, specify state-average
                 f.write(f"state,{config['sa']};\n")
 
         if not soc: f.write("print,orbitals;\n")
 
-        # gradients, clean up
+        # gradients
         if soc:
+            # all gradients are needed for soc transformation
             for s, n in enumerate(states):
                 if n == 0: continue
                 for i in range(n//(s+1)):
                     record = 5000 + (s+1)*100 + i
                     f.write(f"CPMCSCF,GRAD,{i+1}.1,ms2={s},accu=1.0d-12,record={record}.1;\n")
         else:
+            # otherwise only calculate the requested gradients
             for s, n in enumerate(states):
                 for i in range(n//(s+1)):
-                    if calculate_nacs[i, i]:
+                    if nacs[i, i]:
                         record = 5000 + (s+1)*100 + i
                         f.write(f"CPMCSCF,GRAD,{i+skip+1}.1,ms2={s},accu=1.0d-12,record={record}.1;\n")
 
         # nacmes
         if soc:
+            # all nacmes are needed for soc transformation
             for s, n in enumerate(states):
                 if n == 0: continue
                 for i in range(n//(s+1)):
@@ -79,17 +117,18 @@ def create_input_molpro(states: np.ndarray, file_root: str, config: dict, calcul
                         f.write(f"CPMCSCF,NACM,{j+1}.1,{i+1}.1,ms2={s},accu=1.0d-12,record={record}.1;\n")
 
         else:
+            # otherwise only calculate requested nacmes
             for s, n in enumerate(states):
                 for i in range(n//(s+1)):
                     for j in range(i):
-                        if calculate_nacs[i, j]:
+                        if nacs[i, j]:
                             record = 6000 + (s+1)*100 + i*(i-1)//2 + j
                             f.write(f"CPMCSCF,NACM,{j+skip+1}.1,{i+skip+1}.1,ms2={s},accu=1.0d-12,record={record}.1;\n")
                             record += 1
         f.write("}\n")
 
         # samc gradients
-        # text in format spin (0/1/2) state state; state takes skip into account
+        # text in format "ms2 state state"; state takes skip into account
         if soc:
             for s, n in enumerate(states):
                 for i in range(n//(s+1)):
@@ -99,7 +138,7 @@ def create_input_molpro(states: np.ndarray, file_root: str, config: dict, calcul
         else:
             for s, n in enumerate(states):
                 for i in range(n//(s+1)):
-                    if calculate_nacs[i, i]:
+                    if nacs[i, i]:
                         record = 5000 + (s+1)*100 + i
                         f.write(f"text,calc grad {s} {i} {i}\n")
                         f.write(f"{{FORCES;SAMC,{record}.1}};\n")
@@ -116,14 +155,16 @@ def create_input_molpro(states: np.ndarray, file_root: str, config: dict, calcul
             for s, n in enumerate(states):
                 for i in range(n//(s+1)):
                     for j in range(i):
-                        if calculate_nacs[i, j]:
+                        if nacs[i, j]:
                             record = 6000 + (s+1)*100 + i*(i-1)//2 + j
                             f.write(f"text,calc nacm {s} {j} {i}\n")
                             f.write(f"{{FORCES;SAMC,{record}.1}};\n")
                             record += 1
 
+        # soc hamiltonian elements
         if soc:
             records = []
+            # mrci
             for s, n in enumerate(states):
                 if n == 0: continue
                 f.write("{ci;\n")
@@ -134,33 +175,67 @@ def create_input_molpro(states: np.ndarray, file_root: str, config: dict, calcul
                 f.write(f"state,{n//(s+1)};\n")
                 f.write("noexc;}\n")
             
+            # soc integrals
             f.write("lsint\n")
             f.write("{ci;\n")
             f.write(f"hlsmat,ls,{','.join([str(i) + '.1' for i in records])};\n")
             f.write("option,matel=1,hlstrans=1;\n")
             f.write("print,hls=2;}")
 
-        if mld:
-            f.write(f"put,molden, {file_root}.mld\n")
+        # request molden
+        if mld: f.write(f"put,molden, {file_root}.mld\n")
         f.write("---")
 
 def read_output_molpro_ham(file_root: str):
+    """
+    Reads a molpro output file and searches it for hamiltonian elements.
+    Results are yielded one by one.
+
+    Parameters
+    ----------
+    file_root: str
+        name that all the input/output files will share in their root
+    
+    Returns
+    -------
+    spin1: int
+        spin multiplicity of the ket
+    spin2: int
+        spin multiplicity of the bra
+    state1: int
+        total index of the ket
+    state2: int
+        total index of the bra
+    float | complex
+        value of the element
+    
+    Modifies
+    --------
+    None
+    """
+    
+    # read output file
     with open(f"{file_root}.out", "r") as file:
         while True:
+            # read line while not eof
             line = file.readline()
             if not line:
                 break
-
+            
+            # make sure strings not case-sensitive
             line = line.strip().lower()
 
+            # energy of state 
             if line.startswith("!mcscf state") and "energy" in line:
                 data = line.split()
                 if len(data) == 5: spin = 0
                 else: spin = multiplets[data[-3]]
                 state = int(data[2].split(".")[0]) - 1
+                # yield diagonal elements as required by the degeneracy
                 for s in range(spin+1):
                     yield spin, spin, state+s, state+s, float(data[-1])
 
+            # soc matrix elements
             if line.startswith("symmetry of spin-orbit operator"):
                 line = file.readline().strip()
                 data = line.split()
@@ -173,14 +248,17 @@ def read_output_molpro_ham(file_root: str):
 
                 while not "breit-pauli" in file.readline().lower(): pass
                 file.readline()
+                # read elements until line is empty
                 while (line := file.readline().strip().lower()):
                     data = line.split()
                     braket = data[2].replace(">", "").replace("<", "").split("|")
                     i = int(braket[0].split(".")[0]) - 1
                     j = int(braket[2].split(".")[0]) - 1
                     coup = complex(data[3].replace("i", "j"))
+                    # yeild soc elements
                     yield s1, s2, i*(s1+1) + s1-m1, j*(s2+1) + s2-m2, coup
                     yield s2, s1, j*(s2+1) + s2-m2, i*(s1+1) + s1-m1, coup.conjugate()
+                    # only some elements provided, the rest has to be derived from symmetry
                     if m1 != 0 and m2 != 0:
                         yield s1, s2, i*(s1+1) + s1+m1, j*(s2+1) + s2+m2, coup
                         yield s2, s1, j*(s2+1) + s2+m2, i*(s1+1) + s1+m1, coup.conjugate()
@@ -193,28 +271,53 @@ def read_output_molpro_ham(file_root: str):
                             yield s2, s1, j*(s2+1) + s2+m2, i*(s1+1) + s1-m1, coup
 
 def read_output_molpro_nac(file_root: str):
+    """
+    Reads a molpro output file and searches it for nonadiabatic coupling matrix elements.
+    Results are yielded one by one.
+    
+    Parameters
+    ----------
+    file_root: str
+        name that all the input/output files will share in their root
+    
+    Returns
+    -------
+    None
+    
+    Modifies
+    --------
+    None
+    """
+    
+    # read output file
     with open(f"{file_root}.out", "r") as file:
         while True:
+            # read line while not eof
             line = file.readline()
             if not line:
                 break
 
+            # make sure strings not case-sensitive
             line = line.strip().lower()
 
+            # read gradients
             if "*** calc grad" in line:
                 data = line.strip().split()
                 spin = int(data[-3])
                 state = int(data[-1])
                 while not file.readline().strip().lower().startswith("sa-mc gradient"): pass
                 for _ in range(3): file.readline()
-                
+
+                # read atom by atom until line is empty
                 a = 0
                 while (line := file.readline().strip()):
                     data = line.strip().split()
+                    # yield diagonal elements as required by the degeneracy
                     for s in range(spin+1):
                         yield spin, state+s, state+s, a, [float(x) for x in data[1:]]
                     a += 1
 
+            # read nacmes
             if "*** calc nacm" in line:
                 data = line.strip().split()
                 spin = int(data[-3])
@@ -223,9 +326,11 @@ def read_output_molpro_nac(file_root: str):
                 while not file.readline().strip().lower().startswith("sa-mc nacme"): pass
                 for _ in range(3): file.readline()
                 
+                # read atom by atom until line is empty
                 a = 0
                 while (line := file.readline().strip()):
                     data = line.strip().split()
+                    # yield diagonal elements as required by the degeneracy and antisymmetry
                     for s in range(spin+1):
                         yield spin, state1+s, state2+s, a, [float(x) for x in data[1:]]
                         yield spin, state2+s, state1+s, a, [-float(x) for x in data[1:]]
