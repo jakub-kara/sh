@@ -343,7 +343,9 @@ def run_molpro(traj: Trajectory):
 
 def run_turbo(traj: Trajectory):
     """
-    JCC
+    Runs ricc2 and riadc2 calculations from turbomole
+    Uses turbomole_est library
+    Uses wfoverlap from SHARC/Felix Plasser
     
     Parameters
     ----------
@@ -356,6 +358,13 @@ def run_turbo(traj: Trajectory):
     
     Modifies
     --------
+    traj.pes_mn[-1,0].ham_diab_ss
+        only diagonal entries
+    traj.pes_mn[-1,0].ham_diag_ss
+        only diagonal entries
+    traj.pes_mn[-1,0].transform_ss
+        only identity matrix (no SOC) 
+    traj.pes_mn[-1,0].overlap_ss
     
     """
     
@@ -373,7 +382,10 @@ def run_turbo(traj: Trajectory):
 
 def run_pyscf_wrapper(traj: Trajectory):
     """
-    JCC
+    Wrapper for the running of PySCF calculations.
+    Links to pyscf_est.py module
+    Runs mcscf and cisd calculations (don't use CISD, it's super slow)
+    Currently only works with NACMEs, but intend to also do overlap soon.
     
     Parameters
     ----------
@@ -407,7 +419,11 @@ def run_pyscf_wrapper(traj: Trajectory):
 # write RC file
 def run_molcas(traj: Trajectory):
     """
-    JCC
+    Runs molcas electronic structure
+    Uses molcas_est.py module
+    Currently can perform CASSCF and (X/R)MS-CASPT2
+    NACMEs implemented for both
+    Overlaps are implemented at CASSCF level, i.e. only using the reference space for CASPT2
     
     Parameters
     ----------
@@ -420,6 +436,16 @@ def run_molcas(traj: Trajectory):
     
     Modifies
     --------
+    traj.pes_mn[-1,0].ham_diab_ss
+        only diagonal entries
+    traj.pes_mn[-1,0].ham_diag_ss
+        only diagonal entries
+    traj.pes_mn[-1,0].transform_ss
+        no SOC currently
+    traj.pes_mn[-1,0].nac_ddr_ssad
+        only if requested
+    traj.pes_mn[-1,0].overlap_ss
+        only if nacmes not calculated
     
     """
     

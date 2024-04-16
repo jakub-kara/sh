@@ -37,7 +37,8 @@ def get_hopping_prob_ddt(traj: Trajectory):
 
 def get_hopping_prob_LD(traj: Trajectory, R):
     """
-    JCC
+    calculated the hopping probability using SHARCs LD formula
+    should only be called in the Local diabatisation section of the code
     
     Parameters
     ----------
@@ -50,6 +51,7 @@ def get_hopping_prob_LD(traj: Trajectory, R):
     
     Modifies
     --------
+    traj.hop.prob_s
     
     """
     
@@ -142,6 +144,7 @@ def adjust_velocity_and_hop(traj: Trajectory):
     Assesses if there is enough energy to perform a hop.
     Then adjusts velocity to conserve energy.
     Reworked version from https://doi.org/10.1016/j.chemphys.2008.01.044
+        In general reworked to take in arbitrary directions
     
     Parameters
     ----------

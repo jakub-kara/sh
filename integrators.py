@@ -816,6 +816,12 @@ def propagator_matrix(c_in: np.ndarray, arg: np.ndarray):
 def integrate_quantum(traj: Trajectory):
     """
     Calculates time-derivative couplings by various means and integrates quantum (electronic) EOMs.
+    Corrects phase of the overlaps
+    Currently implemented:
+        NACME
+        Local Diabatisation
+        Hammes-Schiffer-Tully
+        'Norm-Preserving interpolation' and varients thereof
     
     Parameters
     ----------
