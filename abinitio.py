@@ -264,10 +264,8 @@ def run_molpro(traj: Trajectory):
     # TODO: These are all temporary fixes, need to be better here
     if traj.ctrl.tdc_updater != 'nacme':
         traj.est.calc_nacs *= np.eye(traj.par.n_states)
-    else:
-        print(traj.est.calc_nacs)
 
-    if traj.par.type == 'mfe':
+    if traj.par.type == 'mfe' or len(traj.par.states) > 1:
         traj.est.calc_nacs[:,:] = 1
 
     write_xyz(traj)
@@ -319,13 +317,13 @@ def run_molpro(traj: Trajectory):
 
     else:
         # already diagonal
-        print(traj.pes_mn[-1,0].ham_diab_ss)
         traj.pes_mn[-1,0].ham_diag_ss[:] = traj.pes_mn[-1,0].ham_diab_ss
         traj.pes_mn[-1,0].transform_ss = np.eye(traj.par.n_states)
 
     # TODO: move this elsewhere
     overlap = traj.par.n_steps > 1
     overlap = traj.par.type != 'mfe'
+    overlap = False
     # if nacmes were not calculated, calculate the wf overlap
     if overlap and traj.ctrl.substep == 0 and not traj.est.first:
         traj.pes_mn[-1,0].overlap_ss = run_wfoverlap_molpro(
@@ -337,7 +335,7 @@ def run_molpro(traj: Trajectory):
         adjust_nacmes(traj)
 
     # read dipole moments
-    traj.pes_mn[-1,0].dip_mom_ssd = read_output_molpro_dip(traj.est.file, traj.par.n_states)
+    #traj.pes_mn[-1,0].dip_mom_ssd = read_output_molpro_dip(traj.est.file, traj.par.n_states)
 
     # return to main directory
     os.chdir("..")

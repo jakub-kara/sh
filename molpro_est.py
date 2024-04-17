@@ -180,7 +180,7 @@ def create_input_molpro(states: np.ndarray, file_root: str, config: dict, nacs: 
             f.write("{ci;\n")
             f.write(f"hlsmat,ls,{','.join([str(i) + '.1' for i in records])};\n")
             f.write("option,matel=1,hlstrans=1;\n")
-            f.write("print,hls=2;}")
+            f.write("print,hls=2;}\n")
 
         # request molden
         if mld: f.write(f"put,molden, {file_root}.mld\n")

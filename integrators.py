@@ -2,6 +2,7 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Callable, Any
 from scipy.linalg import expm
+from copy import deepcopy
 
 from hopping import get_hopping_prob_ddt, check_hop, get_hopping_prob_LD
 from classes import Trajectory
@@ -509,7 +510,8 @@ def am4temp(h0, h1, h2):
         m = 4,
         r = 4,
         b = np.array([b3,b2,b1,b0]),
-        c = None
+        c = None,
+        s = AMSolver
     )
 
 def calculate_sy4_coeffs(h0, h1, h2, h3):
@@ -573,7 +575,8 @@ def calculate_sy4_coeffs(h0, h1, h2, h3):
         v = v,
         a = np.array([a0,a1,a2,a3,a4]),
         b = h0/h3*SY4.b[:],
-        c = None
+        c = None,
+        s = SYSolver
     )
 
 def AMSolver(y0: np.ndarray, f0: np.ndarray, dt: float, scheme: AB, *args):
@@ -675,7 +678,7 @@ def shift_values(*args):
         for m in range(1, arr.shape[0]):
             # shift all values "to the left"
             # arr[0] the oldest, arr[-1] the most recent
-            arr[m-1] = arr[m]
+            arr[m-1] = deepcopy(arr[m])
 
 def interpolate(x: np.ndarray, y: np.ndarray, inp: float):
     """

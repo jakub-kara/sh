@@ -232,10 +232,15 @@ def loop_dynamics(traj: Trajectory):
 
     
     """
-    
+
     # check if termination condition met
     while traj.ctrl.curr_time < traj.ctrl.t_max:
+        # increment time
+        traj.ctrl.curr_time += traj.ctrl.dt
+        traj.ctrl.curr_step += 1
         print(traj.ctrl.curr_time)
+        print(traj.est.coeff_mns[:,:,1])
+
         # place a file called "stop" in the working directory to force a termination at the beginning of a new iteration
         if os.path.isfile("stop"):
             exit(23)
@@ -254,7 +259,7 @@ def loop_dynamics(traj: Trajectory):
             time_log(traj, "Classical + EST: ", lambda : solver_wrapper(traj, RKN8))
         else:
             # recalculate multistep method coefficients
-            if "sy" in traj.ctrl.nuc_scheme_name: traj.ctrl.nuc_loop_scheme = calculate_sy4_coeffs(*traj.ctrl.h[-4:])
+            if "sy" in traj.ctrl.nuc_scheme_name: traj.ctrl.nuc_loop_scheme = calculate_sy4_coeffs(traj.ctrl.h[-4], traj.ctrl.h[-3], traj.ctrl.h[-2], traj.ctrl.h[-1])
             # standard integrator (typically VV/SY4)
             time_log(traj, "Classical + EST: ", lambda : solver_wrapper(traj, traj.ctrl.nuc_loop_scheme))
         if traj.ctrl.init_steps > 0: traj.ctrl.init_steps -= 1
@@ -277,9 +282,12 @@ def loop_dynamics(traj: Trajectory):
         # check for any hops and make corresponding adjustments
         if traj.par.type == "sh":
             adjust_velocity_and_hop(traj)
+            print(traj.est.coeff_mns[:,:,1])
+
             # perform decoherence correction
             if traj.hop.decoherence == "edc":
                 decoherence_edc(traj)
+        print(traj.est.coeff_mns[:,:,1])
 
         # store previous stepsize values
         shift_values(traj.ctrl.h)
@@ -298,19 +306,16 @@ def loop_dynamics(traj: Trajectory):
             traj.ctrl.force_updater(traj)
             traj.est.calc_nacs[:] = False
             update_potential_energy(traj)
+        print(traj.est.coeff_mns[:,:,1])
+        
 
         # write output
         write_dat(traj)
         write_xyz(traj)
         time_log(traj, "Saving matrices: ", lambda : write_mat(traj))
 
-        # increment time
-        traj.ctrl.curr_time += traj.ctrl.dt
-        traj.ctrl.curr_step += 1
-
         # back up the step
         time_log(traj, "Backup: ", lambda : back_up_step(traj))
-
 
 if __name__ == "__main__":
     main()

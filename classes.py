@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Callable, List
+from typing import Callable
 
 from errors import *
 from constants import Constants
@@ -397,7 +397,7 @@ class Control:
         self.nuc_scheme_name = config["nuclear"]["integrator"]
         self.nuc_init_scheme, self.nuc_loop_scheme = None, None
         # number of initialisation steps needed for the chosen integrator
-        self.init_steps = par.n_steps
+        self.init_steps = 0
         self.force_updater: Callable[[Trajectory], None] = None
 
         # WF coefficient integrator
@@ -407,7 +407,7 @@ class Control:
         # scheme for updating tdc
         self.tdc_updater = config["electronic"]["tdc"]
         # should the hamiltonian be diagonalised
-        self.diagonalise = False
+        self.diagonalise = True
 
         # set seed
         self.seed = config["control"].get("seed", 0)
