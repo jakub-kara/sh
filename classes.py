@@ -239,6 +239,8 @@ class ElectronicStructure:
         self.program = config["electronic"]["program"]
         # type of EST calculation/level of theory
         self.type = config["electronic"]["esttype"]
+        # Path to run
+        self.path = config["electronic"]["programpath"]
         # method that interfaces EST
         self.run: Callable[[Trajectory], None] = None
         # root/name of the EST files
