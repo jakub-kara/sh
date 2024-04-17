@@ -1,7 +1,7 @@
 import numpy as np
 
 from classes import Trajectory
-from abinitio import run_molcas, run_molpro, request_nacs_mfe, request_nacs_sh, run_pyscf_wrapper, run_turbo, run_model
+from abinitio import run_molcas, run_molpro, request_nacs_mfe, request_nacs_sh, run_pyscf_wrapper, run_turbo, run_model, run_bagel
 from model_est import harm, spin_boson, tully_1, tully_2, tully_3, tully_n, tully_s, sub_2, sub_s, sub_x, lvc_wrapper
 from errors import *
 from integrators import SV, OV, RKN4, RKN6, RKN8, SY4, SY6, SY8, SY8b, SY8c, VVSolver, OVSolver, RKNSolver, ARKN3Solver, SYSolver, update_force_mfe, update_force_sh, propagator_matrix
@@ -41,6 +41,8 @@ def select_est(traj: Trajectory):
         traj.est.run = run_pyscf_wrapper
     elif traj.est.program == "ricc2":
         traj.est.run = run_turbo
+    elif traj.est.program == 'bagel':
+        traj.est.run = run_bagel
     else:
         raise EstProgramNotFoundError
     
