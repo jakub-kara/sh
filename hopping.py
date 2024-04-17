@@ -201,8 +201,8 @@ def adjust_velocity_and_hop(traj: Trajectory):
     ediff = traj.pes_mn[-1,0].ham_diag_ss[traj.hop.active,traj.hop.active] - traj.pes_mn[-1,0].ham_diag_ss[traj.hop.target,traj.hop.target]
 
     # compute coefficients in the quadratic equation
-    a = 0.5 * np.sum(traj.geo.mass_a[:, None] * delta * delta)
-    b = -np.sum(traj.geo.mass_a[:, None] * traj.geo_mn[-1,0].velocity_ad * delta)
+    a = 0.5 * np.sum(traj.geo_mn[-1,0].mass_a[:, None] * delta * delta)
+    b = -np.sum(traj.geo_mn[-1,0].mass_a[:, None] * traj.geo_mn[-1,0].velocity_ad * delta)
     c = -ediff
 
     # TODO: move to settings/control
@@ -275,5 +275,5 @@ def decoherence_edc(traj: Trajectory, c=0.1):
             traj.est.coeff_mns[-1,0,s] *= np.exp(-traj.ctrl.dt/decay_rate)
 
     # renormalise quantum populations
-    tot_pop = np.sum(np.abs(traj.est.coeff_mns[-1,0])**2)
+    tot_pop = np.sum(np.abs(traj.est.coeff_mns[-1,0])**2) - np.abs(traj.est.coeff_mns[-1,0,traj.hop.active])**2
     traj.est.coeff_mns[-1,0,traj.hop.active] *= np.sqrt(1 - tot_pop)/np.abs(traj.est.coeff_mns[-1,0,traj.hop.active])

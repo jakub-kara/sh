@@ -52,7 +52,10 @@ def get_dirs(path="."):
     return [f for f in os.listdir(path) if os.path.isdir(f)]
 
 def get_ext(ext, path="."):
-    return [f for f in os.listdir(path) if os.path.isfile(f) and f.endswith(f".{ext}")]
+    lst = [f for f in os.listdir(path) if os.path.isfile(f) and f.endswith(f".{ext}")]
+    if len(lst) == 0: raise FileNotFoundError
+    if len(lst) == 2: raise ValueError
+    return lst[0]
 
 def read_initial_conditions(input_file):
     with open(input_file, 'r') as open_file:
