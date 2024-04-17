@@ -414,13 +414,15 @@ def run_pyscf_wrapper(traj: Trajectory):
     else:
         run_pyscf_mcscf(traj, traj.est.config)
     os.chdir('..')
+
+    adjust_energy(traj)
+
     if traj.ctrl.diagonalise:
         diagonalise_hamiltonian(traj)
     else:
         traj.pes_mn[-1,0].ham_diag_ss = traj.pes_mn[-1,0].ham_diab_ss
         traj.pes_mn[-1,0].transform_ss = np.identity(traj.par.n_states)
 
-    adjust_energy(traj)
     adjust_nacmes(traj)
 
 def run_bagel(traj: Trajectory):
@@ -457,7 +459,6 @@ def run_bagel(traj: Trajectory):
     #  os.system("mpirun -n 10 bagel bagel.json > out.out")
     traj.pes_mn[-1,0].ham_diab_ss, traj.pes_mn[-1,0].nac_ddr_ssad = read_bagel_output(traj.est.calc_nacs, traj.par.n_atoms, traj.est.config['sa'])
 
-    print(traj.pes_mn[-1,0].nac_ddr_ssad)
 
     os.chdir('..')
 
@@ -542,11 +543,13 @@ def run_molcas(traj: Trajectory):
     os.chdir("..")
 
 
+
+    adjust_energy(traj)
+
     if traj.ctrl.diagonalise:
         diagonalise_hamiltonian(traj)
     else:
         traj.pes_mn[-1,0].ham_diag_ss = traj.pes_mn[-1,0].ham_diab_ss
         traj.pes_mn[-1,0].transform_ss = np.identity(traj.par.n_states)
 
-    adjust_energy(traj)
     adjust_nacmes(traj)
