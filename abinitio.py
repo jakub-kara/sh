@@ -9,6 +9,7 @@ from molpro_est import create_input_molpro, read_output_molpro_ham, read_output_
 from molcas_est import create_input_molcas_main, create_input_molcas_nac, read_output_molcas_ham, read_output_molcas_grad, read_output_molcas_nac, read_output_molcas_prop
 from pyscf_est import run_pyscf_mcscf, run_pyscf_cisd
 from turbomole_est import run_ricc2
+from bagel_est import create_input_bagel, read_bagel_output
 
 
 def request_nacs_sh(traj: Trajectory, nacs=True):
@@ -398,6 +399,14 @@ def run_pyscf_wrapper(traj: Trajectory):
     
     Modifies
     --------
+    traj.pes_mn[-1,0].ham_diab_ss
+        only diagonal entries
+    traj.pes_mn[-1,0].ham_diag_ss
+        only diagonal entries
+    traj.pes_mn[-1,0].transform_ss
+        no SOC currently
+    traj.pes_mn[-1,0].nac_ddr_ssad
+        only if requested
     
     """
     
@@ -415,6 +424,51 @@ def run_pyscf_wrapper(traj: Trajectory):
 
     adjust_energy(traj)
     adjust_nacmes(traj)
+
+def run_bagel(traj: Trajectory):
+    """
+    Runs bagel calculations
+    Uses bagel_est.py module
+    Currently can do CASSCF and (X)MS-CASPT2 with nacmes
+    
+    Parameters
+    ----------
+    traj: Trajectory
+        Trajectory object
+    
+    Returns
+    -------
+    None
+    
+    Modifies
+    --------
+    traj.pes_mn[-1,0].ham_diab_ss
+        only diagonal entries
+    traj.pes_mn[-1,0].ham_diag_ss
+        only diagonal entries
+    traj.pes_mn[-1,0].transform_ss
+        no SOC currently
+    traj.pes_mn[-1,0].nac_ddr_ssad
+    
+    """
+    
+    os.chdir('est')
+    create_input_bagel('bagel', traj.est.config, traj.est.calc_nacs, traj.geo_mn[-1,0].name_a, traj.geo_mn[-1,0].position_ad, traj.est.type == 'caspt2')
+    os.system(f"{traj.est.path} bagel.json > out.out")
+    #  os.system("nohup bagel bagel.json > out.out")
+    #  os.system("mpirun -n 10 bagel bagel.json > out.out")
+    traj.pes_mn[-1,0].ham_diab_ss, traj.pes_mn[-1,0].nac_ddr_ssad = read_bagel_output(traj.est.calc_nacs, traj.par.n_atoms, traj.est.config['sa'])
+
+    print(traj.pes_mn[-1,0].nac_ddr_ssad)
+
+    os.chdir('..')
+
+    traj.pes_mn[-1,0].ham_diag_ss = traj.pes_mn[-1,0].ham_diab_ss
+    traj.pes_mn[-1,0].transform_ss = np.identity(traj.par.n_states)
+
+    adjust_energy(traj)
+    adjust_nacmes(traj)
+    
 
 # write RC file
 def run_molcas(traj: Trajectory):
@@ -435,10 +489,7 @@ def run_molcas(traj: Trajectory):
     None
     
     Modifies
-    --------
-    traj.pes_mn[-1,0].ham_diab_ss
-        only diagonal entries
-    traj.pes_mn[-1,0].ham_diag_ss
+    -------- traj.pes_mn[-1,0].ham_diab_ss only diagonal entries traj.pes_mn[-1,0].ham_diag_ss
         only diagonal entries
     traj.pes_mn[-1,0].transform_ss
         no SOC currently
@@ -456,13 +507,13 @@ def run_molcas(traj: Trajectory):
 
 
     if traj.ctrl.tdc_updater  != 'nacme':
-        traj.est.calculate_nacs *= np.eye(traj.par.n_states)
+        traj.est.calc_nacs *= np.eye(traj.par.n_states)
     write_xyz(traj)
-    create_input_molcas_main(traj.est.file, traj.est.config, traj.est.calculate_nacs, skip)
+    create_input_molcas_main(traj.est.file, traj.est.config, traj.est.calc_nacs, skip)
     for i in range(traj.par.n_states):
         for j in range(i + 1, traj.par.n_states):
-            if traj.est.calculate_nacs[i, j]:
-                create_input_molcas_nac(traj.est.file, traj.est.config, traj.est.calculate_nacs, skip, i, j)
+            if traj.est.calc_nacs[i, j]:
+                create_input_molcas_nac(traj.est.file, traj.est.config, traj.est.calc_nacs, skip, i, j)
 
     err = os.system(f"pymolcas -f -b1 molcas.input")
     if err:
@@ -470,7 +521,7 @@ def run_molcas(traj: Trajectory):
         raise EstCalculationBrokenError
     for i in range(traj.par.n_states):
         for j in range(i + 1, traj.par.n_states):
-            if traj.est.calculate_nacs[i, j]:
+            if traj.est.calc_nacs[i, j]:
                 err = os.system(f"pymolcas -f -b1 molcas_{i}_{j}.input")
                 if err:
                     print(f"Error code {err} in est")
@@ -484,7 +535,7 @@ def run_molcas(traj: Trajectory):
 
     for s1 in range(traj.par.n_states):
         for s2 in range(s1+1):
-            if traj.est.calculate_nacs[s1, s2]:
+            if traj.est.calc_nacs[s1, s2]:
                 if s1 == s2:
                     for i, i, a, val in read_output_molcas_grad(f"molcas.log", traj.est.config): traj.pes_mn[-1,0].nac_ddr_ssad[i-skip, i-skip, a] = val
                 else:
