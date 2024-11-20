@@ -1,4 +1,6 @@
 import numpy as np
+
+from classes.out import Output
 from .sh import SurfaceHopping
 from .checker import HoppingUpdater
 from classes.molecule import Molecule, MoleculeBloch
@@ -9,13 +11,18 @@ from updaters.tdc import TDCUpdater
 class MISH(SurfaceHopping, key = "mish"):
     ''' Runeson and Manolopoulos "Multi Mash". Also known as "MISH", the artist previously known as SHIAM '''
     def __init__(self, **config):
+        super().__init__(**config)
 
         if self._rescale != "mish":
-            out.write_log(f"MISH called without MISH rescaling. Changing to default MISH rescaling\t")
+            #            out = Output()
+            #out.write_log(f"MISH called without MISH rescaling. Changing to default MISH rescaling\t")
             self._rescale = "mish"
 
-        super().__init__(**config)
         HoppingUpdater(key = "mish", **config["quantum"])
+
+    def update_quantum(self, mols: Molecule):
+        super().update_quantum(mols)
+        self.update_target(mols)
 
     def adjust_nuclear(self, mols: list[Molecule]):
         out = Output()
@@ -41,9 +48,9 @@ class MISH(SurfaceHopping, key = "mish"):
                 est.read(mol)
                 self.calculate_acceleration(mol)
             else:
-                self._nohop()
                 if self._reverse:
                     self._reverse_velocity(mol, delta)
+                self._nohop()
 
 
 
@@ -51,7 +58,8 @@ class MISH(SurfaceHopping, key = "mish"):
 
     def prepare_traj(self, mol: Molecule):
         ''' UPDATE '''
-        nst = mol[-1].n_states
+        nst = mol.n_states
+        super().prepare_traj(mol)
 
         def _uniform_cap_distribution(nst: int, init_state: int):
             while True:
@@ -63,12 +71,12 @@ class MISH(SurfaceHopping, key = "mish"):
                     break
             return coeff
 
+        coeff = _uniform_cap_distribution(nst,self.active)
         out = Output()
         out.write_log(f"Uniform cap initial conditions\t\tInitial state:      {self.active},\t\tInitial coeff:     {coeff}")
         out.write_log("\n")
 
         mol.coeff_s = coeff
-        super().prepare_traj(mol)
 
     def _get_delta(self, mol: Molecule):
         ''' UPDATE '''
@@ -86,16 +94,23 @@ class MISH(SurfaceHopping, key = "mish"):
         nst = mol.n_states
         coeff = mol.coeff_s
         d = mol.nacdr_ssad
+        print(d)
         a = self.active
+        target = self.target
 
         delta = np.zeros_like(mol.vel_ad)
 
+        print(delta)
+
         for i in range(nst):
-            delta += np.real(np.conj(coeff[i])*d[i,a]*coeff[a] - np.conj(coeff[a])*d[i,a]*coeff[i])
+            delta += np.real(np.conj(coeff[i])*d[i,a]*coeff[a] - np.conj(coeff[i])*d[i,target]*coeff[target])
+        print(delta)
 
         delta /= mol.mass_a[:,None]
+        print(delta)
 
         delta = normalise(delta)
+        print(delta)
 
         return delta
 

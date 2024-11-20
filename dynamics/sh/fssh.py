@@ -40,6 +40,6 @@ class FSSH(SurfaceHopping, key = "fssh"):
                 est.read(mol)
                 self.calculate_acceleration(mol)
             else:
-                self._nohop()
                 if self._reverse:
                     self._reverse_velocity(mol, delta)
+                self._nohop()

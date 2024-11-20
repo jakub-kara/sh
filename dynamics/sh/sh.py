@@ -83,13 +83,13 @@ class SurfaceHopping(Dynamics):
         return delta
 
     def _avail_kinetic_energy(self, mol: Molecule, delta: np.ndarray):
-        delta = self._get_delta(mol)
         a = np.einsum("ad, ad -> a", mol.vel_ad, delta)
         b = np.einsum("ad, ad -> a", delta, delta)
         return 0.5 * np.sum(mol.mass_a * a**2 / b)
 
-    def _has_energy(self, mol: Molecule):
-        return self._avail_kinetic_energy(mol) + self.potential_energy(mol) - mol.ham_eig_ss[self.target, self.target] > 0
+    def _has_energy(self, mol: Molecule, delta: np.ndarray):
+        return print(mol.kinetic_energy,self._avail_kinetic_energy(mol,delta), mol.ham_eig_ss[self.active, self.active], mol.ham_eig_ss[self.target, self.target])
+        return self._avail_kinetic_energy(mol,delta) + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] > 0
 
     def _hop(self):
         self._active = self.target
@@ -130,9 +130,11 @@ class SurfaceHopping(Dynamics):
         a = 0.5 * np.sum(mol.mass_a[:, None] * delta * delta)
         b = -np.sum(mol.mass_a[:, None] * mol.vel_ad * delta)
         c = -ediff
+        print(a,b,c, self.active,self.target)
 
         # find the determinant
         D = b**2 - 4 * a * c
+        print(D)
         if D < 0:
             # reverse if no real solution and flag set
             gamma = -b/a
