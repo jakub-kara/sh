@@ -119,7 +119,6 @@ class MISHChecker(HoppingUpdater, key = "mish"):
         prob = self.prob.inp
         prob[:] = 0
         target = np.argmax(np.abs(mols[-1].coeff_s)**2)
-        print(mols[-1].coeff_s, target, target==active)
         prob[target] = 1.
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active)
