@@ -100,23 +100,18 @@ class MISH(SurfaceHopping, key = "mish"):
         nst = mol.n_states
         coeff = mol.coeff_s
         d = mol.nacdr_ssad
-        print(d)
         a = self.active
         target = self.target
 
         delta = np.zeros_like(mol.vel_ad)
 
-        print(delta)
 
         for i in range(nst):
             delta += np.real(np.conj(coeff[i])*d[i,a]*coeff[a] - np.conj(coeff[i])*d[i,target]*coeff[target])
-        print(delta)
 
         delta /= mol.mass_a[:,None]
-        print(delta)
 
         delta = normalise(delta)
-        print(delta)
 
         return delta
 
