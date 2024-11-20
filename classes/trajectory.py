@@ -224,7 +224,8 @@ class Trajectory:
             dic[rec] = ""
             if rec == "pop":
                 for s in range(self.n_states):
-                    dic[rec] += Printer.write(np.abs(self.mol.coeff_s[s])**2, "f")
+                    # dic[rec] += Printer.write(np.abs(self.mol.coeff_s[s])**2, "f")
+                    dic[rec] += Printer.write(self._dyn.population(self.mol,s), "f")
             if rec == "pes":
                 for s in range(self.n_states):
                     dic[rec] += Printer.write(self.mol.ham_eig_ss[s,s] * Constants.eh2ev, "f")

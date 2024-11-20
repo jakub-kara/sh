@@ -65,6 +65,9 @@ class Dynamics(metaclass = Factory):
     def potential_energy(self, mol: Molecule):
         raise NotImplementedError
 
+    def population(self, mol: Molecule, s: int):
+        return np.abs(mol.coeff_s[s])**2
+
     def prepare_traj(self, mol: Molecule):
         out = Output()
         out.open_log()

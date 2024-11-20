@@ -54,6 +54,12 @@ class MISH(SurfaceHopping, key = "mish"):
 
 
 
+    def population(self, mol: Molecule, s: int):
+        N = mol.n_states
+        H_N = np.sum(1/(np.arange(N)+1))
+        a_N = (N-1)/(H_N-1) 
+        return 1/N + a_N*(np.abs(mol.coeff_s[s])**2-1/N)
+
 
 
     def prepare_traj(self, mol: Molecule):
