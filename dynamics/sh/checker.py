@@ -28,6 +28,7 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
         return active
 
 class TDCHoppingChecker(Multistage, HoppingUpdater, key = "tdc"):
+    ''' CLASSIC TULLY '''
     steps = 1
 
     def update(self, mols: list[Molecule], dt: float, active: int):
@@ -112,3 +113,13 @@ class MASHChecker(HoppingUpdater, key = "mash"):
                 prob[s] = 1
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active)
+
+class MISHChecker(HoppingUpdater, key = "mish"):
+    def update(self, mols: list[Molecule], dt: float, active: int):
+        prob = self.prob.inp
+        prob[:] = 0
+        target = np.argmax(np.abs(mols[-1].coeff_s)**2)
+        prob[target] = 1.
+        self.prob.out = prob
+        self.hop.out = self._check_hop(prob, active)
+

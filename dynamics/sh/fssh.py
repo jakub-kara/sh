@@ -25,9 +25,10 @@ class FSSH(SurfaceHopping, key = "fssh"):
         # print(f"Final pops: {np.abs(mol.coeff_s)**2}")
         # print(f"Check sum:  {np.sum(np.abs(mol.coeff_s)**2)}")
         if self.hop_ready():
-            if self._has_energy(mol):
+            delta = self._get_delta(mol)
+            if self._has_energy(mol, delta):
                 out.write_log("Hop succesful")
-                self._adjust_velocity(mol)
+                self._adjust_velocity(mol, delta)
                 self._hop()
                 out.write_log(f"New state: {self.active}")
                 hop = HoppingUpdater()
@@ -40,3 +41,5 @@ class FSSH(SurfaceHopping, key = "fssh"):
                 self.calculate_acceleration(mol)
             else:
                 self._nohop()
+                if self._reverse:
+                    self._reverse_velocity(mol, delta)

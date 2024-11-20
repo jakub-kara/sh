@@ -7,6 +7,7 @@ from updaters.coeff import BlochUpdater
 from updaters.tdc import TDCUpdater
 
 class unSMASH(SurfaceHopping, key = "unsmash"):
+    ''' Lawrence and Richardson's "unSMASH". Reduces to Mannouch and Richardson's "MASH" for two state case '''
     def __init__(self, **config):
         config["nuclear"]["pes"] = "bloch"
         config["quantum"]["coeff_upd"] = "bloch"

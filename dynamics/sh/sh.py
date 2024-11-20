@@ -72,8 +72,9 @@ class SurfaceHopping(Dynamics):
                 est.read(mol, mol)
                 est.reset_calc()
 
-            delta = normalise(mol.nacdr_ssad[self.active, self.target])
+            # check this works
             delta /= mol.mass_a[:,None]
+            delta = normalise(mol.nacdr_ssad[self.active, self.target])
         elif self._rescale == "eff":
             delta = normalise(self._get_eff_nac(mol))
         else:
@@ -81,7 +82,7 @@ class SurfaceHopping(Dynamics):
             delta = normalise(mol.vel_ad)
         return delta
 
-    def _avail_kinetic_energy(self, mol: Molecule):
+    def _avail_kinetic_energy(self, mol: Molecule, delta: np.ndarray):
         delta = self._get_delta(mol)
         a = np.einsum("ad, ad -> a", mol.vel_ad, delta)
         b = np.einsum("ad, ad -> a", delta, delta)
@@ -98,8 +99,31 @@ class SurfaceHopping(Dynamics):
     def _nohop(self):
         self._target = self.active
 
-    def _adjust_velocity(self, mol: Molecule):
-        delta = self._get_delta(mol)
+    def _adjust_velocity(self, mol: Molecule, delta: np.ndarray):
+        ediff = mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target]
+
+        # compute coefficients in the quadratic equation
+        a = 0.5 * np.sum(mol.mass_a[:, None] * delta * delta)
+        b = -np.sum(mol.mass_a[:, None] * mol.vel_ad * delta)
+        c = -ediff
+
+        # find the determinant
+        D = b**2 - 4 * a * c
+        if D < 0:
+            raise RuntimeError
+            # if self._reverse:
+            #     gamma = -b/a
+            # else:
+            #     gamma = 0
+        # choose the smaller solution of the two
+        elif b < 0:
+            gamma = -(b + np.sqrt(D)) / (2 * a)
+        elif b >= 0:
+            gamma = -(b - np.sqrt(D)) / (2 * a)
+
+        mol.vel_ad -= gamma * delta
+
+    def _reverse_velocity(self, mol: Molecule, delta: np.ndarray):
         ediff = mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target]
 
         # compute coefficients in the quadratic equation
@@ -111,15 +135,9 @@ class SurfaceHopping(Dynamics):
         D = b**2 - 4 * a * c
         if D < 0:
             # reverse if no real solution and flag set
-            if self._reverse:
-                gamma = -b/a
-            else:
-                gamma = 0
-        # choose the smaller solution of the two
-        elif b < 0:
-            gamma = -(b + np.sqrt(D)) / (2 * a)
-        elif b >= 0:
-            gamma = -(b - np.sqrt(D)) / (2 * a)
+            gamma = -b/a
+        else:
+            raise RuntimeError
 
         mol.vel_ad -= gamma * delta
 
