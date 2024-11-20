@@ -1,0 +1,43 @@
+{
+    "dynamics": {
+        "name": "ethylene",
+        "tunit": "au",
+        "tmax": 5000,
+        "dt": 10,
+        "enthresh": 1,
+        "method": "mce",
+        "type": "fssh",
+        "decoherence": "edc",
+        "initstate": 1
+    },
+    "nuclear": {
+        "input": "geom.xyz",
+        "nucupd": "vv"
+    },
+    "quantum": {
+        "tdcupd": "nacme",
+        "cupd": "propmat",
+        "nqsteps": 100
+    },
+    "electronic": {
+        "program": "molpro",
+        "path": "",
+        "type": "cas",
+        "states": [2,0,0],
+        "options": {
+            "basis": "6-31g**",
+            "closed": 7,
+            "active": 9,
+            "nel": 16,
+            "sa": 3,
+            "mld": false,
+            "df": false,
+            "dfbasis": "avdz"
+        }
+    },
+    "output": {
+        "file": "out",
+        "record": ["act", "pop", "pes", "pen", "ken", "ten"],
+        "timer": ["est", "qua", "tot", "sav", "wrt"]
+    }
+}

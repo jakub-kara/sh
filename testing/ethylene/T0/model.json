@@ -1,0 +1,43 @@
+{
+    "dynamics": {
+        "name": "ethylene",
+        "tunit": "au",
+        "tmax": 30,
+        "dt": 0.05,
+        "enthresh": 1,
+        "method": "fssh",
+        "prob": "tdc",
+        "decoherence": "edc",
+        "initstate": 0
+    },
+    "nuclear": {
+        "input": "model.xyz",
+        "nuc_upd": "vv"
+    },
+    "quantum": {
+        "tdc_upd": "nacme",
+        "coeff_upd": "tdc",
+        "n_substeps": 50
+    },
+    "electronic": {
+        "program": "model_1d",
+        "path": "",
+        "type": "sub_1",
+        "states": [2,0,0],
+        "options": {
+            "basis": "6-31g**",
+            "closed": 7,
+            "active": 9,
+            "nel": 16,
+            "sa": 3,
+            "mld": false,
+            "df": false,
+            "dfbasis": "avdz"
+        }
+    },
+    "output": {
+        "file": "out",
+        "record": ["act", "pop", "pes", "pen", "ken", "ten", "nacdt"],
+        "timer": ["est", "coe", "tdc", "tot", "sav", "wrt"]
+    }
+}
