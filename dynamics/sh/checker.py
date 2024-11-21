@@ -6,9 +6,12 @@ from updaters.coeff import CoeffUpdater
 from updaters.tdc import TDCUpdater
 
 class HoppingUpdater(Updater, metaclass = SingletonFactory):
-    def __init__(self, *, seed = 0, **config):
+    def __init__(self, *, seed = None, **config):
         super().__init__(**config)
-        self._seed = seed
+        if seed is None:
+            self._seed = np.random.default_rng().integers(9223372036854775807)
+        else:
+            self._seed = seed
         self._rng = np.random.default_rng(self._seed)
 
     def new_result(self, mol: Molecule, active: int):

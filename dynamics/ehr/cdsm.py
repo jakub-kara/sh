@@ -13,6 +13,7 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
 
         self._pointer = self._state
         self._coeff_co = None
+        self.__class__.calculate_acceleration = self.__class__._acc_csdm
 
     def prepare_traj(self, mol: MoleculeCSDM):
         super().prepare_traj(mol)
@@ -45,7 +46,8 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
                 continue
             tau[i] = 1 / np.abs(mol.ham_eig_ss[i,i] - mol.ham_eig_ss[self._pointer, self._pointer])
             tau[i] *= C + 4 * E0 / np.sum(mol.mass_a * np.einsum("ad, ad -> a", mol.vel_ad, norm[i])**2)
-        tau /= 100
+            # tau[i] *= C + 2 * E0 / mol.kinetic_energy
+
         print(f"pointer: {self._pointer}")
         print(f"tau: {tau}")
         return tau
@@ -64,8 +66,8 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
 
         self._swap_coeffs(mols)
         cupd.run(mols, self.dt)
-        mols[-1].coeff_co_s[:] = cupd.coeff.out
         self._swap_coeffs(mols)
+        mols[-1].coeff_co_s[:] = cupd.coeff.out
 
     def update_pointer(self, mols: list[MoleculeCSDM]):
         hop = HoppingUpdater()
@@ -91,14 +93,10 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
         mol.coeff_s[self._pointer] *= np.sqrt((1 - tot) / np.abs(mol.coeff_s[self._pointer])**2)
 
     def _swap_coeffs(self, mols: list[MoleculeCSDM]):
-        print(mols[-1].coeff_s)
-        print(mols[-1].coeff_co_s)
         for mol in mols:
             temp = mol.coeff_s.copy()
             mol.coeff_s[:] = mol.coeff_co_s
             mol.coeff_co_s[:] = temp
-        print(mols[-1].coeff_s)
-        print(mols[-1].coeff_co_s)
 
     def _check_min(self, mols: list[MoleculeCSDM]):
         def nac_sum(mol: MoleculeCSDM):
@@ -113,17 +111,16 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
     def _reset_coeff(self, mol: MoleculeCSDM):
         mol.coeff_co_s[:] = mol.coeff_s
 
-    def calculate_acceleration(self, mol: MoleculeCSDM):
+    def _acc_csdm(self, mol: MoleculeCSDM):
         super().calculate_acceleration(mol)
 
         fde = np.zeros_like(mol.acc_ad)
         vec = self.dec_vec(mol)
         tau = self.decay_time(mol, vec)
-        dmat = mol.dmat_ss
         for i in range(mol.n_states):
             if i == self._pointer:
                 continue
-            fde += dmat[i,i] / tau[i, self._pointer] * (mol.ham_eig_ss[i,i] - mol.ham_eig_ss[self._pointer, self._pointer]) / np.sum(vec[i, self._pointer] * mol.vel_ad)
+            fde += np.abs(mol.coeff_s[i])**2 / tau[i] * (mol.ham_eig_ss[i,i] - mol.ham_eig_ss[self._pointer, self._pointer]) / np.sum(vec[i] * mol.vel_ad) * vec[i]
         mol.acc_ad += fde / mol.mass_a[:, None]
 
     def adjust_nuclear(self, mols: list[MoleculeCSDM]):
