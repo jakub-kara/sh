@@ -73,8 +73,9 @@ class SurfaceHopping(Dynamics):
                 est.reset_calc()
 
             # check this works
+            delta = mol.nacdr_ssad[self.active, self.target]
             delta /= mol.mass_a[:,None]
-            delta = normalise(mol.nacdr_ssad[self.active, self.target])
+            delta = normalise(delta)
         elif self._rescale == "eff":
             delta = normalise(self._get_eff_nac(mol))
         else:
@@ -83,9 +84,9 @@ class SurfaceHopping(Dynamics):
         return delta
 
     def _avail_kinetic_energy(self, mol: Molecule, delta: np.ndarray):
-        a = np.einsum("ad, ad -> a", mol.vel_ad, delta)
-        b = np.einsum("ad, ad -> a", delta, delta)
-        return 0.5 * np.sum(mol.mass_a * a**2 / b)
+        a = np.einsum("ad, ad -> a", mol.vel_ad, delta/np.linalg.norm(delta))
+        # b = np.einsum("ad, ad -> a", delta, delta)
+        return 0.5 * np.sum(mol.mass_a * a**2)# / b)
 
     def _has_energy(self, mol: Molecule, delta: np.ndarray):
         return self._avail_kinetic_energy(mol,delta) + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] > 0
@@ -109,6 +110,7 @@ class SurfaceHopping(Dynamics):
         # find the determinant
         D = b**2 - 4 * a * c
         if D < 0:
+            print('Issue with rescaling...')
             raise RuntimeError
             # if self._reverse:
             #     gamma = -b/a
@@ -136,6 +138,7 @@ class SurfaceHopping(Dynamics):
             # reverse if no real solution and flag set
             gamma = -b/a
         else:
+            print('Issue with rescaling...')
             raise RuntimeError
 
         mol.vel_ad -= gamma * delta
