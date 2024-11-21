@@ -108,7 +108,7 @@ class Dynamics(metaclass = Factory):
         cupd.run(mols, self.dt)
         mols[-1].coeff_s = cupd.coeff.out
 
-    def _get_eff_nac(self, mol: Molecule):
+    def _eff_nac(self, mol: Molecule):
         nac_eff = np.zeros_like(mol.nacdr_ssad)
         for i in range(mol.n_states):
             for j in range(i):

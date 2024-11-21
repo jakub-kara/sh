@@ -15,8 +15,10 @@ class Bundle:
         bundle = Bundle()
         traj_dirs = [d for d in os.listdir() if (os.path.isdir(d) and d.isdigit())]
         for d in traj_dirs:
-            traj = Trajectory.load_step(f"{d}/backup/traj.pkl")
+            os.chdir(d)
+            traj = Trajectory.load_step(f"backup/traj.pkl")
             bundle.add_trajectory(traj)
+            os.chdir("..")
         return bundle
 
     @property
@@ -45,6 +47,7 @@ class Bundle:
         for traj in self._trajs:
             os.chdir(f"{traj.index}")
             traj.prepare_traj()
+            traj.write_outputs()
             os.chdir("..")
 
     def run_step(self):

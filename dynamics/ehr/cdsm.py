@@ -13,7 +13,6 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
 
         self._pointer = self._state
         self._coeff_co = None
-        self.__class__.calculate_acceleration = self.__class__._acc_csdm
 
     def prepare_traj(self, mol: MoleculeCSDM):
         super().prepare_traj(mol)
@@ -21,11 +20,12 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
 
     def dec_vec(self, mol: MoleculeCSDM):
         vec = np.zeros_like(mol.grad_sad)
+        nac = self._force_tensor(mol)
         for i in range(mol.n_states):
             if i == self._pointer:
                 continue
-            nac = mol.nacdr_ssad[i, self._pointer]
-            vec[i] = np.real(np.sum(mol.mom_ad * nac) / np.linalg.norm(nac) * nac) + mol.mom_ad
+            temp = nac[i, self._pointer]
+            vec[i] = np.real(np.sum(mol.mom_ad * temp) / np.linalg.norm(temp) * temp) + mol.mom_ad
         return vec
 
     def decay_time(self, mol: MoleculeCSDM, vec: np.ndarray = None):
@@ -100,10 +100,7 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
 
     def _check_min(self, mols: list[MoleculeCSDM]):
         def nac_sum(mol: MoleculeCSDM):
-            tot = 0
-            for i in range(mol.n_states):
-                tot += np.linalg.norm(mol.nacdr_ssad[i, self._pointer])
-            return tot
+            return np.sum(np.abs(mol.nacdt_ss[self._pointer,:]))
 
         temp = nac_sum(mols[-2])
         return (nac_sum(mols[-3]) > temp and nac_sum(mols[-1]) > temp)
@@ -111,7 +108,7 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
     def _reset_coeff(self, mol: MoleculeCSDM):
         mol.coeff_co_s[:] = mol.coeff_s
 
-    def _acc_csdm(self, mol: MoleculeCSDM):
+    def calculate_acceleration(self, mol: MoleculeCSDM):
         super().calculate_acceleration(mol)
 
         fde = np.zeros_like(mol.acc_ad)

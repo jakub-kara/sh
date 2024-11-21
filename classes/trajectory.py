@@ -75,7 +75,6 @@ class Trajectory:
 
     # TODO: find a better way of timing things
     def run_step(self):
-        self.write_outputs()
         self.next_step()
 
         out = Output()
@@ -112,6 +111,8 @@ class Trajectory:
         out.write_log(f"Total time:     {time.time() - t0} s")
         out.write_log("="*40)
         out.write_log()
+
+        self.write_outputs()
 
     def bind_components(self, *, electronic: dict, nuclear: dict, quantum: dict, output: dict, **config):
         self.bind_est(**electronic)
