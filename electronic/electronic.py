@@ -5,7 +5,7 @@ from classes.meta import SingletonFactory
 from classes.molecule import Molecule
 
 class ESTProgram(metaclass = SingletonFactory):
-    def __init__(self, *, states: list, program: str, type: str, path: str, options: dict, **config):
+    def __init__(self, *, states: list, program: str, type: str, path: str, options: dict, refen: float = 0, **config):
         self._path = path
         if isinstance(states, int):
             self._states = np.array([states])
@@ -14,6 +14,7 @@ class ESTProgram(metaclass = SingletonFactory):
         self._nstates = np.sum(self._states)
         self._natoms = None
         self._spinsum = np.cumsum(self._states) - self._states
+        self._refen = refen
 
         self._method = self._select_method(type)
         self._options = options
@@ -91,7 +92,7 @@ class ESTProgram(metaclass = SingletonFactory):
         os.chdir("est")
 
         mol.ham_dia_ss = self.read_ham()
-        mol.adjust_energy()
+        mol.adjust_energy(self._refen)
 
         if self.any_nacs():
             if ref is None:

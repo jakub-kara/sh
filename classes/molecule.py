@@ -12,7 +12,6 @@ class Molecule(metaclass = Factory):
         self.mass_a = None
         self.from_vxyz(input)
 
-        self._refen = None
         self.ham_eig_ss = np.zeros((n_states, n_states))
         self.ham_dia_ss = np.zeros((n_states, n_states), dtype=np.complex128)
         self.trans_ss = np.eye(n_states, dtype=np.complex128)
@@ -174,14 +173,9 @@ class Molecule(metaclass = Factory):
                 # nacmes antisymmetric
                 self.nacdr_ssad[s2,s1] = -self.nacdr_ssad[s1,s2]
 
-    def adjust_energy(self):
-        # set ground-state energy as 0 at first step
-        if self._refen is None:
-            # self._refen = self.ham_dia_ss[0,0]
-            self._refen = 0.
-        # adjust potential energy to be consistent
+    def adjust_energy(self, refen: float):
         for s in range(self.n_states):
-            self.ham_dia_ss[s,s] -= self._refen
+            self.ham_dia_ss[s,s] -= refen
 
     def diagonalise_ham(self):
         eval, evec = np.linalg.eigh(self.ham_dia_ss)
