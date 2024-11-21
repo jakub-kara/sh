@@ -65,9 +65,10 @@ class SimpleEhrenfest(Dynamics, key = "ehr"):
         inv_iner = np.linalg.inv(mol.inertia)
 
     def adjust_nuclear(self, mols: list[Molecule]):
-        mol = mols[-1]
-        print(f"Final pops: {np.abs(mol.coeff_s)**2}")
-        print(f"Check sum:  {np.sum(np.abs(mol.coeff_s)**2)}")
+        # mol = mols[-1]
+        # print(f"Final pops: {np.abs(mol.coeff_s)**2}")
+        # print(f"Check sum:  {np.sum(np.abs(mol.coeff_s)**2)}")
+        pass
 
     def prepare_traj(self, mol: Molecule):
         out = Output()
