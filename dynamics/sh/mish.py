@@ -48,7 +48,9 @@ class MISH(SurfaceHopping, key = "mish"):
                 est.read(mol)
                 self.calculate_acceleration(mol)
             else:
+                out.write_log("Hop failed")
                 if self._reverse:
+                    out.write_log(f"Reversing along vector = {self._rescale}")
                     self._reverse_velocity(mol, delta)
                 self._nohop()
 
