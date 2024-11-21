@@ -20,7 +20,7 @@ class SimpleEhrenfest(Dynamics, key = "ehr"):
         acctype = dynamics.get("force", "nac")
         if acctype == "nac":
             self.mode += "n"
-        self.__class__.calculate_acceleration = acctypes[acctype]
+        self.__class__._acc = acctypes[acctype]
 
     def potential_energy(self, mol: Molecule):
         poten = 0
@@ -36,6 +36,9 @@ class SimpleEhrenfest(Dynamics, key = "ehr"):
             est.add_ovlp()
         if "n" in mode:
             est.all_nacs()
+
+    def _acc(self, mol: Molecule):
+        pass
 
     def _acc_nac(self, mol: Molecule):
         mol.acc_ad[:] = 0
@@ -59,6 +62,9 @@ class SimpleEhrenfest(Dynamics, key = "ehr"):
                 force += 2 * np.real(mol.nacdt_ss[i,j] * mol.coeff_s[j].conj() * mol.coeff_s[i] * nac_eff_pre[i,j] / (np.sum(nac_eff_pre[i,j] * mol.vel_ad))) * mol.ham_eig_ss[i,i]
 
         mol.acc_ad = force / mol.mass_a[:,None]
+
+    def calculate_acceleration(self, mol: Molecule):
+        self._acc(mol)
 
     def _get_projector(self, mol: Molecule):
         proj = np.zeros((mol.n_atoms, mol.n_atoms, 3, 3))
