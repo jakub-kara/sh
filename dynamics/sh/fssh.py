@@ -12,14 +12,11 @@ class FSSH(SurfaceHopping, key = "fssh"):
         super().__init__(dynamics=dynamics, **config)
         HoppingUpdater(key = dynamics["prob"], **config["quantum"])
 
-    def update_quantum(self, mols: Molecule):
-        super().update_quantum(mols)
-        self.update_target(mols)
-
     def adjust_nuclear(self, mols: list[Molecule]):
         out = Output()
         mol = mols[-1]
-        self._decoherence(mol, self._dt)
+        self._decoherence(mol, self.dt)
+        self.update_target(mols, self.dt)
 
         out.write_log(f"target: {self.target} \t\tactive: {self.active}")
         # print(f"Final pops: {np.abs(mol.coeff_s)**2}")

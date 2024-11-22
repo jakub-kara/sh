@@ -20,13 +20,11 @@ class MISH(SurfaceHopping, key = "mish"):
 
         HoppingUpdater(key = "mish", **config["quantum"])
 
-    def update_quantum(self, mols: Molecule):
-        super().update_quantum(mols)
-        self.update_target(mols)
-
     def adjust_nuclear(self, mols: list[Molecule]):
         out = Output()
         mol = mols[-1]
+        self.update_target(mols, self.dt)
+
         #self._decoherence(mol, self._dt)
 
         out.write_log(f"target: {self.target} \t\tactive: {self.active}")
@@ -59,7 +57,7 @@ class MISH(SurfaceHopping, key = "mish"):
     def population(self, mol: Molecule, s: int):
         N = mol.n_states
         H_N = np.sum(1/(np.arange(N)+1))
-        a_N = (N-1)/(H_N-1) 
+        a_N = (N-1)/(H_N-1)
         return 1/N + a_N*(np.abs(mol.coeff_s[s])**2-1/N)
 
 

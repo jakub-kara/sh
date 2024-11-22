@@ -1,5 +1,5 @@
 import numpy as np
-from copy import copy, deepcopy
+from copy import deepcopy
 from classes.molecule import Molecule
 
 class Updater:
@@ -53,15 +53,15 @@ class UpdateResult:
         else:
             self._npa = False
             dtype = type(integrand)
-            self._inp = copy(integrand)
-            self.inter = np.zeros(n_substeps, dtype=dtype)
+            self._inp = deepcopy(integrand)
+            self.inter = np.empty(n_substeps, dtype=dtype)
 
     @property
     def inp(self):
         if self._npa:
             return self._inp.copy()
         else:
-            return copy(self._inp)
+            return deepcopy(self._inp)
 
     @property
     def out(self):

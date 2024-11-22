@@ -16,7 +16,7 @@ class unSMASH(SurfaceHopping, key = "unsmash"):
 
     def adjust_nuclear(self, mols: list[MoleculeBloch]):
         mol = mols[-1]
-        self.update_target(mols)
+        self.update_target(mols, self.dt)
 
         print(mol.bloch_n3)
         print(f"target: {self.target} \t\tactive: {self.active}")
@@ -50,14 +50,14 @@ class unSMASH(SurfaceHopping, key = "unsmash"):
         mol.bloch_n3[self.active, :] = None
         super().prepare_traj(mol)
 
-    def update_quantum(self, mols):
-        self.update_tdc(mols)
-        self.update_bloch(mols)
+    def update_quantum(self, mols, dt: float):
+        self.update_tdc(mols, dt)
+        self.update_bloch(mols, dt)
 
-    def update_bloch(self, mols: list[MoleculeBloch]):
+    def update_bloch(self, mols: list[MoleculeBloch], dt: float):
         bupd = BlochUpdater()
         bupd.elapsed(self.curr_step)
-        bupd.run(mols, self.dt, self.active)
+        bupd.run(mols, dt, self.active)
         mols[-1].bloch_n3 = bupd.bloch.out
 
     def _has_energy(self, mol: MoleculeBloch):

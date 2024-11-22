@@ -1,7 +1,9 @@
 import numpy as np
-from typing import Callable
 from .nuclear import NuclearUpdater
+from .updaters import UpdateResult
 from classes.molecule import Molecule
+from dynamics.dynamics import Dynamics
+from electronic.electronic import ESTProgram
 
 class RKNBase(NuclearUpdater):
     a = np.empty((1,1))
@@ -9,29 +11,45 @@ class RKNBase(NuclearUpdater):
     c = np.empty(1)
     d = np.empty(1)
 
-    def update(self, mols: list[Molecule], dt: float, fun: Callable):
+    def update(self, mols: list[Molecule], dt: float, dyn: Dynamics):
         # helper function for triangular numbers
         def tri(x):
-            return int(x*(x+1)/2)
+            return x * (x + 1) // 2
 
         mol = mols[-1]
-        temp = mol.copy_all()
-        # intermediate accelerations
-        all_acc = np.zeros((self.substeps, *mol.acc_ad.shape))
-        all_acc[0] = mol.acc_ad
+        dyn.calculate_acceleration(mol)
+        out = UpdateResult(mol, self.substeps)
 
+        out.inter[0] = mol
         # RKN integration substep-by-substep
         for i in range(1, self.substeps):
+            print(f"Substep {i}")
             # evaluate intermediate position and acceleration
-            temp.pos_ad = mol.pos_ad + dt*self.c[i]*mol.vel_ad + dt**2*np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], all_acc[:i])
-            fun(temp)
-            all_acc[i] = temp.acc_ad
+            out.inter[i] = mol.copy_all()
+            out.inter[i].pos_ad += dt * self.c[i] * mol.vel_ad + dt**2 * np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], [m.vel_ad for m in out.inter[:i]])
 
+            est = ESTProgram()
+            dyn.setup_est(mode = dyn.get_mode())
+            est.run(out.inter[i])
+            est.read(out.inter[i], ref = mol)
+            est.reset_calc()
+
+            arr = [mol, out.inter[i]]
+            dyn.update_quantum(arr, dyn.dt * self.c[i])
+            dyn.calculate_acceleration(out.inter[i])
+
+        print("Final Step")
         # find new position and velocity from all the substeps
-        temp.pos_ad = mol.pos_ad + dt*mol.vel_ad + dt**2*np.einsum("j,j...->...", self.b, all_acc)
-        temp.vel_ad = mol.vel_ad + dt*np.einsum("j,j...->...", self.d, all_acc)
+        temp = mol.copy_all()
+        temp.pos_ad += dt*mol.vel_ad + dt**2*np.einsum("j,j...->...", self.b, [i.acc_ad for i in out.inter])
+        temp.vel_ad += dt*np.einsum("j,j...->...", self.d, [i.acc_ad for i in out.inter])
+
         # calculate new acceleration
-        fun(temp)
+        est = ESTProgram()
+        dyn.setup_est(mode = dyn.get_mode())
+        est.run(temp)
+        est.read(temp, ref = mol)
+        est.reset_calc()
 
         return temp
 
@@ -48,6 +66,17 @@ class RKN4(RKNBase, key = "rkn4"):
     c = np.array([0,    1/3,    2/3,    1])
     b = np.array([13/120,   3/10,   3/40,   1/60])
     d = np.array([1/8,      3/8,    3/8,    1/8])
+
+class RKN4b(RKNBase, key = "rkn4b"):
+    substeps = 3
+    a = np.array([
+        1/8,
+        0,
+        1/2
+    ])
+    c = np.array([0, 1/2, 1])
+    b = np.array([1/6, 1/3, 0])
+    d = np.array([1/6, 2/3, 1/6])
 
 class RKN6(RKNBase, key = "rkn6"):
     substeps = 7
