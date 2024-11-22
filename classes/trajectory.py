@@ -215,6 +215,10 @@ class Trajectory:
             if rec == "coeff":
                 for s in range(self.n_states):
                     dic[rec] += Printer.write(f'{s} State Coeff', f" <{Printer.field_length*2+1}")
+            if rec == "pos1":
+                dic[rec] += Printer.write('Pos[0,0] [au]', "s")
+            if rec == "mom1":
+                dic[rec] += Printer.write('Mom[0,0] [au]', "s")
 
         dic = self._dyn.dat_header(dic, record)
         return dic
@@ -250,6 +254,10 @@ class Trajectory:
             if rec == "coeff":
                 for s in range(self.n_states):
                     dic[rec] += Printer.write(self.mol.coeff_s[s], "z")
+            if rec == "pos1":
+                dic[rec] += Printer.write(self.mol.pos_ad[0,0], "f")
+            if rec == "mom1":
+                dic[rec] += Printer.write(self.mol.mom_ad[0,0], "f")
 
         dic = self._dyn.dat_dict(dic, record)
         return dic
