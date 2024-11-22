@@ -12,13 +12,13 @@ from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
 
 class Trajectory:
-    def __init__(self, *, dynamics, **config):
+    def __init__(self, *, dynamics: dict, **config):
         self.mols: list[Molecule] = []
-        self._dyn: Dynamics = Dynamics(key = dynamics["method"], dynamics=dynamics, **config)
+        self.dyn: Dynamics = Dynamics(key = dynamics["method"], dynamics=dynamics, **config)
 
         self.index = None
         self._split = None
-
+        self._backup = dynamics.get("backup", True)
         self.bind_components(dynamics=dynamics, **config)
 
     @property
@@ -62,56 +62,58 @@ class Trajectory:
         out.to_log("../" + sys.argv[1])
         out.write_log("="*40)
         out.write_log(f"Initialising trajectory")
-        out.write_log(f"Step:           {self._dyn.curr_step}")
-        out.write_log(f"Time:           {self._dyn.curr_time} fs")
+        out.write_log(f"Step:           {self.dyn.curr_step}")
+        out.write_log(f"Time:           {self.dyn.curr_time} fs")
         out.write_log()
 
         self.write_headers()
         t0 = time.time()
-        self._dyn.prepare_traj(self.mol)
+        self.dyn.prepare_traj(self.mol)
         out.write_log(f"Total time:     {time.time() - t0} s")
         out.write_log("="*40)
         out.write_log()
 
     # TODO: find a better way of timing things
     def run_step(self):
-        self.write_outputs()
         self.next_step()
 
         out = Output()
         out.write_log("="*40)
-        out.write_log(f"Step:           {self._dyn.curr_step}")
-        out.write_log(f"Time:           {self._dyn.curr_time} fs")
+        out.write_log(f"Step:           {self.dyn.curr_step}")
+        out.write_log(f"Time:           {self.dyn.curr_time} fs")
         out.write_log()
 
         t0 = time.time()
         out.write_log(f"Nuclear + EST")
-        self.add_molecule(self._dyn.update_nuclear(self.mols))
+        self.add_molecule(self.dyn.update_nuclear(self.mols, self.dyn.dt))
         out.write_log(f"Wall time:      {time.time() - t0} s")
         out.write_log()
 
         t1 = time.time()
         out.write_log(f"Quantum")
-        self._dyn.update_quantum(self.mols)
+        self.dyn.update_quantum(self.mols, self.dyn.dt)
         out.write_log(f"Wall time:      {time.time() - t1} s")
         out.write_log()
 
         t2 = time.time()
         out.write_log(f"Adjust")
         self.pop_molecule(0)
-        self._dyn.adjust_nuclear(self.mols)
+        self.dyn.adjust_nuclear(self.mols)
         out.write_log(f"Wall time:      {time.time() - t2} s")
         out.write_log()
 
-        t3 = time.time()
-        out.write_log(f"Saving")
-        self.save_step()
-        out.write_log(f"Wall time:      {time.time() - t3} s")
-        out.write_log()
+        if self._backup:
+            t3 = time.time()
+            out.write_log(f"Saving")
+            self.save_step()
+            out.write_log(f"Wall time:      {time.time() - t3} s")
+            out.write_log()
 
         out.write_log(f"Total time:     {time.time() - t0} s")
         out.write_log("="*40)
         out.write_log()
+
+        self.write_outputs()
 
     def bind_components(self, *, electronic: dict, nuclear: dict, quantum: dict, output: dict, **config):
         self.bind_est(**electronic)
@@ -149,7 +151,7 @@ class Trajectory:
         # self.bind_timers(output["timer"])
 
     def total_energy(self, mol: Molecule):
-        return self._dyn.potential_energy(mol) + mol.kinetic_energy
+        return self.dyn.potential_energy(mol) + mol.kinetic_energy
 
     # These two are quite hacky, could improve
     def save_step(self):
@@ -185,7 +187,7 @@ class Trajectory:
         out.write_xyz(self.xyz_string())
 
     def next_step(self):
-        self._dyn.next_step()
+        self.dyn.next_step()
 
     def dat_header(self, record):
         dic = {}
@@ -220,25 +222,25 @@ class Trajectory:
             if rec == "mom1":
                 dic[rec] += Printer.write('Mom[0,0] [au]', "s")
 
-        dic = self._dyn.dat_header(dic, record)
+        dic = self.dyn.dat_header(dic, record)
         return dic
 
     def dat_dict(self, record):
         dic = {}
-        dic["time"] = Printer.write(self._dyn.curr_time * Constants.au2fs, "f")
+        dic["time"] = Printer.write(self.dyn.curr_time * Constants.au2fs, "f")
         for rec in record:
             dic[rec] = ""
             if rec == "pop":
                 for s in range(self.n_states):
                     # dic[rec] += Printer.write(np.abs(self.mol.coeff_s[s])**2, "f")
-                    dic[rec] += Printer.write(self._dyn.population(self.mol, s), "f")
+                    dic[rec] += Printer.write(self.dyn.population(self.mol, s), "f")
             if rec == "pes":
                 for s in range(self.n_states):
                     dic[rec] += Printer.write(self.mol.ham_eig_ss[s,s] * Constants.eh2ev, "f")
             if rec == "ken":
                 dic[rec] += Printer.write(self.mol.kinetic_energy * Constants.eh2ev, "f")
             if rec == "pen":
-                dic[rec] += Printer.write(self._dyn.potential_energy(self.mol) * Constants.eh2ev, "f")
+                dic[rec] += Printer.write(self.dyn.potential_energy(self.mol) * Constants.eh2ev, "f")
             if rec == "ten":
                 dic[rec] += Printer.write(self.total_energy(self.mol) * Constants.eh2ev, "f")
             if rec == "nacdr":
@@ -259,7 +261,7 @@ class Trajectory:
             if rec == "mom1":
                 dic[rec] += Printer.write(self.mol.mom_ad[0,0], "f")
 
-        dic = self._dyn.dat_dict(dic, record)
+        dic = self.dyn.dat_dict(dic, record)
         return dic
 
     def xyz_string(self):
@@ -283,8 +285,8 @@ class Trajectory:
     def h5_dict(self):
         mol = self.mol
         to_write = {
-            "step": self._dyn.curr_step,
-            "time": self._dyn.curr_time,
+            "step": self.dyn.curr_step,
+            "time": self.dyn.curr_time,
             "pos": mol.pos_ad,
             "vel": mol.vel_ad,
             "acc": mol.acc_ad,

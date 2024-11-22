@@ -88,27 +88,27 @@ class Dynamics(metaclass = Factory):
     def setup_est(self, mode: str = ""):
         pass
 
-    def update_nuclear(self, mols: list[Molecule]):
+    def update_nuclear(self, mols: list[Molecule], dt: float):
         nupd = NuclearUpdater()
-        return nupd.update(mols, self.dt, self)
+        return nupd.update(mols, dt, self)
 
-    def update_quantum(self, mols: list[Molecule]):
-        self.update_tdc(mols)
-        self.update_coeff(mols)
+    def update_quantum(self, mols: list[Molecule], dt: float):
+        self.update_tdc(mols, dt)
+        self.update_coeff(mols, dt)
 
-    def update_tdc(self, mols: list[Molecule]):
+    def update_tdc(self, mols: list[Molecule], dt: float):
         tdcupd = TDCUpdater()
         tdcupd.elapsed(self.curr_step)
-        tdcupd.run(mols, self.dt)
+        tdcupd.run(mols, dt)
         mols[-1].nacdt_ss = tdcupd.tdc.out
 
-    def update_coeff(self, mols: list[Molecule]):
+    def update_coeff(self, mols: list[Molecule], dt: float):
         cupd = CoeffUpdater()
         cupd.elapsed(self.curr_step)
-        cupd.run(mols, self.dt)
+        cupd.run(mols, dt)
         mols[-1].coeff_s = cupd.coeff.out
 
-    def _get_eff_nac(self, mol: Molecule):
+    def _eff_nac(self, mol: Molecule):
         nac_eff = np.zeros_like(mol.nacdr_ssad)
         for i in range(mol.n_states):
             for j in range(i):

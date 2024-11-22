@@ -77,7 +77,7 @@ class SurfaceHopping(Dynamics):
             delta /= mol.mass_a[:,None]
             delta = normalise(delta)
         elif self._rescale == "eff":
-            delta = normalise(self._get_eff_nac(mol))
+            delta = normalise(self._eff_nac(mol))
         else:
             # rescale uniformly
             delta = normalise(mol.vel_ad)
@@ -165,10 +165,10 @@ class SurfaceHopping(Dynamics):
         out.write_log("\n")
         super().prepare_traj(mol)
 
-    def update_target(self, mols: list[Molecule]):
+    def update_target(self, mols: list[Molecule], dt: float):
         hop = HoppingUpdater()
         hop.elapsed(self._step)
-        hop.run(mols, self._dt, self.active)
+        hop.run(mols, dt, self.active)
         self._target = hop.hop.out
 
     def dat_header(self, dic: dict, record: list):

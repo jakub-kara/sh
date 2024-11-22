@@ -15,8 +15,10 @@ class Bundle:
         bundle = Bundle()
         traj_dirs = [d for d in os.listdir() if (os.path.isdir(d) and d.isdigit())]
         for d in traj_dirs:
-            traj = Trajectory.load_step(f"{d}/backup/traj.pkl")
+            os.chdir(d)
+            traj = Trajectory.load_step(f"backup/traj.pkl")
             bundle.add_trajectory(traj)
+            os.chdir("..")
         return bundle
 
     @property
@@ -29,7 +31,7 @@ class Bundle:
         return self
 
     def set_active(self):
-        self._iactive = np.argmin([traj._dyn.curr_time for traj in self._trajs])
+        self._iactive = np.argmin([traj.dyn.curr_time for traj in self._trajs])
         self._active = self._trajs[self._iactive]
         return self
 
@@ -37,7 +39,7 @@ class Bundle:
         traj = Trajectory(**config)
         self.add_trajectory(traj)
         with open("events.log", "w") as f:
-            f.write(f"Trajectory 0 initiated at time = {traj._dyn.curr_time}")
+            f.write(f"Trajectory 0 initiated at time = {traj.dyn.curr_time}")
         self.prepare_trajs()
         return self
 
@@ -45,6 +47,7 @@ class Bundle:
         for traj in self._trajs:
             os.chdir(f"{traj.index}")
             traj.prepare_traj()
+            traj.write_outputs()
             os.chdir("..")
 
     def run_step(self):
@@ -70,7 +73,7 @@ class Bundle:
 
     @property
     def is_finished(self):
-        return np.all([traj._dyn.is_finished for traj in self._trajs])
+        return np.all([traj.dyn.is_finished for traj in self._trajs])
 
     def edit(self, attr, val):
         for traj in self._trajs:
