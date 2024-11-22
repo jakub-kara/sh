@@ -26,7 +26,7 @@ class RKNBase(NuclearUpdater):
             print(f"Substep {i}")
             # evaluate intermediate position and acceleration
             out.inter[i] = mol.copy_all()
-            out.inter[i].pos_ad += dt * self.c[i] * mol.vel_ad + dt**2 * np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], [m.vel_ad for m in out.inter[:i]])
+            out.inter[i].pos_ad += dt * self.c[i] * mol.vel_ad + dt**2 * np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], [m.acc_ad for m in out.inter[:i]])
 
             est = ESTProgram()
             dyn.setup_est(mode = dyn.get_mode())
@@ -41,8 +41,8 @@ class RKNBase(NuclearUpdater):
         print("Final Step")
         # find new position and velocity from all the substeps
         temp = mol.copy_all()
-        temp.pos_ad += dt*mol.vel_ad + dt**2*np.einsum("j,j...->...", self.b, [i.acc_ad for i in out.inter])
-        temp.vel_ad += dt*np.einsum("j,j...->...", self.d, [i.acc_ad for i in out.inter])
+        temp.pos_ad += dt * mol.vel_ad + dt**2 * np.einsum("j,j...->...", self.b, [m.acc_ad for m in out.inter])
+        temp.vel_ad += dt * np.einsum("j,j...->...", self.d, [m.acc_ad for m in out.inter])
 
         # calculate new acceleration
         est = ESTProgram()
