@@ -30,6 +30,12 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
                 return s
         return active
 
+class NoHoppingUpdater(HoppingUpdater, key = "none"):
+    steps = 1
+
+    def update(self, mols, dt, *args, **kwargs):
+        self.hop.fill()
+
 class TDCHoppingChecker(Multistage, HoppingUpdater, key = "tdc"):
     ''' CLASSIC TULLY '''
     steps = 1

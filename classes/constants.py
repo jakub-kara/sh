@@ -67,11 +67,11 @@ class Constants:
     }
 
     def convert(inp: str):
-        data = inp.split(" ", maxsplit=1)
+        data = inp.split(" ")
         if len(data) == 1:
             val = float(data)
-            unit = None
+            return val
         else:
-            val, unit = data
-            val = float(val)
+            val = float(data[0])
+
 

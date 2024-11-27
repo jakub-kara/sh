@@ -76,7 +76,7 @@ class UpdateResult:
 
     def fill(self):
         self.inter[:] = self.inp
-        self.out[:] = self.inp
+        self.out = self.inp
 
     # janky, maybe rework
     def interpolate(self, frac: float):

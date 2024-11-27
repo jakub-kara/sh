@@ -34,8 +34,7 @@ class RKNBase(NuclearUpdater):
             est.read(out.inter[i], ref = mol)
             est.reset_calc()
 
-            arr = [mol, out.inter[i]]
-            dyn.update_quantum(arr, dyn.dt * self.c[i])
+            dyn.update_quantum(mols + [temp], dyn.dt * self.c[i])
             dyn.calculate_acceleration(out.inter[i])
 
         print("Final Step")

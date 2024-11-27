@@ -1,7 +1,7 @@
 import numpy as np
 import os, sys
 
-from electronic.electronic import ESTProgram
+from .electronic import ESTProgram
 from classes.constants import Constants
 
 class Molpro(ESTProgram, key = "molpro"):

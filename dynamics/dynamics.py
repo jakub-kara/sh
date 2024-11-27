@@ -3,6 +3,7 @@ from classes.meta import Factory
 from classes.molecule import Molecule
 from classes.constants import Constants
 from classes.out import Output
+from classes.timestep import Timestep
 from updaters.nuclear import NuclearUpdater
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
@@ -18,15 +19,16 @@ class Dynamics(metaclass = Factory):
             "au": 1,
         }[dynamics.get("tunit", "au")]
 
-        self._dt = dynamics["dt"] * tconv
-        self._dtmax = self._dt
+        self._timestep = Timestep(
+            key = dynamics.get("timestep", "const"),
+            dt = dynamics["dt"] * tconv,
+            steps=1,
+            **config)
         self._end = dynamics["tmax"] * tconv
         self._time = 0
         self._step = 0
         self._enthresh = dynamics.get("enthresh", 1000)
-
-        self._stepok = True
-
+        breakpoint()
 
     @property
     def is_finished(self):
@@ -34,7 +36,7 @@ class Dynamics(metaclass = Factory):
 
     @property
     def dt(self):
-        return self._dt
+        return self._timestep.dt
 
     @property
     def curr_step(self):
@@ -113,7 +115,10 @@ class Dynamics(metaclass = Factory):
         for i in range(mol.n_states):
             for j in range(i):
                 diff = mol.grad_sad[i] - mol.grad_sad[j]
-                alpha = (mol.nacdt_ss[i,j] - np.sum(diff * mol.vel_ad)) / np.sum(mol.vel_ad**2)
+                if np.abs(mol.nacdt_ss[i,j]) < 1e-5:
+                    alpha = 0
+                else:
+                    alpha = (mol.nacdt_ss[i,j] - np.sum(diff * mol.vel_ad)) / np.sum(mol.vel_ad**2)
                 nac_eff[i,j] = diff + alpha * mol.vel_ad
                 nac_eff[j,i] = -nac_eff[i,j]
         return nac_eff

@@ -52,13 +52,13 @@ class Model1D(ESTProgram, key = "model_1d"):
                 self._nacdr[s1,s2] /= self._hameig[s2,s2] - self._hameig[s1,s1]
 
     def read_ham(self):
-        return self._hameig
+        return self._hameig.copy()
 
     def read_grad(self):
-        return self._grad
+        return self._grad.copy()
 
     def read_nac(self):
-        return self._nacdr
+        return self._nacdr.copy()
 
     def read_ovlp(self):
         raise NotImplementedError
