@@ -47,7 +47,11 @@ class Bundle:
         for traj in self._trajs:
             os.chdir(f"{traj.index}")
             traj.prepare_traj()
+            traj.dyn.next_step()
+            traj.dyn._timestep.success()
             traj.write_outputs()
+            if traj._backup:
+                traj.save_step()
             os.chdir("..")
 
     def run_step(self):

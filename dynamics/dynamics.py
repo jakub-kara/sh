@@ -28,7 +28,6 @@ class Dynamics(metaclass = Factory):
         self._time = 0
         self._step = 0
         self._enthresh = dynamics.get("enthresh", 1000)
-        breakpoint()
 
     @property
     def is_finished(self):
@@ -50,16 +49,9 @@ class Dynamics(metaclass = Factory):
     def en_thresh(self):
         return self.en_thresh
 
-    @property
-    def step_ok(self):
-        return self._stepok
-
     def next_step(self):
         self._time += self.dt
         self._step += 1
-
-    def check_energy(self, energy_diff):
-        self._stepok = energy_diff < self._enthresh
 
     def calculate_acceleration(self, mol: Molecule):
         raise NotImplementedError

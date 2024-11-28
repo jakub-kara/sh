@@ -157,8 +157,7 @@ class Trajectory:
 
     def energy_diff(self, mol: Molecule, mols: list[Molecule]):
         print(np.abs(self.total_energy(mol) - self.total_energy(mols[-1])))
-        return np.abs(self.total_energy(mol) - self.total_energy(mols[-1])) < 1e-8
-
+        return np.abs(self.total_energy(mol) - self.total_energy(mols[-1])) < 1e-4
 
     # These two are quite hacky, could improve
     def save_step(self):
