@@ -79,10 +79,18 @@ class Trajectory:
         out = Output()
         out.write_log("="*40)
         out.write_log(f"Step:           {self.dyn.curr_step}")
-        out.write_log(f"Time:           {self.dyn.curr_time} fs")
+        out.write_log(f"Time:           {self.dyn.curr_time * Constants.au2fs:.4f} fs")
         out.write_log()
 
         t0 = time.time()
+        if self._backup:
+            t3 = time.time()
+            out.write_log(f"Saving")
+            self.save_step()
+            out.write_log(f"Wall time:      {time.time() - t3} s")
+            out.write_log()
+
+        t1 = time.time()
         out.write_log(f"Nuclear + EST")
         temp = self.dyn.update_nuclear(self.mols, self.dyn.dt)
 
@@ -93,7 +101,7 @@ class Trajectory:
         self.add_molecule(temp)
         self.pop_molecule(0)
 
-        out.write_log(f"Wall time:      {time.time() - t0} s")
+        out.write_log(f"Wall time:      {time.time() - t1} s")
         out.write_log()
 
         t2 = time.time()
@@ -102,15 +110,9 @@ class Trajectory:
         out.write_log(f"Wall time:      {time.time() - t2} s")
         out.write_log()
 
+        self.write_outputs()
         self.next_step()
         self.dyn._timestep.success()
-        self.write_outputs()
-        if self._backup:
-            t3 = time.time()
-            out.write_log(f"Saving")
-            self.save_step()
-            out.write_log(f"Wall time:      {time.time() - t3} s")
-            out.write_log()
 
         out.write_log(f"Total time:     {time.time() - t0} s")
         out.write_log("="*40)

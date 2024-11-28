@@ -5,9 +5,6 @@ from .electronic import ESTProgram
 from classes.constants import Constants
 
 class Molpro(ESTProgram, key = "molpro"):
-    def __init__(self, **config):
-        super().__init__(**config)
-
     def _select_method(self, key):
         methods = {
             "cas": self.cas,
