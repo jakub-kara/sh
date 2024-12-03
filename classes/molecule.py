@@ -1,7 +1,7 @@
 import numpy as np
 from copy import deepcopy
 from classes.meta import Factory
-from classes.constants import Constants
+from classes.constants import convert, atomic_masses
 
 class Molecule(metaclass = Factory):
     def __init__(self, *, n_states: int, input="geom.xyz", **config):
@@ -62,8 +62,12 @@ class Molecule(metaclass = Factory):
                     line_list = line.split()
                     if len(line_list) > 0:
                         assert len(line_list) == 4, "wrong xyz file format"
-                        name.append(line_list[0])
-                        mass.append(Constants.atomic_masses[line_list[0].split('_')[0]]*Constants.amu)
+                        temp = line_list[0].split('_')
+                        name.append(temp[0])
+                        if len(temp) > 1:
+                            mass.append(convert(float(temp[1]), "amu", "au"))
+                        else:
+                            mass.append(convert(atomic_masses[temp[0].upper()], "amu", "au"))
                         pos.append([float(num.replace('d', 'e')) for num in line_list[1:4]])
 
             self.pos_ad = np.array(pos)
@@ -75,7 +79,7 @@ class Molecule(metaclass = Factory):
 
     def to_xyz(self):
         outstr = f"{self.n_atoms}\n\n"
-        pos = self.pos_ad * Constants.bohr2A
+        pos = convert(self.pos_ad, "au", "aa")
         name = self.name_a.astype("<U2")
         for i in range(self.n_atoms):
             outstr += f"{name[i]} {pos[i,0]} {pos[i,1]} {pos[i,2]}\n"
@@ -96,8 +100,12 @@ class Molecule(metaclass = Factory):
                     line_list = line.split()
                     if len(line_list) > 0:
                         assert len(line_list) == 7, "wrong xyz file format"
-                        name.append(line_list[0])
-                        mass.append(Constants.atomic_masses[line_list[0].split('_')[0]]*Constants.amu)
+                        temp = line_list[0].split('_')
+                        name.append(temp[0])
+                        if len(temp) > 1:
+                            mass.append(convert(float(temp[1]), "amu", "au"))
+                        else:
+                            mass.append(convert(atomic_masses[temp[0].upper()], "amu", "au"))
                         pos.append([float(num.replace('d', 'e')) for num in line_list[1:4]])
                         vel.append([float(num.replace('d', 'e')) for num in line_list[4:7]])
 
@@ -110,8 +118,8 @@ class Molecule(metaclass = Factory):
 
     def to_vxyz(self):
         outstr = f"{self.n_atoms}\n\n"
-        pos = self.pos_ad * Constants.bohr2A
-        vel = self.vel_ad * Constants.bohr2A / Constants.au2fs
+        pos = convert(self.pos_ad, "au", "aa")
+        vel = convert(self.vel_ad, "au", "aa fs^-1")
         name = self.name_a.astype("<U2")
         for i in range(self.n_atoms):
             outstr += f"{name[i]} {pos[i,0]} {pos[i,1]} {pos[i,2]} {vel[i,0]} {vel[i,1]} {vel[i,2]}\n"

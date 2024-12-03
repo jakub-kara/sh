@@ -1,30 +1,24 @@
 import numpy as np
 from classes.meta import Factory
 from classes.molecule import Molecule
-from classes.constants import Constants
 from classes.out import Output
+from classes.constants import convert
 from classes.timestep import Timestep
 from updaters.nuclear import NuclearUpdater
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
 from electronic.electronic import ESTProgram
 
-# TODO: move Control to Dynamics
 class Dynamics(metaclass = Factory):
     mode = ""
 
     def __init__(self, *, dynamics: dict, **config: dict):
-        tconv = {
-            "fs": 1/Constants.au2fs,
-            "au": 1,
-        }[dynamics.get("tunit", "au")]
-
         self._timestep = Timestep(
             key = dynamics.get("timestep", "const"),
-            dt = dynamics["dt"] * tconv,
+            dt = convert(dynamics["dt"], "au"),
             steps=1,
             **config)
-        self._end = dynamics["tmax"] * tconv
+        self._end = convert(dynamics["tmax"], "au")
         self._time = 0
         self._step = 0
         self._enthresh = dynamics.get("enthresh", 1000)

@@ -1,8 +1,6 @@
 import numpy as np
 import os, shutil
 from classes.trajectory import Trajectory
-from classes.out import Printer
-from classes.constants import Constants
 
 class Bundle:
     def __init__(self):

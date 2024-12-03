@@ -4,7 +4,7 @@ import time
 from copy import deepcopy
 from .molecule import Molecule
 from .out import Printer, Output
-from .constants import Constants
+from .constants import convert
 from .meta import Singleton
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
@@ -79,7 +79,7 @@ class Trajectory:
         out = Output()
         out.write_log("="*40)
         out.write_log(f"Step:           {self.dyn.curr_step}")
-        out.write_log(f"Time:           {self.dyn.curr_time * Constants.au2fs:.4f} fs")
+        out.write_log(f"Time:           {convert(self.dyn.curr_time, 'au', 'fs'):.4f} fs")
         out.write_log()
 
         t0 = time.time()
@@ -152,7 +152,6 @@ class Trajectory:
 
     def bind_io(self, **output):
         Output(**output)
-        # self.bind_timers(output["timer"])
 
     def total_energy(self, mol: Molecule):
         return self.dyn.potential_energy(mol) + mol.kinetic_energy
@@ -180,6 +179,7 @@ class Trajectory:
             Singleton.restore(traj._single)
         out = Output()
         out.open_log()
+        out.write_log("Restarting from pickle file.")
         return traj
 
     def write_headers(self):
@@ -238,7 +238,7 @@ class Trajectory:
 
     def dat_dict(self, record):
         dic = {}
-        dic["time"] = Printer.write(self.dyn.curr_time * Constants.au2fs, "f")
+        dic["time"] = Printer.write(convert(self.dyn.curr_time, "au", "fs"), "f")
         for rec in record:
             dic[rec] = ""
             if rec == "pop":
@@ -247,13 +247,13 @@ class Trajectory:
                     dic[rec] += Printer.write(self.dyn.population(self.mol, s), "f")
             if rec == "pes":
                 for s in range(self.n_states):
-                    dic[rec] += Printer.write(self.mol.ham_eig_ss[s,s] * Constants.eh2ev, "f")
+                    dic[rec] += Printer.write(convert(self.mol.ham_eig_ss[s,s], "au", "ev"), "f")
             if rec == "ken":
-                dic[rec] += Printer.write(self.mol.kinetic_energy * Constants.eh2ev, "f")
+                dic[rec] += Printer.write(convert(self.mol.kinetic_energy, "au", "ev"), "f")
             if rec == "pen":
-                dic[rec] += Printer.write(self.dyn.potential_energy(self.mol) * Constants.eh2ev, "f")
+                dic[rec] += Printer.write(convert(self.dyn.potential_energy(self.mol), "au", "ev"), "f")
             if rec == "ten":
-                dic[rec] += Printer.write(self.total_energy(self.mol) * Constants.eh2ev, "f")
+                dic[rec] += Printer.write(convert(self.total_energy(self.mol), "au", "ev"), "f")
             if rec == "nacdr":
                 for s1 in range(self.n_states):
                     for s2 in range(s1):

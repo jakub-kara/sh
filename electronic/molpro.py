@@ -2,7 +2,7 @@ import numpy as np
 import os, sys
 
 from .electronic import ESTProgram
-from classes.constants import Constants
+from classes.constants import multiplets, convert
 
 class Molpro(ESTProgram, key = "molpro"):
     def _select_method(self, key):
@@ -237,7 +237,7 @@ class Molpro(ESTProgram, key = "molpro"):
                 if line.startswith("!mcscf state") and "energy" in line:
                     data = line.split()
                     if len(data) == 5: spin = 0
-                    else: spin = Constants.multiplets[data[-3]]
+                    else: spin = multiplets[data[-3]]
                     state = int(data[2].split(".")[0]) - 1
                     for s in range(spin+1):
                         temp = self._spinsum[spin] + state + s
@@ -430,7 +430,7 @@ class Molpro(ESTProgram, key = "molpro"):
         """
         # write double_ao geometry
 
-        comb_geom = np.vstack((geom1*Constants.bohr2A, geom2*Constants.bohr2A + 1e-5))
+        comb_geom = np.vstack((convert(geom1, "au", "aa"), convert(geom2, "au", "aa") + 1e-5))
 
         comb_atom = np.hstack((atoms, atoms))
 

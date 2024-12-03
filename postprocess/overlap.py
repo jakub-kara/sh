@@ -4,7 +4,7 @@ from functools import cache
 from bisect import bisect_right
 import h5py
 import os
-from classes.constants import Constants
+from classes.constants import convert, atomic_widths
 
 def get_dirs(loc=".", cond=lambda x : True):
     return [d for d in os.listdir(loc) if (os.path.isdir(d) and not d.startswith(".") and cond(d))]
@@ -28,12 +28,12 @@ class View:
     @property
     def nst(self):
         return self.amp.shape[0]
-    
+
     @property
     def mom(self):
         return self.vel * self.mass[:,None]
 
-    @property    
+    @property
     def tdc(self):
         return np.einsum("ad, ijad -> ij", self.vel, self.nac)
 
@@ -64,11 +64,11 @@ class Traj:
 
     def is_active(self, time: float):
         return time >= self.time[0] and time <= self.time[-1]
-    
+
     def read_data(self, file: str, t_start: float = 0):
         with h5py.File(file, "r") as f:
             atoms = f["info/ats"][:].astype("<U2")
-            self.wid = np.array([Constants.atomic_widths[at] for at in atoms])
+            self.wid = np.array([atomic_widths[at] for at in atoms])
             self.mass = f["info/mass"][:]
 
             keys = [key for key in f.keys()]
@@ -80,7 +80,7 @@ class Traj:
                     continue
 
                 self.time.append(time)
-                
+
                 self.pos.append(f[f"{step}/pos"][:])
                 self.vel.append(f[f"{step}/vel"][:])
                 self.acc.append(f[f"{step}/acc"][:])
@@ -95,7 +95,7 @@ class Traj:
     def to_array(self):
         self.time = np.array(self.time)
         self.wei = np.zeros_like(self.time)
-        
+
         self.pos = np.array(self.pos)
         self.vel = np.array(self.vel)
         self.acc = np.array(self.acc)
@@ -106,10 +106,10 @@ class Traj:
         self.nac = np.array(self.nac)
         self.phs = np.array(self.phs)
         return self
-        
+
     def _interpolate(self, vals, frac: float):
         return frac * vals[0] + (1 - frac) * vals[1]
-    
+
     def _slerp(self, vals, frac: float):
         n = vals[0].shape[0]
         temp0 = np.array([np.real(vals[0]), np.imag(vals[0])]).flatten()
@@ -127,15 +127,15 @@ class Traj:
 
         ind = bisect_right(self.time, time)
         frac = (self.time[ind] - time)/(self.time[ind] - self.time[ind-1])
-        
+
         view = View()
         view.wid = self.wid
         view.mass = self.mass
-        
+
         view.pos = self._interpolate(self.pos[ind-1:ind+1], frac)
         view.vel = self._interpolate(self.vel[ind-1:ind+1], frac)
         view.acc = self._interpolate(self.acc[ind-1:ind+1], frac)
-        
+
         # view.amp = self._interpolate(self.amp[ind-1:ind+1], frac)
         # view.amp /= np.sqrt(np.sum(np.abs(view.amp)**2))
         view.amp = self._interpolate(self.amp[ind-1:ind+1], frac)
@@ -151,10 +151,10 @@ class Bundle:
         self.disabled = False
         self.trajs: list[Traj] = []
         self.clone: list[Cloning] = []
-    
+
     def __getitem__(self, key):
         return self.trajs[key]
-    
+
     @property
     def n_traj(self):
         return len(self.trajs)
@@ -162,7 +162,7 @@ class Bundle:
     def add_traj(self, traj: Traj):
         self.trajs.append(traj)
         return self
-    
+
     def read_data(self):
         with open("clone.log") as file:
             for i, line in enumerate(file):
@@ -170,8 +170,8 @@ class Bundle:
                     self.clone.append(Cloning(0, 0, 0, 0))
                     continue
                 data = line.strip().split()
-                self.clone.append(Cloning(float(data[0]) / Constants.au2fs, int(data[2]), int(data[4]), float(data[5])))
-                
+                self.clone.append(Cloning(float(data[0]), int(data[2]), int(data[4]), float(data[5])))
+
         for i, dr in enumerate(get_dirs()):
             os.chdir(dr)
             self.add_traj(Traj().read_data("data/out.h5", self.clone[i].time).to_array())
@@ -185,18 +185,18 @@ class Ensemble:
 
     def __getitem__(self, key):
         return self.bunds[key]
-    
+
     @property
     def n_bund(self):
         return len(self.bunds)
-    
+
     def get_trajs(self, time: float):
         return [traj for bund in self.bunds for traj in bund.trajs if traj.is_active(time)]
 
     def add_bundle(self, bund: Bundle):
         self.bunds.append(bund)
         return self
-    
+
     def read_data(self):
         for dr in get_dirs():
             os.chdir(dr)
@@ -245,19 +245,19 @@ class Ensemble:
         print(np.einsum("i,j,ij->", wei_fin.conj(), wei_fin, ovl_ini))
         # print(ovl_ini)
         # print(np.sum(np.abs(wei_fin)**2))
-        
+
         def ham(frac):
             return (1 - frac) * ham_ini + frac * ham_fin
 
         def ovl(frac):
             return (1 - frac) * ovl_ini + frac * ovl_fin
-        
+
         def ddt(frac):
             return (1 - frac) * ddt_ini + frac * ddt_fin
 
         def func(frac, y):
             return -np.linalg.inv(ovl(frac)) @ (1j*ham(frac) + ddt(frac)) @ y
-        
+
         k1 = func(0, wei_fin)
         k2 = func(1/2, wei_fin + dt*k1/2)
         k3 = func(1/2, wei_fin + dt*k2/2)
@@ -294,7 +294,7 @@ def main():
         wei = ens.propagate_weights(wei, t, t+10)
         print()
     breakpoint()
-        
+
 # TODO: vectorise
 def ele_ovl(t1: View, t2: View):
     return np.eye(t1.nst)
@@ -327,18 +327,18 @@ def nuc_del(t1: View, t2: View):
 def nuc_del2(t1: View, t2: View):
     dpos = t2.pos - t1.pos
     mmom = (t1.mom + t2.mom)/2
-    res = 2j * np.sum(t1.wid[:,None] * dpos * mmom) 
+    res = 2j * np.sum(t1.wid[:,None] * dpos * mmom)
     res -= 3 * np.sum(t1.wid)
-    res += np.sum(t1.wid[:,None]**2 * dpos**2) 
+    res += np.sum(t1.wid[:,None]**2 * dpos**2)
     res -= np.sum(mmom**2)
     res *= nuc_ovl(t1, t2)
-    return res 
+    return res
 
 # include masses more efficiently
 def nuc_ke(t1: View, t2: View):
     dpos = t2.pos - t1.pos
     mmom = (t1.mom + t2.mom)/2
-    res = 2j * np.sum(t1.wid[:,None] * dpos * mmom / t1.mass[:,None]) 
+    res = 2j * np.sum(t1.wid[:,None] * dpos * mmom / t1.mass[:,None])
     res -= np.sum(t1.wid / t1.mass)
     res += np.sum(t1.wid[:,None]**2 * dpos**2 / t1.mass[:,None])
     res -= np.sum(mmom**2 / t1.mass[:,None])
