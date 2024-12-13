@@ -1,8 +1,6 @@
 import numpy as np
 import os, shutil
 from classes.trajectory import Trajectory
-from classes.out import Printer
-from classes.constants import Constants
 
 class Bundle:
     def __init__(self):
@@ -48,6 +46,7 @@ class Bundle:
             os.chdir(f"{traj.index}")
             traj.prepare_traj()
             traj.write_outputs()
+            traj.next_step()
             os.chdir("..")
 
     def run_step(self):

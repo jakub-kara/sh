@@ -3,9 +3,10 @@ import os
 from abc import ABC, abstractmethod
 from classes.meta import SingletonFactory
 from classes.molecule import Molecule
+from classes.constants import convert
 
 class ESTProgram(metaclass = SingletonFactory):
-    def __init__(self, *, states: list, program: str, type: str, path: str, options: dict, refen: float = 0, **config):
+    def __init__(self, *, states: list, program: str, type: str, path: str, options: dict, refen = 0, **config):
         self._path = path
         if isinstance(states, int):
             self._states = np.array([states])
@@ -14,7 +15,7 @@ class ESTProgram(metaclass = SingletonFactory):
         self._nstates = np.sum(self._states)
         self._natoms = None
         self._spinsum = np.cumsum(self._states) - self._states
-        self._refen = refen
+        self._refen = convert(refen, "au")
 
         self._method = self._select_method(type)
         self._options = options

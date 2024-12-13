@@ -1,9 +1,10 @@
 import numpy as np
 import sys, pickle
 import time
+from copy import deepcopy
 from .molecule import Molecule
 from .out import Printer, Output
-from .constants import Constants
+from .constants import convert
 from .meta import Singleton
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
@@ -75,33 +76,13 @@ class Trajectory:
 
     # TODO: find a better way of timing things
     def run_step(self):
-        self.next_step()
-
         out = Output()
         out.write_log("="*40)
         out.write_log(f"Step:           {self.dyn.curr_step}")
-        out.write_log(f"Time:           {self.dyn.curr_time} fs")
+        out.write_log(f"Time:           {convert(self.dyn.curr_time, 'au', 'fs'):.4f} fs")
         out.write_log()
 
         t0 = time.time()
-        out.write_log(f"Nuclear + EST")
-        self.add_molecule(self.dyn.update_nuclear(self.mols, self.dyn.dt))
-        out.write_log(f"Wall time:      {time.time() - t0} s")
-        out.write_log()
-
-        t1 = time.time()
-        out.write_log(f"Quantum")
-        self.dyn.update_quantum(self.mols, self.dyn.dt)
-        out.write_log(f"Wall time:      {time.time() - t1} s")
-        out.write_log()
-
-        t2 = time.time()
-        out.write_log(f"Adjust")
-        self.pop_molecule(0)
-        self.dyn.adjust_nuclear(self.mols)
-        out.write_log(f"Wall time:      {time.time() - t2} s")
-        out.write_log()
-
         if self._backup:
             t3 = time.time()
             out.write_log(f"Saving")
@@ -109,11 +90,34 @@ class Trajectory:
             out.write_log(f"Wall time:      {time.time() - t3} s")
             out.write_log()
 
+        t1 = time.time()
+        out.write_log(f"Nuclear + EST")
+        temp = self.dyn.update_nuclear(self.mols, self.dyn.dt)
+
+        valid = self.dyn._timestep.validate(self.energy_diff(temp, self.mols))
+        if not valid:
+            self.dyn._timestep.fail()
+            return
+        self.add_molecule(temp)
+        self.pop_molecule(0)
+
+        out.write_log(f"Wall time:      {time.time() - t1} s")
+        out.write_log()
+
+        t2 = time.time()
+        out.write_log(f"Adjust")
+        self.dyn.adjust_nuclear(self.mols)
+        out.write_log(f"Wall time:      {time.time() - t2} s")
+        out.write_log()
+
+        self.write_outputs()
+        self.next_step()
+        self.dyn._timestep.success()
+
         out.write_log(f"Total time:     {time.time() - t0} s")
         out.write_log("="*40)
         out.write_log()
 
-        self.write_outputs()
 
     def bind_components(self, *, electronic: dict, nuclear: dict, quantum: dict, output: dict, **config):
         self.bind_est(**electronic)
@@ -148,10 +152,13 @@ class Trajectory:
 
     def bind_io(self, **output):
         Output(**output)
-        # self.bind_timers(output["timer"])
 
     def total_energy(self, mol: Molecule):
         return self.dyn.potential_energy(mol) + mol.kinetic_energy
+
+    def energy_diff(self, mol: Molecule, mols: list[Molecule]):
+        print(np.abs(self.total_energy(mol) - self.total_energy(mols[-1])))
+        return np.abs(self.total_energy(mol) - self.total_energy(mols[-1])) < 1e-4
 
     # These two are quite hacky, could improve
     def save_step(self):
@@ -172,6 +179,7 @@ class Trajectory:
             Singleton.restore(traj._single)
         out = Output()
         out.open_log()
+        out.write_log("Restarting from pickle file.")
         return traj
 
     def write_headers(self):
@@ -188,6 +196,9 @@ class Trajectory:
 
     def next_step(self):
         self.dyn.next_step()
+
+    def copy(self):
+        return deepcopy(self)
 
     def dat_header(self, record):
         dic = {}
@@ -227,7 +238,7 @@ class Trajectory:
 
     def dat_dict(self, record):
         dic = {}
-        dic["time"] = Printer.write(self.dyn.curr_time * Constants.au2fs, "f")
+        dic["time"] = Printer.write(convert(self.dyn.curr_time, "au", "fs"), "f")
         for rec in record:
             dic[rec] = ""
             if rec == "pop":
@@ -236,13 +247,13 @@ class Trajectory:
                     dic[rec] += Printer.write(self.dyn.population(self.mol, s), "f")
             if rec == "pes":
                 for s in range(self.n_states):
-                    dic[rec] += Printer.write(self.mol.ham_eig_ss[s,s] * Constants.eh2ev, "f")
+                    dic[rec] += Printer.write(convert(self.mol.ham_eig_ss[s,s], "au", "ev"), "f")
             if rec == "ken":
-                dic[rec] += Printer.write(self.mol.kinetic_energy * Constants.eh2ev, "f")
+                dic[rec] += Printer.write(convert(self.mol.kinetic_energy, "au", "ev"), "f")
             if rec == "pen":
-                dic[rec] += Printer.write(self.dyn.potential_energy(self.mol) * Constants.eh2ev, "f")
+                dic[rec] += Printer.write(convert(self.dyn.potential_energy(self.mol), "au", "ev"), "f")
             if rec == "ten":
-                dic[rec] += Printer.write(self.total_energy(self.mol) * Constants.eh2ev, "f")
+                dic[rec] += Printer.write(convert(self.total_energy(self.mol), "au", "ev"), "f")
             if rec == "nacdr":
                 for s1 in range(self.n_states):
                     for s2 in range(s1):
