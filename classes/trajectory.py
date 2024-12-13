@@ -202,7 +202,7 @@ class Trajectory:
 
     def dat_header(self, record):
         dic = {}
-        dic["time"] = " " + Printer.write("Time [fs]", "s")
+        dic["time"] = "#" + Printer.write("Time [fs]", "s")
         for rec in record:
             dic[rec] = ""
             if rec == "pop":
@@ -228,10 +228,18 @@ class Trajectory:
             if rec == "coeff":
                 for s in range(self.n_states):
                     dic[rec] += Printer.write(f'{s} State Coeff', f" <{Printer.field_length*2+1}")
-            if rec == "pos1":
+            if rec == "posx":
                 dic[rec] += Printer.write('Pos[0,0] [au]', "s")
-            if rec == "mom1":
+            if rec == "momx":
                 dic[rec] += Printer.write('Mom[0,0] [au]', "s")
+            if rec == "posy":
+                dic[rec] += Printer.write('Pos[0,1] [au]', "s")
+            if rec == "momy":
+                dic[rec] += Printer.write('Mom[0,1] [au]', "s")
+            if rec == "posz":
+                dic[rec] += Printer.write('Pos[0,2] [au]', "s")
+            if rec == "momz":
+                dic[rec] += Printer.write('Mom[0,2] [au]', "s")
 
         dic = self.dyn.dat_header(dic, record)
         return dic
@@ -267,10 +275,18 @@ class Trajectory:
             if rec == "coeff":
                 for s in range(self.n_states):
                     dic[rec] += Printer.write(self.mol.coeff_s[s], "z")
-            if rec == "pos1":
+            if rec == "posx":
                 dic[rec] += Printer.write(self.mol.pos_ad[0,0], "f")
-            if rec == "mom1":
+            if rec == "momx":
                 dic[rec] += Printer.write(self.mol.mom_ad[0,0], "f")
+            if rec == "posy":
+                dic[rec] += Printer.write(self.mol.pos_ad[0,1], "f")
+            if rec == "momy":
+                dic[rec] += Printer.write(self.mol.mom_ad[0,1], "f")
+            if rec == "posz":
+                dic[rec] += Printer.write(self.mol.pos_ad[0,2], "f")
+            if rec == "momz":
+                dic[rec] += Printer.write(self.mol.mom_ad[0,2], "f")
 
         dic = self.dyn.dat_dict(dic, record)
         return dic
