@@ -3,7 +3,7 @@ import sys
 import matplotlib.pyplot as plt
 import pickle
 import scipy
-from classes.constants import Constants
+import classes.constants 
 from classes.molecule import Molecule
 from electronic.electronic import ESTProgram
 
@@ -134,11 +134,10 @@ class VC(ESTProgram, key = "vcham"):
         DDR += self.lamb       
 
         # have to deal with the definitial factor of 1/2 for on-nuclear-diagonal gamma and mu
-        half_on_diag = 1-0.5*np.eye(self.no_f)
-        H +=  np.einsum('ijk,i,j->k',self.gamma*half_on_diag[:,:,None],disp,disp) * In
-        DDR += 2 * np.einsum('ijk,i->jk',self.gamma*half_on_diag[:,:,None],disp)[:,:,None] * In[None,:,:]
-        H += np.einsum('ijkl,i,j->kl',self.mu*half_on_diag[:,:,None,None],disp,disp)
-        DDR += 2 * np.einsum('ijkl,i->jkl',self.mu*half_on_diag[:,:,None,None],disp)
+        H += 0.5 * np.einsum('ijk ,i,j->k  ',self.gamma,disp,disp) * In
+        DDR +=     np.einsum('ijk ,i  ->jk ',self.gamma,disp)[:,:,None] * In[None,:,:]
+        H += 0.5 * np.einsum('ijkl,i,j->kl ',self.mu   ,disp,disp)
+        DDR +=     np.einsum('ijkl,i  ->jkl',self.mu   ,disp)
         
         eham,eddr = self.calc_explicit(disp)
         H += eham
@@ -160,7 +159,7 @@ class VC(ESTProgram, key = "vcham"):
         for i in range(len(self.expl)):
 
             v1,j1,k1,a = self.expl[i]
-            v = float(v1)/Constants.eh2ev
+            v = float(v1)/classes.constants.units['ev']
             j = int(j1)-1
             k = int(k1)-1
 
@@ -258,13 +257,13 @@ class VC(ESTProgram, key = "vcham"):
 
         # definitionally, on-diagonal gamma terms are defined with a factor of a half in the potential
 
-        self.omega       /= Constants.eh2ev
-        self.epsilon     /= Constants.eh2ev
-        self.eta         /= Constants.eh2ev
-        self.kappa       /= Constants.eh2ev
-        self.gamma       /= Constants.eh2ev
-        self.lamb        /= Constants.eh2ev
-        self.mu          /= Constants.eh2ev
+        self.omega       /= classes.constants.units['ev']
+        self.epsilon     /= classes.constants.units['ev']
+        self.eta         /= classes.constants.units['ev']
+        self.kappa       /= classes.constants.units['ev']
+        self.gamma       /= classes.constants.units['ev']
+        self.lamb        /= classes.constants.units['ev']
+        self.mu          /= classes.constants.units['ev']
 
         self.initiated = True
 
