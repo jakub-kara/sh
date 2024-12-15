@@ -15,7 +15,6 @@ multiplets = {
     "quintet": 4,
 }
 
-<<<<<<< Updated upstream
 # conversion from au to *keyword*
 units = {
     "au": 1,
