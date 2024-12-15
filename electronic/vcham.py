@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import types
 import matplotlib.pyplot as plt
 import pickle
 import scipy
@@ -7,6 +8,12 @@ import classes.constants
 from classes.molecule import Molecule
 from electronic.electronic import ESTProgram
 
+def to_xyz(self):
+    outstr = ''
+    for i in range(self.n_atoms):
+        outstr += f"{self.pos_ad[i,0]:18.12f} {self.pos_ad[i,1]:18.12f} {self.pos_ad[i,2]:18.12f} "
+    outstr += '\n'
+    return outstr
 
 class VC(ESTProgram, key = "vcham"):
     r'''
@@ -35,20 +42,19 @@ We also note that a vibronic coupling model is a *diabatic* hamiltonian. The thr
 
 For reference
 
-$i,j                     $ index the electronic states
-$\alpha,\beta            $ index the normal mode coordinates
-$\epsilon_{i}            $ are constant on-diagonal terms, representing excitation energies
-$\eta_{ij}               $ are constant off-diagonal terms, generally representing spin-orbit couplings
-$\omega_\alpha           $ are the harmonic frequencies, which define the coordinate system
-$\kappa_\alpha^i         $ are the on-diagonal linear terms, which shift the minima of each state in each DOF
-$\lambda_\alpha^{ij}     $ are the off-diagonal linear terms, which describe the coupling between states 
-$\gamma_{\alpha\beta}^i  $ are on-diagonal quadratic (and bi-linear) terms. The quadratic terms modulate the frequencies of the individual states, the bi-linear terms change the potential based on two correlated states
-$\mu{\alpha\beta}^{ij}   $ are off-diagonal quadratic (and bi-linear) terms, which couple the states based on two displacements
+$i,j                     $ index the electronic states, 
+$\alpha,\beta            $ index the normal mode coordinates, 
+$\epsilon_{i}            $ are constant on-diagonal terms, representing excitation energies, 
+$\eta_{ij}               $ are constant off-diagonal terms, generally representing spin-orbit couplings, 
+$\omega_\alpha           $ are the harmonic frequencies, which define the coordinate system, 
+$\kappa_\alpha^i         $ are the on-diagonal linear terms, which shift the minima of each state in each DOF, 
+$\lambda_\alpha^{ij}     $ are the off-diagonal linear terms, which describe the coupling between states , 
+$\gamma_{\alpha\beta}^i  $ are on-diagonal quadratic (and bi-linear) terms. The quadratic terms modulate the frequencies of the individual states, the bi-linear terms change the potential based on two correlated states, 
+$\mu{\alpha\beta}^{ij}   $ are off-diagonal quadratic (and bi-linear) terms, which couple the states based on two displacements, 
 
-Be careful here, especially with the bi-linear terms. We use a factor of 1/2 in keeping with VCHAM, but be aware that our sum of $\beta$ is not truncated, and so we have both $\omega_1\omega_2$ and $\omega_2\omega_1$ terms
+Be careful here, especially with the bi-linear terms. We use a factor of 1/2 in keeping with VCHAM, but be aware that our sum of $\beta$ is not truncated to $\beta>\alpha$, and so we have both $\omega_1\omega_2$ and $\omega_2\omega_1$ terms. 
 
-Finally, we note that we can make use of "inactive modes" physically. These amount to removing one of the normal mode displacements. To do this, set the inactive_mode[i] variable to True for the index you want to be inactive. 
-
+Finally, we note that we can make use of "inactive modes" physically. These amount to removing one of the normal mode displacements. To do this, set the inactive_mode[i] variable to True for the index you want to be inactive. This can be done in the options section of the input file
 
     '''
     def __init__(self, **config):
@@ -116,6 +122,8 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         self.trans = evec
         self.hameig = np.diag(eval)
 
+
+
     def write(self, mol: Molecule):
         # This is a little bit tricky..
         # Everything internally in the code is in standard bohr. But we want to run the internals in mass-frequency weighted coordinates Q = \sqrt{m\omega} x
@@ -129,6 +137,7 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         self.disp[self.inactive_modes] = 0.
         if not self.initiated:
             self.read_vcham_file(self.file)
+            mol.to_xyz = types.MethodType(to_xyz,mol)
         self.disp *= np.sqrt(self.omega)
         self.get_energy()
         self.grad[:,self.inactive_modes] = 0.
