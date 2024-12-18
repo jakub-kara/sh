@@ -117,13 +117,14 @@ class Dynamics(metaclass = Factory):
 
     def split_mol(self, mol: Molecule):
         out1 = deepcopy(mol)
-        out1.coeff_s[:] = 0
-        out1.coeff_s[self.split] = mol.coeff_s[self.split]
+        out1.coeff_s[self.split] = 0
         out1.coeff_s /= np.sqrt(np.sum(np.abs(out1.coeff_s)**2))
 
         out2 = deepcopy(mol)
-        out2.coeff_s[self.split] = 0
+        out2.coeff_s[:] = 0
+        out2.coeff_s[self.split] = mol.coeff_s[self.split]
         out2.coeff_s /= np.sqrt(np.sum(np.abs(out2.coeff_s)**2))
+
         return out1, out2
 
     def dat_header(self, dic: dict, record: list):

@@ -37,14 +37,14 @@ def read_params(file: str):
 
 def read_ensemble():
     itraj = 0
-    for dr in get_dirs():
+    for dr in sorted(get_dirs()):
         os.chdir(dr)
         print(os.getcwd())
         itraj = read_bundle(itraj)
         os.chdir("..")
 
 def read_bundle(itraj: int):
-    for dr in get_dirs():
+    for dr in sorted(get_dirs()):
         os.chdir(dr)
         print(f"  {os.getcwd()}, {itraj}")
         read_traj("data/out.h5", itraj)
@@ -72,6 +72,16 @@ def read_traj(file: str, itraj: int):
             tdc[step, itraj] = f[f"{step}/nacdt"][:]
 
             # phs[step, itraj] = f[f"{step}/phase"][()]
+
+def set_active():
+    itraj = 0
+    for bund in get_dirs():
+        os.chdir(bund)
+        act[:, itraj] = True
+        with open("events.log", "r"):
+            pass
+        trajs = len(get_dirs())
+        os.chdir("..")
 
 # TODO: vectorise
 def ele_ovl(t1: View, t2: View):
@@ -191,6 +201,6 @@ act = np.zeros((n_step, n_traj), dtype=bool)
 
 read_params("T0/0/data/out.h5")
 read_ensemble()
-
+set_active()
 
 breakpoint()
