@@ -52,9 +52,12 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
         print(f"tau: {tau}")
         return tau
 
+    def steps_elapsed(self, steps):
+        super().steps_elapsed(steps)
+        HoppingUpdater().elapsed(steps)
+
     def update_coeff(self, mols: list[MoleculeCSDM], dt: float):
         cupd = CoeffUpdater()
-        cupd.elapsed(self.curr_step)
         cupd.run(mols, dt)
         mols[-1].coeff_s[:] = cupd.coeff.out
 
@@ -66,7 +69,6 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
     def update_pointer(self, mols: list[MoleculeCSDM], dt: float):
         hop = HoppingUpdater()
         self._swap_coeffs(mols)
-        hop.elapsed(self._step)
         hop.run(mols, dt, self._pointer)
         self._pointer = hop.hop.out
         self._swap_coeffs(mols)
@@ -114,10 +116,10 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
             fde += np.abs(mol.coeff_s[i])**2 / tau[i] * (mol.ham_eig_ss[i,i] - mol.ham_eig_ss[self._pointer, self._pointer]) / np.sum(vec[i] * mol.vel_ad) * vec[i]
         mol.acc_ad += fde / mol.mass_a[:, None]
 
-    def adjust_nuclear(self, mols: list[MoleculeCSDM]):
+    def adjust_nuclear(self, mols: list[MoleculeCSDM], dt: float):
         mol = mols[-1]
-        self.update_pointer(mols, self.dt)
-        self._decoherence_csdm(mol, self.dt)
+        self.update_pointer(mols, dt)
+        self._decoherence_csdm(mol, dt)
 
         if self._check_min(mols):
             self._reset_coeff(mol)
@@ -127,4 +129,4 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
         print(f"Check sum co:     {np.sum(np.abs(mol.coeff_co_s)**2)}")
         print(f"Pop co: {np.abs(mol.coeff_co_s)**2}")
 
-        super().adjust_nuclear(mols)
+        super().adjust_nuclear(mols, dt)

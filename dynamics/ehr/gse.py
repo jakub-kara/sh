@@ -6,7 +6,7 @@ from electronic.electronic import ESTProgram
 class GSE(SimpleEhrenfest, key = "gse"):
     mode = "g"
 
-    def adjust_nuclear(self, mols: list[Molecule]):
+    def adjust_nuclear(self, mols: list[Molecule], dt: float):
         mol = mols[-1]
         print(f"Final pops: {np.abs(mol.coeff_s)**2}")
         print(f"Check sum:  {np.sum(np.abs(mol.coeff_s)**2)}")

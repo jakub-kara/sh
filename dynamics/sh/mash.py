@@ -2,6 +2,7 @@ import numpy as np
 from .sh import SurfaceHopping
 from .checker import HoppingUpdater
 from classes.molecule import MoleculeBloch
+from classes.timestep import Timestep
 from electronic.electronic import ESTProgram
 from updaters.coeff import BlochUpdater
 from updaters.tdc import TDCUpdater
@@ -14,7 +15,7 @@ class unSMASH(SurfaceHopping, key = "unsmash"):
         super().__init__(**config)
         HoppingUpdater(key = "mash", **config["quantum"])
 
-    def adjust_nuclear(self, mols: list[MoleculeBloch]):
+    def adjust_nuclear(self, mols: list[MoleculeBloch], dt: float):
         mol = mols[-1]
         self.update_target(mols, self.dt)
 
@@ -50,14 +51,17 @@ class unSMASH(SurfaceHopping, key = "unsmash"):
         mol.bloch_n3[self.active, :] = None
         super().prepare_traj(mol)
 
-    def update_quantum(self, mols, dt: float):
-        self.update_tdc(mols, dt)
-        self.update_bloch(mols, dt)
+    def steps_elapsed(self, steps: int):
+        super().steps_elapsed(steps)
+        BlochUpdater().elapsed(steps)
 
-    def update_bloch(self, mols: list[MoleculeBloch], dt: float):
-        bupd = BlochUpdater(n_substeps=50)
-        bupd.elapsed(self.curr_step)
-        bupd.run(mols, dt, self.active)
+    def update_quantum(self, mols, timestep: Timestep):
+        self.update_tdc(mols, timestep)
+        self.update_bloch(mols, timestep)
+
+    def update_bloch(self, mols: list[MoleculeBloch], timestep: Timestep):
+        bupd = BlochUpdater()
+        bupd.run(mols, timestep.dt, self.active)
         mols[-1].bloch_n3 = bupd.bloch.out
 
     def _has_energy(self, mol: MoleculeBloch):

@@ -18,7 +18,7 @@ class BCMF(SimpleEhrenfest, key = "bcmf"):
             out.write_log("Chose non-reflected group")
         return r < tot
 
-    def adjust_nuclear(self, mols: list[Molecule]):
+    def adjust_nuclear(self, mols: list[Molecule], dt: float):
         out = Output()
         mol = mols[-1]
         nst = mol.n_states
@@ -34,9 +34,9 @@ class BCMF(SimpleEhrenfest, key = "bcmf"):
             else:
                 eta[s] = 1e-10
 
-        avg_mom = mol.mom_ad + self.dt * mol.force_ad
+        avg_mom = mol.mom_ad + dt * mol.force_ad
         mom_old = np.einsum("s, ad -> sad", eta, mol.mom_ad)
-        mom_new = mom_old - self.dt * mol.grad_sad
+        mom_new = mom_old - dt * mol.grad_sad
 
         refl_avg = np.sum(mol.mom_ad * mol.force_ad) * np.sum(avg_mom * mol.force_ad) < 0
         out.write_log(f"MF      - reflect: {refl_avg}")

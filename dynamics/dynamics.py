@@ -3,8 +3,6 @@ from copy import deepcopy
 from classes.meta import Factory
 from classes.molecule import Molecule
 from classes.out import Output
-from classes.constants import convert
-from classes.timestep import Timestep
 from updaters.nuclear import NuclearUpdater
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
@@ -14,41 +12,7 @@ class Dynamics(metaclass = Factory):
     mode = ""
 
     def __init__(self, *, dynamics: dict, **config: dict):
-        self._timestep = Timestep(
-            key = dynamics.get("timestep", "const"),
-            dt = convert(dynamics["dt"], "au"),
-            steps=1,
-            **config)
-        self._end = convert(dynamics["tmax"], "au")
-        self._time = 0
-        self._step = 0
-        self._enthresh = dynamics.get("enthresh", 1000)
-
         self.split = None
-
-    @property
-    def is_finished(self):
-        return self._time > self._end
-
-    @property
-    def dt(self):
-        return self._timestep.dt
-
-    @property
-    def curr_step(self):
-        return self._step
-
-    @property
-    def curr_time(self):
-        return self._time
-
-    @property
-    def en_thresh(self):
-        return self.en_thresh
-
-    def next_step(self):
-        self._time += self.dt
-        self._step += 1
 
     def calculate_acceleration(self, mol: Molecule):
         raise NotImplementedError
@@ -73,7 +37,7 @@ class Dynamics(metaclass = Factory):
         est.reset_calc()
 
     # might have a better name
-    def adjust_nuclear(self, mol: Molecule):
+    def adjust_nuclear(self, mol: Molecule, dt: float):
         raise NotImplementedError
 
     def get_mode(self):
@@ -81,6 +45,10 @@ class Dynamics(metaclass = Factory):
 
     def setup_est(self, mode: str = ""):
         pass
+
+    def steps_elapsed(self, steps: int):
+        TDCUpdater().elapsed(steps)
+        CoeffUpdater().elapsed(steps)
 
     def update_nuclear(self, mols: list[Molecule], dt: float):
         nupd = NuclearUpdater()
@@ -92,13 +60,11 @@ class Dynamics(metaclass = Factory):
 
     def update_tdc(self, mols: list[Molecule], dt: float):
         tdcupd = TDCUpdater()
-        tdcupd.elapsed(self.curr_step)
         tdcupd.run(mols, dt)
         mols[-1].nacdt_ss = tdcupd.tdc.out
 
     def update_coeff(self, mols: list[Molecule], dt: float):
         cupd = CoeffUpdater()
-        cupd.elapsed(self.curr_step)
         cupd.run(mols, dt)
         mols[-1].coeff_s = cupd.coeff.out
 
@@ -117,14 +83,13 @@ class Dynamics(metaclass = Factory):
 
     def split_mol(self, mol: Molecule):
         out1 = deepcopy(mol)
-        out1.coeff_s[self.split] = 0
+        out1.coeff_s[:] = 0
+        out1.coeff_s[self.split] = mol.coeff_s[self.split]
         out1.coeff_s /= np.sqrt(np.sum(np.abs(out1.coeff_s)**2))
 
         out2 = deepcopy(mol)
-        out2.coeff_s[:] = 0
-        out2.coeff_s[self.split] = mol.coeff_s[self.split]
+        out2.coeff_s[self.split] = 0
         out2.coeff_s /= np.sqrt(np.sum(np.abs(out2.coeff_s)**2))
-
         return out1, out2
 
     def dat_header(self, dic: dict, record: list):
@@ -132,3 +97,6 @@ class Dynamics(metaclass = Factory):
 
     def dat_dict(self, dic: dict, record: list):
         return dic
+
+    def h5_dict(self):
+        return {}

@@ -20,7 +20,7 @@ class MISH(SurfaceHopping, key = "mish"):
 
         HoppingUpdater(key = "mish", **config["quantum"])
 
-    def adjust_nuclear(self, mols: list[Molecule]):
+    def adjust_nuclear(self, mols: list[Molecule], dt: float):
         out = Output()
         mol = mols[-1]
         self.update_target(mols, self.dt)

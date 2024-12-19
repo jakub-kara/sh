@@ -29,7 +29,7 @@ class Bundle:
         return self
 
     def set_active(self):
-        self._iactive = np.argmin([traj.dyn.curr_time for traj in self._trajs])
+        self._iactive = np.argmin([traj.curr_time for traj in self._trajs])
         self._active = self._trajs[self._iactive]
         return self
 
@@ -64,14 +64,28 @@ class Bundle:
             shutil.copytree(f"{self._iactive}", f"{self.n_traj}", dirs_exist_ok=True)
             with open("events.log", "a") as f:
                 temp = np.sum(np.abs(self._active.mol.coeff_s[self._active.split])**2)
-                f.write(f"CLONE {self._iactive} {np.sqrt(1-temp)} {self.n_traj} {np.sqrt(temp)} {self._active.dyn.curr_step} {self._active.dyn.curr_time:.4f}\n")
+                f.write(f"CLONE {self._iactive} {np.sqrt(temp)} {self.n_traj} {np.sqrt(1-temp)} {self._active.curr_step} {self._active.curr_time:.4f}\n")
             clone = self._active.split_traj()
+
+            os.chdir(f"{self.n_traj}")
+            clone.write_outputs()
+            clone.next_step()
+            clone._timestep.success()
+            os.chdir("..")
+
             self.add_trajectory(clone)
+
+        os.chdir(f"{self._iactive}")
+        self._active.write_outputs()
+        self._active.next_step()
+        self._active._timestep.success()
+        os.chdir("..")
+
         return self
 
     @property
     def is_finished(self):
-        return np.all([traj.dyn.is_finished for traj in self._trajs])
+        return np.all([traj.is_finished for traj in self._trajs])
 
     def edit(self, attr, val):
         for traj in self._trajs:

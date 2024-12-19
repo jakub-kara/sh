@@ -3,6 +3,7 @@ from .checker import HoppingUpdater
 from dynamics.dynamics import Dynamics
 from classes.molecule import Molecule
 from classes.out import Printer, Output
+from classes.timestep import Timestep
 from electronic.electronic import ESTProgram
 
 class SurfaceHopping(Dynamics):
@@ -176,9 +177,12 @@ class SurfaceHopping(Dynamics):
         out.write_log("\n")
         super().prepare_traj(mol)
 
+    def steps_elapsed(self, steps):
+        super().steps_elapsed(steps)
+        HoppingUpdater().elapsed(steps)
+
     def update_target(self, mols: list[Molecule], dt: float):
         hop = HoppingUpdater()
-        hop.elapsed(self._step)
         hop.run(mols, dt, self.active)
         self._target = hop.hop.out
 

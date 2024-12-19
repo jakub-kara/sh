@@ -24,12 +24,12 @@ class MultiEhrenfest(SimpleEhrenfest, key = "mce"):
         return accbr
 
     def update_nuclear(self, mols: list[Molecule], dt: float):
-        self._phase += 0.5 * mols[-1].kinetic_energy * self.dt
+        self._phase += 0.5 * mols[-1].kinetic_energy * dt
         temp = super().update_nuclear(mols, dt)
-        self._phase += 0.5 * mols[-1].kinetic_energy * self.dt
+        self._phase += 0.5 * mols[-1].kinetic_energy * dt
         return temp
 
-    def adjust_nuclear(self, mols: list[Molecule]):
+    def adjust_nuclear(self, mols: list[Molecule], dt: float):
         mol = mols[-1]
         accbr = self._calculate_breaking(mol)
         # print(self._accbr)
@@ -57,3 +57,5 @@ class MultiEhrenfest(SimpleEhrenfest, key = "mce"):
             self.split = [mx]
             self._nspawn += 1
 
+    def h5_dict(self):
+        return {"phase": self._phase}

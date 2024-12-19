@@ -29,7 +29,7 @@ class MultiEhrenfest(SimpleEhrenfest, key = "mce"):
         self._phase += 0.5 * mols[-1].kinetic_energy * self.dt
         return temp
 
-    def adjust_nuclear(self, mols: list[Molecule]):
+    def adjust_nuclear(self, mols: list[Molecule], dt: float):
         mol = mols[-1]
         accbr = self._calculate_breaking(mol)
         # print(self._accbr)
