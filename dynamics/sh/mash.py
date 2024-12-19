@@ -51,17 +51,17 @@ class unSMASH(SurfaceHopping, key = "unsmash"):
         mol.bloch_n3[self.active, :] = None
         super().prepare_traj(mol)
 
-    def steps_elapsed(self, steps: int):
+    def steps_elapsed(self, steps):
         super().steps_elapsed(steps)
         BlochUpdater().elapsed(steps)
 
-    def update_quantum(self, mols, timestep: Timestep):
-        self.update_tdc(mols, timestep)
-        self.update_bloch(mols, timestep)
+    def update_quantum(self, mols, dt: float):
+        self.update_tdc(mols, dt)
+        self.update_bloch(mols, dt)
 
-    def update_bloch(self, mols: list[MoleculeBloch], timestep: Timestep):
+    def update_bloch(self, mols: list[MoleculeBloch], dt: float):
         bupd = BlochUpdater()
-        bupd.run(mols, timestep.dt, self.active)
+        bupd.run(mols, dt, self.active)
         mols[-1].bloch_n3 = bupd.bloch.out
 
     def _has_energy(self, mol: MoleculeBloch):
