@@ -84,9 +84,9 @@ class SurfaceHopping(Dynamics):
         return delta
 
     def _avail_kinetic_energy(self, mol: Molecule, delta: np.ndarray):
-        a = np.einsum("ad, ad -> a", mol.vel_ad, delta/np.linalg.norm(delta))
-        # b = np.einsum("ad, ad -> a", delta, delta)
-        return 0.5 * np.sum(mol.mass_a * a**2)# / b)
+        vel_proj = np.sum(mol.vel_ad * delta) * delta
+        kin_proj = 0.5*np.sum(mol.mass_a[:,None]*vel_proj**2)
+        return kin_proj
 
     def _has_energy(self, mol: Molecule, delta: np.ndarray):
         return self._avail_kinetic_energy(mol,delta) + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] > 0
@@ -99,13 +99,21 @@ class SurfaceHopping(Dynamics):
     def _nohop(self):
         self._target = self.active
 
+    def _get_ABC(self, mol : Molecule, delta: np.ndarray):
+        #to use later
+        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active] 
+        a = 0.5 * np.einsum('a,ai->',mol.mass_a, delta**2)
+        b = -np.einsum('a,ai,ai->',mol.mass_a, mol.vel_ad, delta)
+        c = ediff
+        return a, b, c
+
     def _adjust_velocity(self, mol: Molecule, delta: np.ndarray):
-        ediff = mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target]
+        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active] 
 
         # compute coefficients in the quadratic equation
-        a = 0.5 * np.sum(mol.mass_a[:, None] * delta * delta)
-        b = -np.sum(mol.mass_a[:, None] * mol.vel_ad * delta)
-        c = -ediff
+        a = 0.5 * np.einsum('a,ai->',mol.mass_a, delta**2)
+        b = -np.einsum('a,ai,ai->',mol.mass_a, mol.vel_ad, delta)
+        c = ediff
 
         # find the determinant
         D = b**2 - 4 * a * c
@@ -125,12 +133,12 @@ class SurfaceHopping(Dynamics):
         mol.vel_ad -= gamma * delta
 
     def _reverse_velocity(self, mol: Molecule, delta: np.ndarray):
-        ediff = mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target]
+        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active] 
 
         # compute coefficients in the quadratic equation
-        a = 0.5 * np.sum(mol.mass_a[:, None] * delta * delta)
-        b = -np.sum(mol.mass_a[:, None] * mol.vel_ad * delta)
-        c = -ediff
+        a = 0.5 * np.einsum('a,ai->',mol.mass_a, delta**2)
+        b = -np.einsum('a,ai,ai->',mol.mass_a, mol.vel_ad, delta)
+        c = ediff
 
         # find the determinant
         D = b**2 - 4 * a * c
@@ -139,6 +147,9 @@ class SurfaceHopping(Dynamics):
             gamma = -b/a
         else:
             print('Issue with rescaling...')
+            # print(self._avail_kinetic_energy(mol,delta))
+            # print(mol.vel_ad * delta, np.sum((mol.vel_ad*delta)**2)/2,np.sum(mol.vel_ad/np.linalg.norm(mol.vel_ad)*delta/np.linalg.norm(delta)))
+            # print(mol.vel_ad,'\n',delta,'\n',a,b,c,D)
             raise RuntimeError
 
         mol.vel_ad -= gamma * delta

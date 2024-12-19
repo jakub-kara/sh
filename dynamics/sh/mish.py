@@ -85,7 +85,6 @@ class MISH(SurfaceHopping, key = "mish"):
         mol.coeff_s = coeff
 
     def _get_delta(self, mol: Molecule):
-        ''' UPDATE '''
 
         def normalise(a):
             return a / np.linalg.norm(a)

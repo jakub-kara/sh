@@ -55,7 +55,7 @@ class unSMASH(SurfaceHopping, key = "unsmash"):
         self.update_bloch(mols, dt)
 
     def update_bloch(self, mols: list[MoleculeBloch], dt: float):
-        bupd = BlochUpdater()
+        bupd = BlochUpdater(n_substeps=50)
         bupd.elapsed(self.curr_step)
         bupd.run(mols, dt, self.active)
         mols[-1].bloch_n3 = bupd.bloch.out
