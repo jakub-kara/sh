@@ -66,21 +66,7 @@ class Bundle:
                 temp = np.sum(np.abs(self._active.mol.coeff_s[self._active.split])**2)
                 f.write(f"CLONE {self._iactive} {np.sqrt(temp)} {self.n_traj} {np.sqrt(1-temp)} {self._active.curr_step} {self._active.curr_time:.4f}\n")
             clone = self._active.split_traj()
-
-            os.chdir(f"{self.n_traj}")
-            clone.write_outputs()
-            clone.next_step()
-            clone._timestep.success()
-            os.chdir("..")
-
             self.add_trajectory(clone)
-
-        os.chdir(f"{self._iactive}")
-        self._active.write_outputs()
-        self._active.next_step()
-        self._active._timestep.success()
-        os.chdir("..")
-
         return self
 
     @property

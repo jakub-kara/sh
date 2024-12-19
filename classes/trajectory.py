@@ -150,6 +150,10 @@ class Trajectory:
         out.write_log()
         out.close_log()
 
+        self.write_outputs()
+        self.next_step()
+        self._timestep.success()
+
     def bind_components(self, *, electronic: dict, nuclear: dict, quantum: dict, output: dict, **config):
         self.bind_est(**electronic)
         self.bind_nuclear_integrator(nuclear["nuc_upd"])
