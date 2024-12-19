@@ -13,7 +13,7 @@ class Output(metaclass = Singleton):
             "compression_opts": config.get("compression_opts", 9),
         }
         self._log = None
-        self._filemode = "w"
+        self._logmode = "w"
 
     def __del__(self):
         self.write_log("TERMINATED")
@@ -24,8 +24,8 @@ class Output(metaclass = Singleton):
             self.write_log(f.read())
 
     def open_log(self):
-        self._log = open(f"data/{self._file}.log", self._filemode)
-        self._filemode = "a"
+        self._log = open(f"data/{self._file}.log", self._logmode)
+        self._logmode = "a"
 
     def close_log(self):
         self._log.close()

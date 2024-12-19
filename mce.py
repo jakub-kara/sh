@@ -57,3 +57,9 @@ class MultiEhrenfest(SimpleEhrenfest, key = "mce"):
             self.split = [mx]
             self._nspawn += 1
 
+    # TODO: h5_info with widths
+
+    # def h5_dict(self):
+    #     dic = super().h5_dict()
+    #     dic["phase"] = self._phase
+    #     return dic

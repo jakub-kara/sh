@@ -30,17 +30,11 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
                 return s
         return active
 
-<<<<<<< Updated upstream
 class NoHoppingUpdater(HoppingUpdater, key = "none"):
     steps = 1
 
     def update(self, mols, dt, *args, **kwargs):
         self.hop.fill()
-=======
-class NoChecker(HoppingUpdater, key = "none"):
-    def update(self, mols: list[MoleculeBloch], dt: float, active: int):
-        self.hop.out = active
->>>>>>> Stashed changes
 
 class TDCHoppingChecker(Multistage, HoppingUpdater, key = "tdc"):
     ''' CLASSIC TULLY '''

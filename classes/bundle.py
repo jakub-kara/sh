@@ -37,7 +37,7 @@ class Bundle:
         traj = Trajectory(**config)
         self.add_trajectory(traj)
         with open("events.log", "w") as f:
-            f.write(f"Trajectory 0 initiated at time = {traj.dyn.curr_time}")
+            f.write(f"INIT 0\n")
         self.prepare_trajs()
         return self
 
@@ -60,14 +60,13 @@ class Bundle:
         os.chdir("..")
 
         # TODO: implement multiple states
-        if self._active.split_states:
+        if self._active.split:
             shutil.copytree(f"{self._iactive}", f"{self.n_traj}", dirs_exist_ok=True)
             with open("events.log", "a") as f:
-                f.write(f"Trajectory {self._iactive} cloned to {self.n_traj}")
-
+                temp = np.sum(np.abs(self._active.mol.coeff_s[self._active.split])**2)
+                f.write(f"CLONE {self._iactive} {np.sqrt(1-temp)} {self.n_traj} {np.sqrt(temp)} {self._active.dyn.curr_step} {self._active.dyn.curr_time:.4f}\n")
             clone = self._active.split_traj()
             self.add_trajectory(clone)
-
         return self
 
     @property

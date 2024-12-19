@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 from classes.meta import Factory
 from classes.molecule import Molecule
 from classes.out import Output
@@ -22,6 +23,8 @@ class Dynamics(metaclass = Factory):
         self._time = 0
         self._step = 0
         self._enthresh = dynamics.get("enthresh", 1000)
+
+        self.split = None
 
     @property
     def is_finished(self):
@@ -52,6 +55,9 @@ class Dynamics(metaclass = Factory):
 
     def potential_energy(self, mol: Molecule):
         raise NotImplementedError
+
+    def total_energy(self, mol: Molecule):
+        return self.potential_energy(mol) + mol.kinetic_energy
 
     def population(self, mol: Molecule, s: int):
         return np.abs(mol.coeff_s[s])**2
@@ -108,6 +114,18 @@ class Dynamics(metaclass = Factory):
                 nac_eff[i,j] = diff + alpha * mol.vel_ad
                 nac_eff[j,i] = -nac_eff[i,j]
         return nac_eff
+
+    def split_mol(self, mol: Molecule):
+        out1 = deepcopy(mol)
+        out1.coeff_s[self.split] = 0
+        out1.coeff_s /= np.sqrt(np.sum(np.abs(out1.coeff_s)**2))
+
+        out2 = deepcopy(mol)
+        out2.coeff_s[:] = 0
+        out2.coeff_s[self.split] = mol.coeff_s[self.split]
+        out2.coeff_s /= np.sqrt(np.sum(np.abs(out2.coeff_s)**2))
+
+        return out1, out2
 
     def dat_header(self, dic: dict, record: list):
         return dic

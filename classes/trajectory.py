@@ -18,7 +18,6 @@ class Trajectory:
         self.dyn: Dynamics = Dynamics(key = dynamics["method"], dynamics=dynamics, **config)
 
         self.index = None
-        self._split = None
         self._backup = dynamics.get("backup", True)
         self.bind_components(dynamics=dynamics, **config)
 
@@ -33,10 +32,6 @@ class Trajectory:
     @property
     def n_states(self):
         return self.mol.n_states
-
-    @property
-    def split_states(self):
-        return self._split
 
     @property
     def n_atoms(self):
@@ -54,8 +49,16 @@ class Trajectory:
         self.mols.remove(mol)
         return self
 
+    @property
+    def split(self):
+        return self.dyn.split
+
     def split_traj(self):
-        pass
+        clone = deepcopy(self)
+        self.mols[-1], clone.mols[-1] = self.dyn.split_mol(self.mol)
+        self.dyn.split = None
+        clone.dyn.split = None
+        return clone
 
     def prepare_traj(self):
         out = Output()
@@ -73,10 +76,12 @@ class Trajectory:
         out.write_log(f"Total time:     {time.time() - t0} s")
         out.write_log("="*40)
         out.write_log()
+        out.close_log()
 
     # TODO: find a better way of timing things
     def run_step(self):
         out = Output()
+        out.open_log()
         out.write_log("="*40)
         out.write_log(f"Step:           {self.dyn.curr_step}")
         out.write_log(f"Time:           {convert(self.dyn.curr_time, 'au', 'fs'):.4f} fs")
@@ -117,6 +122,7 @@ class Trajectory:
         out.write_log(f"Total time:     {time.time() - t0} s")
         out.write_log("="*40)
         out.write_log()
+        out.close_log()
 
 
     def bind_components(self, *, electronic: dict, nuclear: dict, quantum: dict, output: dict, **config):
@@ -153,12 +159,9 @@ class Trajectory:
     def bind_io(self, **output):
         Output(**output)
 
-    def total_energy(self, mol: Molecule):
-        return self.dyn.potential_energy(mol) + mol.kinetic_energy
-
     def energy_diff(self, mol: Molecule, mols: list[Molecule]):
-        print(np.abs(self.total_energy(mol) - self.total_energy(mols[-1])))
-        return np.abs(self.total_energy(mol) - self.total_energy(mols[-1])) < 1e-4
+        print(np.abs(self.dyn.total_energy(mol) - self.dyn.total_energy(mols[-1])))
+        return np.abs(self.dyn.total_energy(mol) - self.dyn.total_energy(mols[-1])) < 1e-4
 
     # These two are quite hacky, could improve
     def save_step(self):
