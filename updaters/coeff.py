@@ -62,7 +62,7 @@ class BlochUpdater(Multistage, Updater, metaclass = SingletonFactory):
         super().__init__(**kwargs)
         self.bloch = None
 
-    def new_result(self, mol: MoleculeBloch):
+    def new_result(self, mol: MoleculeBloch, *args, **kwargs):
         self.bloch = UpdateResult(mol.bloch_n3, self.substeps)
 
     def update(self, mols: list[Molecule], dt: float, active: int):
@@ -75,6 +75,7 @@ class BlochUpdater(Multistage, Updater, metaclass = SingletonFactory):
             tdc = tdcupd.tdc.interpolate(frac)
             for s in range(nst):
                 if s == active:
+                    bloch[s, :] = None
                     continue
                 ham = frac * mols[-1].ham_eig_ss + (1 - frac) * mols[-2].ham_eig_ss
                 mat = np.zeros((3, 3))

@@ -18,9 +18,10 @@ class Model1D(ESTProgram, key = "model_1d"):
             "sub_1": self.sub_1,
             "tully_2": self.tully_2,
             "tully_3": self.tully_3,
+            "sub_x": self.sub_x,
+            "sub_s": self.sub_s,
         }
         return methods[key]
-
 
     def write(self, mol: Molecule):
         self._geo = mol.pos_ad
@@ -33,6 +34,8 @@ class Model1D(ESTProgram, key = "model_1d"):
             self._gradham = np.zeros((self._nstates, self._nstates, self._natoms, 3))
             self._trans = np.zeros((self._nstates, self._nstates))
         self._method()
+        self._diagonalise()
+        self._get_grad_nac()
 
     def execute(self):
         pass
@@ -68,13 +71,7 @@ class Model1D(ESTProgram, key = "model_1d"):
         b = 0.6
         c = 0.001
         d = 1
-
         x = self._geo[0,0]
-        self._hamdia[:] = 0
-        self._hameig[:] = 0
-        self._grad[:] = 0
-        self._nacdr[:] = 0
-        self._gradham[:] = 0
 
         self._hamdia[0,0] = a * np.tanh(b * x)
         self._hamdia[1,1] = -self._hamdia[0,0]
@@ -86,22 +83,13 @@ class Model1D(ESTProgram, key = "model_1d"):
         self._gradham[0,1,0,0] = -2 * c * d * x * np.exp(-d * x**2)
         self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
 
-        self._diagonalise()
-        self._get_grad_nac()
-
     def tully_2(self):
-        x = self._geo[0,0]
-        self._hamdia[:] = 0
-        self._hameig[:] = 0
-        self._grad[:] = 0
-        self._nacdr[:] = 0
-        self._gradham[:] = 0
-
         a = 0.1
         b = 0.28
         c = 0.015
         d = 0.06
         e = 0.05
+        x = self._geo[0,0]
 
         self._hamdia[0,0] = 0.
         self._hamdia[1,1] = -a * np.exp(-b * x**2) + e
@@ -112,21 +100,11 @@ class Model1D(ESTProgram, key = "model_1d"):
         self._gradham[0,1,0,0] = -2 * c * d * x * np.exp(-d * x**2)
         self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
 
-        self._diagonalise()
-        self._get_grad_nac()
-
-
     def tully_3(self):
-        x = self._geo[0,0]
-        self._hamdia[:] = 0
-        self._hameig[:] = 0
-        self._grad[:] = 0
-        self._nacdr[:] = 0
-        self._gradham[:] = 0
-
         a = 6e-4
         b = 0.1
         c = 0.9
+        x = self._geo[0,0]
 
         self._hamdia[0,0] = a
         self._hamdia[1,1] = -a
@@ -142,5 +120,59 @@ class Model1D(ESTProgram, key = "model_1d"):
             self._gradham[0,1,0,0] = b * c * np.exp(-c * x)
         self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
 
-        self._diagonalise()
-        self._get_grad_nac()
+    def sub_x(self):
+        a = 0.03
+        b = 1.6
+        c = 0.005
+        x = self._geo[0,0]
+
+        self._hamdia[0,0] = a*(np.tanh(b*x) + np.tanh(b*(x + 7)))
+        self._gradham[0,0,0,0] = a*b*(1 - np.tanh(b*x)**2 + 1 - np.tanh(b*(x + 7))**2)
+        self._hamdia[1,1] = -a*(np.tanh(b*x) + np.tanh(b*(x - 7)))
+        self._gradham[1,1,0,0] = -a*b*(1 - np.tanh(b*x)**2 + 1 - np.tanh(b*(x - 7))**2)
+        self._hamdia[2,2] = -a*(np.tanh(b*(x + 7)) - np.tanh(b*(x - 7)))
+        self._gradham[2,2,0,0] = -a*b*(1 - np.tanh(b*(x + 7))**2 - (1 - np.tanh(b*(x - 7))**2))
+
+        self._hamdia[0,1] = c*np.exp(-x**2)
+        self._gradham[0,1,0,0] = -2*c*x*np.exp(-x**2)
+        self._hamdia[1,0] = self._hamdia[0,1]
+        self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
+
+        self._hamdia[0,2] = c*np.exp(-(x + 7)**2)
+        self._gradham[0,2,0,0] = -2*c*(x + 7)*np.exp(-(x + 7)**2)
+        self._hamdia[2,0] = self._hamdia[0,2]
+        self._gradham[2,0,0,0] = self._gradham[0,2,0,0]
+
+        self._hamdia[1,2] = c*np.exp(-(x - 7)**2)
+        self._gradham[1,2,0,0] = -2*c*(x - 7)*np.exp(-(x - 7)**2)
+        self._hamdia[2,1] = self._hamdia[1,2]
+        self._gradham[2,1,0,0] = self._gradham[1,2,0,0]
+
+    def sub_s(self):
+        a = 0.015
+        b = 1.0
+        c = 0.005
+        d = 0.5
+        x = self._geo[0,0]
+
+        self._hamdia[0,0] = a*(np.tanh(b*(x - 7)) - np.tanh(b*(x + 7))) + a
+        self._gradham[0,0,0,0] = a*b*(1 - np.tanh(b*(x - 7))**2 - (1 - np.tanh(b*(x + 7))**2))
+        self._hamdia[1,1] = -self._hamdia[0,0]
+        self._gradham[1,1,0,0] = -self._gradham[0,0,0,0]
+        self._hamdia[2,2] = 2*a*np.tanh(d*x)
+        self._gradham[2,2,0,0] = 2*a*d*(1 - np.tanh(d*x)**2)
+
+        self._hamdia[0,1] = c*(np.exp(-(x - 7)**2) + np.exp(-(x + 7)**2))
+        self._gradham[0,1,0,0] = -2*c*((x - 7)*np.exp(-(x - 7)**2) + (x + 7)*np.exp(-(x + 7)**2))
+        self._hamdia[1,0] = self._hamdia[0,1]
+        self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
+
+        self._hamdia[0,2] = c*np.exp(-x**2)
+        self._gradham[0,2,0,0] = -2*c*x*np.exp(-x**2)
+        self._hamdia[2,0] = self._hamdia[0,2]
+        self._gradham[2,0,0,0] = self._gradham[0,2,0,0]
+
+        self._hamdia[1,2] = c*np.exp(-x**2)
+        self._gradham[1,2,0,0] = -2*c*x*np.exp(-x**2)
+        self._hamdia[2,1] = self._hamdia[1,2]
+        self._gradham[2,1,0,0] = self._gradham[1,2,0,0]

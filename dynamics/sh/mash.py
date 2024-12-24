@@ -13,11 +13,12 @@ class unSMASH(SurfaceHopping, key = "unsmash"):
         config["nuclear"]["pes"] = "bloch"
         config["quantum"]["coeff_upd"] = "bloch"
         super().__init__(**config)
+        BlochUpdater(key = "mash", **config["quantum"])
         HoppingUpdater(key = "mash", **config["quantum"])
 
     def adjust_nuclear(self, mols: list[MoleculeBloch], dt: float):
         mol = mols[-1]
-        self.update_target(mols, self.dt)
+        self.update_target(mols, dt)
 
         print(mol.bloch_n3)
         print(f"target: {self.target} \t\tactive: {self.active}")
