@@ -26,6 +26,17 @@ class Dynamics(metaclass = Factory):
     def population(self, mol: Molecule, s: int):
         return np.abs(mol.coeff_s[s])**2
 
+    def read_coeff(self, mol: Molecule, file = None):
+        if file is None:
+            return
+        data = np.genfromtxt(file)
+        if data.ndim == 1:
+            data = data[None, :]
+        if data.shape != (mol.n_states, 2):
+            raise ValueError(f"Invalid coeff input format in {file}")
+        mol.coeff_s[:] = data[:,0]
+        mol.coeff_s += 1j*data[:,1]
+
     def prepare_traj(self, mol: Molecule):
         out = Output()
         out.open_log()

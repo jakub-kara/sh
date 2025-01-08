@@ -24,16 +24,17 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
         for i in range(mol.n_states):
             if i == self._pointer:
                 continue
+            vec[i] = mol.mom_ad
             temp = nac[i, self._pointer]
-            vec[i] = np.real(np.sum(mol.mom_ad * temp) / np.linalg.norm(temp) * temp) + mol.mom_ad
+            if np.linalg.norm(temp) > 1e-14:
+                vec[i] += np.real(np.sum(mol.mom_ad * temp) / np.linalg.norm(temp) * temp)
         return vec
 
-    def decay_time(self, mol: MoleculeCSDM, vec: np.ndarray = None):
+    def decay_time(self, mol: MoleculeCSDM):
         C = 1
         E0 = 0.1
 
-        if vec is None:
-            vec = self.dec_vec(mol)
+        vec = self.dec_vec(mol)
         norm = np.zeros_like(vec)
         for i in range(mol.n_states):
             if i == self._pointer:
@@ -109,7 +110,7 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
 
         fde = np.zeros_like(mol.acc_ad)
         vec = self.dec_vec(mol)
-        tau = self.decay_time(mol, vec)
+        tau = self.decay_time(mol)
         for i in range(mol.n_states):
             if i == self._pointer:
                 continue

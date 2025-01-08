@@ -7,14 +7,26 @@ from electronic.electronic import ESTProgram
 from updaters.coeff import BlochUpdater
 from updaters.tdc import TDCUpdater
 
-class unSMASH(SurfaceHopping, key = "unsmash"):
+class MASH(SurfaceHopping, key = "mash"):
     ''' Lawrence and Richardson's "unSMASH". Reduces to Mannouch and Richardson's "MASH" for two state case '''
     def __init__(self, **config):
         config["nuclear"]["pes"] = "bloch"
-        config["quantum"]["coeff_upd"] = "bloch"
         super().__init__(**config)
-        BlochUpdater(key = "mash", **config["quantum"])
+        BlochUpdater(**config["quantum"])
         HoppingUpdater(key = "mash", **config["quantum"])
+
+    def read_coeff(self, mol: MoleculeBloch, file=None):
+        if file is None:
+            mol.bloch_n3[:, 2] = 1
+            mol.bloch_n3[self.active, :] = None
+            return
+        data = np.genfromtxt(file)
+        if data.ndim == 1:
+            data = data[None, :]
+        if data.shape != (mol.n_states - 1, 3):
+            raise ValueError(f"Invalid bloch input format in {file}")
+        mol.bloch_n3[:self.active] = data[:self.active]
+        mol.bloch_n3[self.active + 1:] = data[self.active:]
 
     def adjust_nuclear(self, mols: list[MoleculeBloch], dt: float):
         mol = mols[-1]
@@ -46,11 +58,6 @@ class unSMASH(SurfaceHopping, key = "unsmash"):
                 self._reverse_velocity(mol)
                 self._reverse_bloch(mol)
                 self._nohop()
-
-    def prepare_traj(self, mol: MoleculeBloch):
-        mol.bloch_n3[:, 2] = 1
-        mol.bloch_n3[self.active, :] = None
-        super().prepare_traj(mol)
 
     def steps_elapsed(self, steps):
         super().steps_elapsed(steps)

@@ -6,7 +6,7 @@ from classes.molecule import Molecule
 from classes.constants import convert
 
 class ESTProgram(metaclass = SingletonFactory):
-    def __init__(self, *, states: list, program: str, type: str, path: str, options: dict, refen = 0, **config):
+    def __init__(self, *, states: list, program: str, type: str, path: str = "", options: dict = {}, refen = 0, **config):
         self._path = path
         if isinstance(states, int):
             self._states = np.array([states])

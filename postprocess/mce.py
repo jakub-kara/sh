@@ -207,6 +207,8 @@ n_atoms = 1
 n_states = 2
 clones: list[Cloning] = []
 
+file = open("weighs.dat", "w")
+
 time = np.zeros(n_step)
 wid = np.zeros(n_atoms)
 mass = np.zeros(n_atoms)
@@ -232,8 +234,11 @@ wei[0,0] = 1
 # breakpoint()
 for step in range(n_step-1):
     rm = []
+    cloned = False
     for c in clones:
         if c.step == step:
+            cloned = True
+            print("Clone")
             rm.append(c)
             w1 = wei[step, c.parent] * c.trans
             w2 = wei[step, c.parent] * np.sqrt(1 - c.trans**2)
@@ -241,13 +246,14 @@ for step in range(n_step-1):
             v2 = View(step, c.parent)
             ovl = tbf_ovl(v1, v2)
             tot = np.abs(w1)**2 + np.abs(w2)**2 + 2*np.real(np.conj(w1) * w2) * ovl
-            w1 /= np.sqrt(tot)
-            w2 /= np.sqrt(tot)
+            # w1 /= np.sqrt(tot)
+            # w2 /= np.sqrt(tot)
             wei[step, c.child] = w1
             wei[step, c.parent] = w2
 
     for r in rm:
         clones.remove(r)
+
 
     n_act = np.sum(act[step])
     wei_fin = np.zeros((n_act), dtype=np.complex128)
@@ -285,28 +291,36 @@ for step in range(n_step-1):
         for j, v2 in enumerate(view_fin):
             ovl_mat[i,j] = tbf_ovl(v1, v2)
 
-    ddt_ini -= ddt_ini.T.conj() * (1 - np.eye(n_act))
-    ddt_ini *= (1 - np.eye(n_act)) / 2 + np.eye(n_act)
-    ddt_fin -= ddt_fin.T.conj() * (1 - np.eye(n_act))
-    ddt_fin *= (1 - np.eye(n_act)) / 2 + np.eye(n_act)
-
-    # val, vec = np.linalg.eigh(ovl_ini)
-    # tr = vec @ np.sqrt(np.diag(1 / val)) @ vec.T
-    # trH = tr.T.conj()
-
-    # ovl_ini = np.eye(n_act)
-    # ddt_ini = tr @ ddt_ini @ trH
-    # ham_ini = tr @ ham_ini @ trH
-    # ovl_fin = tr @ ovl_fin @ trH
-    # ddt_fin = tr @ ddt_fin @ trH
-    # ham_fin = tr @ ham_fin @ trH
-
     dt = time[step + 1] - time[step]
     wei_fin = wei[step, act[step]]
-    # wei_fin = tr @ wei_fin
+    if cloned:
+        wei_fin = wei_fin / np.sqrt((wei_fin.conj() @ ovl_ini @ wei_fin))
 
-    if n_act > 1:
-        breakpoint()
+
+    val, vec = np.linalg.eigh(ovl_ini)
+    tr_ini = vec @ np.sqrt(np.diag(1 / val))
+    trH_ini = np.linalg.inv(tr_ini)
+    ddt_ini = trH_ini @ ddt_ini @ tr_ini
+    ham_ini = trH_ini @ ham_ini @ tr_ini
+
+    val, vec = np.linalg.eigh(ovl_fin)
+    tr_fin = vec @ np.sqrt(np.diag(1 / val))
+    trH_fin = np.linalg.inv(tr_fin)
+    ddt_fin = trH_fin @ ddt_fin @ tr_fin
+    ham_fin = trH_fin @ ham_fin @ tr_fin
+
+    ddt_ini -= ddt_ini.T.conj()
+    ddt_ini /= 2
+    ddt_fin -= ddt_fin.T.conj()
+    ddt_fin /= 2
+    ham_ini += ham_ini.T.conj() - ham_ini * np.eye(n_act)
+    ham_fin += ham_fin.T.conj() - ham_fin * np.eye(n_act)
+    print(f"Energy: {np.sum(np.outer(wei_fin.conj(), wei_fin) * ham_ini)}")
+
+    # if n_act > 2:
+        # breakpoint()
+    wei_fin = trH_ini @ wei_fin
+
 
     def hamint(frac):
         return (1 - frac) * ham_ini + frac * ham_fin
@@ -317,34 +331,38 @@ for step in range(n_step-1):
     def ddtint(frac):
         return (1 - frac) * ddt_ini + frac * ddt_fin
 
-    # print("before: ", np.sum(np.abs(wei_fin)**2))
-    print("before: ", np.conj(wei_fin) @ ovl_ini @ wei_fin)
+    print("before: ", np.sum(np.abs(wei_fin)**2))
+    # print("before: ", np.conj(wei_fin) @ ovl_ini @ wei_fin)
 
-    prop = np.eye(n_act)
     n_substep = 20
-    h0 = ham_ini
-    htra = ovl_mat @ ham_fin @ ovl_mat.T.conj()
-    for i in range(n_substep):
-        hk = h0 + i / n_substep * (htra - h0)
-        rk = expm(-1j * hk * dt / n_substep)
-        prop = rk @ prop
-    prop = ovl_mat.T.conj() @ prop
-    wei_fin = prop @ wei_fin
-
+    # prop = np.eye(n_act)
+    # h0 = ham_ini
+    # htra = ovl_mat @ ham_fin @ ovl_mat.T.conj()
     # for i in range(n_substep):
-    #     frac = (i + 0.5) / n_substep
-    #     wei_fin = expm(ovlint(frac) @ (-1j*hamint(frac) + ddtint(frac)) * dt/n_substep) @ wei_fin
+    #     hk = h0 + i / n_substep * (htra - h0)
+    #     rk = expm(-1j * hk * dt / n_substep)
+    #     prop = rk @ prop
+    # prop = ovl_mat.T.conj() @ prop
+    # wei_fin = prop @ wei_fin
 
+    for i in range(n_substep):
+        frac = (i + 0.5) / n_substep
+        wei_fin = expm(-(1j*hamint(frac) + ddtint(frac)) * dt/n_substep) @ wei_fin
+
+    print("after:  ", np.sum(np.abs(wei_fin)**2))
+    wei_fin = tr_fin @ wei_fin
     print("after:  ", np.conj(wei_fin) @ ovl_fin @ wei_fin)
-    # print("after:  ", np.sum(np.abs(wei_fin)**2))
     print()
-    # wei_fin = trH @ wei_fin
 
     i = 0
+    file.write(str(time[step]))
     for itraj in range(n_traj):
         if act[step, itraj]:
             wei[step + 1, itraj] = wei_fin[i]
             i += 1
+
+        file.write(f" {wei[step, itraj].real} {wei[step, itraj].imag}")
+    file.write("\n")
 
 
 

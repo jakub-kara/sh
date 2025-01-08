@@ -54,7 +54,7 @@ class CoeffLDUpdater(Multistage, CoeffUpdater, key = "ld"):
             self.prop.inter[i] = prop
             self.coeff.inter[i] = prop @ coeff
 
-class BlochUpdater(Multistage, Updater, metaclass = SingletonFactory):
+class BlochUpdater(Multistage, Updater, metaclass = Singleton):
     steps = 2
     mode = ""
 

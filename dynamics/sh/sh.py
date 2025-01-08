@@ -102,14 +102,14 @@ class SurfaceHopping(Dynamics):
 
     def _get_ABC(self, mol : Molecule, delta: np.ndarray):
         #to use later
-        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active] 
+        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active]
         a = 0.5 * np.einsum('a,ai->',mol.mass_a, delta**2)
         b = -np.einsum('a,ai,ai->',mol.mass_a, mol.vel_ad, delta)
         c = ediff
         return a, b, c
 
     def _adjust_velocity(self, mol: Molecule, delta: np.ndarray):
-        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active] 
+        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active]
 
         # compute coefficients in the quadratic equation
         a = 0.5 * np.einsum('a,ai->',mol.mass_a, delta**2)
@@ -134,7 +134,7 @@ class SurfaceHopping(Dynamics):
         mol.vel_ad -= gamma * delta
 
     def _reverse_velocity(self, mol: Molecule, delta: np.ndarray):
-        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active] 
+        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active]
 
         # compute coefficients in the quadratic equation
         a = 0.5 * np.einsum('a,ai->',mol.mass_a, delta**2)

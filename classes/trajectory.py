@@ -158,6 +158,7 @@ class Trajectory:
         self.bind_est(**electronic)
         self.bind_nuclear_integrator(nuclear["nuc_upd"])
         mol = self.get_molecule(**nuclear)
+        self.dyn.read_coeff(mol, quantum.get("input", None))
         self.add_molecule(mol)
         self.bind_tdc_updater(**quantum)
         self.bind_coeff_updater(**quantum)
