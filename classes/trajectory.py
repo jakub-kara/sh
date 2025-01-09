@@ -225,7 +225,7 @@ class Trajectory:
         out = Output()
         out.write_dat(self.dat_dict(out.record))
         out.write_mat(self.h5_dict())
-        out.write_xyz(self.xyz_string())
+        out.write_xyz(self.vxyz_string())
 
     def copy(self):
         return deepcopy(self)

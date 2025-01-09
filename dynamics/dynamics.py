@@ -73,6 +73,7 @@ class Dynamics(metaclass = Factory):
         tdcupd = TDCUpdater()
         tdcupd.run(mols, dt)
         mols[-1].nacdt_ss = tdcupd.tdc.out
+        # mols[-1].adjust_tdc(mols[-2])
 
     def update_coeff(self, mols: list[Molecule], dt: float):
         cupd = CoeffUpdater()

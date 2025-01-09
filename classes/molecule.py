@@ -168,18 +168,25 @@ class Molecule(metaclass = Factory):
 
     def adjust_nacs(self, other):
         for s1 in range(self.n_states):
-            for s2 in range(s1+1, self.n_states):
+            for s2 in range(s1):
                 # calculate overlap
+                print(f"NAC1:      {other.nacdr_ssad[s1,s2,0,0]}")
+                print(f"NAC2:      {self.nacdr_ssad[s1,s2,0,0]}")
+                print(f"NAC sum:   {np.sum(other.nacdr_ssad[s1,s2] * self.nacdr_ssad[s1,s2])}")
                 if np.sum(other.nacdr_ssad[s1,s2] * self.nacdr_ssad[s1,s2]) < 0:
-                    # flip sign if overlap < 0 and set the flag
+                    print("Flipped")
+                    # flip sign if overlap < 0
                     self.nacdr_ssad[s1,s2] = -self.nacdr_ssad[s1,s2]
-                    self.nacflp_ss[s1,s2] = True
-                    self.nacflp_ss[s2,s1] = True
-                else:
-                    self.nacflp_ss[s1,s2] = False
-                    self.nacflp_ss[s2,s1] = False
-                # nacmes antisymmetric
                 self.nacdr_ssad[s2,s1] = -self.nacdr_ssad[s1,s2]
+
+    def adjust_tdc(self, other):
+        for s1 in range(self.n_states):
+            for s2 in range(s1):
+                # calculate overlap
+                if other.nacdt_ss[s1,s2] * self.nacdt_ss[s1,s2] < 0:
+                    # flip sign if overlap < 0
+                    self.nacdt_ss[s1,s2] = -self.nacdt_ss[s1,s2]
+                self.nacdt_ss[s2,s1] = -self.nacdt_ss[s1,s2]
 
     def adjust_energy(self, refen: float):
         for s in range(self.n_states):

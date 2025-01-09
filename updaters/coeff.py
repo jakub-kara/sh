@@ -85,6 +85,7 @@ class BlochUpdater(Multistage, Updater, metaclass = Singleton):
                 mat[2,0] = -mat[0,2]
 
                 bloch[s] = expm(mat * dt / self.substeps) @ bloch[s]
+                # print(bloch[s])
                 self.bloch.inter[i,s] = bloch[s]
 
     def no_update(self, mols: list[MoleculeBloch], dt: float, active: int):
