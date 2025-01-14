@@ -45,13 +45,12 @@ class Multistage:
 class UpdateResult:
     def __init__(self, integrand, n_substeps):
         self.substeps = n_substeps
-        if isinstance(integrand, np.ndarray):
-            self._npa = True
+        self._npa = isinstance(integrand, np.ndarray)
+        if self._npa:
             dtype = integrand.dtype
             self._inp = integrand.copy()
             self.inter = np.zeros((n_substeps, *integrand.shape), dtype=dtype)
         else:
-            self._npa = False
             dtype = type(integrand)
             self._inp = deepcopy(integrand)
             self.inter = np.empty(n_substeps, dtype=dtype)

@@ -17,8 +17,7 @@ class RKNBase(NuclearUpdater):
             return x * (x + 1) // 2
 
         mol = mols[-1]
-        out = UpdateResult(mol, self.substeps)
-
+        out = self.out
         out.inter[0] = mol
         # RKN integration substep-by-substep
         for i in range(1, self.substeps):
@@ -52,7 +51,8 @@ class RKNBase(NuclearUpdater):
         dyn.update_quantum(mols + [temp], dt)
         dyn.calculate_acceleration(temp)
 
-        return temp
+        out.inter[:-1] = out.inter[1:]
+        out.inter[-1] = temp
 
 class RKN4(RKNBase, key = "rkn4"):
     substeps = 4

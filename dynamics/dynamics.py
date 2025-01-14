@@ -63,8 +63,8 @@ class Dynamics(metaclass = Factory):
 
     def update_nuclear(self, mols: list[Molecule], dt: float):
         nupd = CompositeIntegrator()
-        # return nupd.run(mols, dt, self)
-        return nupd.update(mols, dt, self)
+        return nupd.run(mols, dt, self)
+        # return nupd.update(mols, dt, self)
 
     def update_quantum(self, mols: list[Molecule], dt: float):
         self.update_tdc(mols, dt)

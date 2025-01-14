@@ -31,7 +31,7 @@ class CompositeIntegrator(Updater, metaclass = Singleton):
             if self._count >= self._upds[0].steps:
                 self._state = 0
 
-    def update(self, *args, **kwargs):
+    def run(self, *args, **kwargs):
         self._set_state()
         self._count += 1
-        return self.active.update(*args, **kwargs)
+        self.active.run(*args, **kwargs)

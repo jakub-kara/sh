@@ -21,9 +21,11 @@ class Factory(ABCMeta):
             cls._keys[key] = cls
 
     def _new(cls, key=None, **kwargs):
-        if key not in cls._keys:
-            raise ValueError(f"Key '{key}' not found in {cls.__name__} factory.")
-        return object.__new__(cls._keys[key])
+        if key in cls._keys:
+            sub = cls._keys[key]
+        else:
+            sub = cls
+        return object.__new__(sub)
 
 class Singleton(type):
     _instances = {}
@@ -39,7 +41,7 @@ class Singleton(type):
         elif len(inter) == 1:
             return cls._instances[inter[0]]
         else:
-            raise RuntimeError(f"More than one instance of singleton among {cls.__name__} and its descendants.")
+            raise RuntimeError(f"More than one instance of singleton among {cls} and its descendants.")
 
     def _allsubs(cls):
         return set([cls]).union(cls.__subclasses__()).union(

@@ -12,6 +12,7 @@ class SYBase(NuclearUpdater):
     c = 1
 
     def update(self, mols: list[Molecule], dt: float, fun: Callable):
+        raise NotImplementedError
         # find new position as a weighted sum of previous positions and accelerations
         pos_ad = -np.einsum("j,j...->...", self.a[:-1], np.array([mol.pos_ad for mol in mols])) + dt**2*np.einsum("j,j...->...", self.b[:-1], np.array([mol.vel_ad for mol in mols]))
         pos_ad /= self.a[-1]
@@ -74,7 +75,7 @@ class SYAMBase(NuclearUpdater):
         # calculate new velocity from new acceleration, previous velocities, and previous accelerations
         out.vel_ad += dt*np.einsum("j,j...->...", self.am.b[:-1], np.array([mol.acc_ad for mol in temp])[1:]) + dt*self.am.b[-1]*out.acc_ad
 
-        return out
+        self.out.out = out
 
 class SYAM4(SYAMBase, key = "syam4"):
     steps = 4

@@ -127,7 +127,8 @@ class Trajectory:
 
         t1 = time.time()
         out.write_log(f"Nuclear + EST")
-        temp = self.dyn.update_nuclear(self.mols, self._timestep.dt)
+        self.dyn.update_nuclear(self.mols, self._timestep.dt)
+        temp = CompositeIntegrator().active.out.out
 
         valid = self._timestep.validate(self.energy_diff(temp, self.mols))
         if not valid:
@@ -167,7 +168,7 @@ class Trajectory:
 
     def get_molecule(self, **nuclear):
         est = ESTProgram()
-        return Molecule(key = nuclear.get("pes", None), n_states=est.n_states, **nuclear)
+        return Molecule(key = nuclear.get("pes", ""), n_states=est.n_states, **nuclear)
 
     def bind_molecules(self, **nuclear):
         nupd = CompositeIntegrator()
