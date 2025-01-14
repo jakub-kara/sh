@@ -5,6 +5,7 @@ from classes.molecule import Molecule
 from classes.out import Printer, Output
 from classes.timestep import Timestep
 from electronic.electronic import ESTProgram
+from updaters.composite import CompositeIntegrator
 
 class SurfaceHopping(Dynamics):
     mode = "a"
@@ -95,7 +96,7 @@ class SurfaceHopping(Dynamics):
     def _hop(self):
         self._active = self.target
         self._recalc = True
-        # SET INTEGRATOR TO INIT STATE
+        CompositeIntegrator().to_init()
 
     def _nohop(self):
         self._target = self.active

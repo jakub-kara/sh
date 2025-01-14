@@ -3,7 +3,7 @@ from copy import deepcopy
 from classes.meta import Factory
 from classes.molecule import Molecule
 from classes.out import Output
-from updaters.nuclear import NuclearUpdater
+from updaters.composite import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
 from electronic.electronic import ESTProgram
@@ -62,7 +62,8 @@ class Dynamics(metaclass = Factory):
         CoeffUpdater().elapsed(steps)
 
     def update_nuclear(self, mols: list[Molecule], dt: float):
-        nupd = NuclearUpdater()
+        nupd = CompositeIntegrator()
+        # return nupd.run(mols, dt, self)
         return nupd.update(mols, dt, self)
 
     def update_quantum(self, mols: list[Molecule], dt: float):
@@ -73,7 +74,6 @@ class Dynamics(metaclass = Factory):
         tdcupd = TDCUpdater()
         tdcupd.run(mols, dt)
         mols[-1].nacdt_ss = tdcupd.tdc.out
-        # mols[-1].adjust_tdc(mols[-2])
 
     def update_coeff(self, mols: list[Molecule], dt: float):
         cupd = CoeffUpdater()
@@ -85,7 +85,7 @@ class Dynamics(metaclass = Factory):
         for i in range(mol.n_states):
             for j in range(i):
                 diff = mol.grad_sad[i] - mol.grad_sad[j]
-                if np.abs(mol.nacdt_ss[i,j]) < 1e-5:
+                if np.abs(mol.nacdt_ss[i,j]) < 1e-8:
                     alpha = 0
                 else:
                     alpha = (mol.nacdt_ss[i,j] - np.sum(diff * mol.vel_ad)) / np.sum(mol.vel_ad**2)

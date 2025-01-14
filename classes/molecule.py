@@ -170,11 +170,7 @@ class Molecule(metaclass = Factory):
         for s1 in range(self.n_states):
             for s2 in range(s1):
                 # calculate overlap
-                print(f"NAC1:      {other.nacdr_ssad[s1,s2,0,0]}")
-                print(f"NAC2:      {self.nacdr_ssad[s1,s2,0,0]}")
-                print(f"NAC sum:   {np.sum(other.nacdr_ssad[s1,s2] * self.nacdr_ssad[s1,s2])}")
                 if np.sum(other.nacdr_ssad[s1,s2] * self.nacdr_ssad[s1,s2]) < 0:
-                    print("Flipped")
                     # flip sign if overlap < 0
                     self.nacdr_ssad[s1,s2] = -self.nacdr_ssad[s1,s2]
                 self.nacdr_ssad[s2,s1] = -self.nacdr_ssad[s1,s2]

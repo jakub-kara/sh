@@ -9,7 +9,7 @@ from .meta import Singleton
 from .timestep import Timestep
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
-from updaters.nuclear import NuclearUpdater
+from updaters.composite import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
 
@@ -118,12 +118,12 @@ class Trajectory:
         self.dyn.steps_elapsed(self._timestep.step)
 
         t0 = time.time()
-        if self._backup:
-            t3 = time.time()
-            out.write_log(f"Saving")
-            self.save_step()
-            out.write_log(f"Wall time:      {time.time() - t3} s")
-            out.write_log()
+        # if self._backup:
+        t3 = time.time()
+        out.write_log(f"Saving")
+        self.save_step()
+        out.write_log(f"Wall time:      {time.time() - t3} s")
+        out.write_log()
 
         t1 = time.time()
         out.write_log(f"Nuclear + EST")
@@ -170,7 +170,7 @@ class Trajectory:
         return Molecule(key = nuclear.get("pes", None), n_states=est.n_states, **nuclear)
 
     def bind_molecules(self, **nuclear):
-        nupd = NuclearUpdater()
+        nupd = CompositeIntegrator()
         for _ in range(max(nupd.steps, CoeffUpdater().steps, nuclear.get("keep", 0))):
             self.add_molecule(self.mol.copy_all())
 
@@ -178,7 +178,7 @@ class Trajectory:
         ESTProgram(key = electronic["program"], **electronic)
 
     def bind_nuclear_integrator(self, type: str):
-        NuclearUpdater(key = type)
+        CompositeIntegrator(nuc_upd = type)
 
     def bind_tdc_updater(self, **quantum):
         TDCUpdater(key = quantum["tdc_upd"], **quantum)
@@ -200,9 +200,10 @@ class Trajectory:
 
         out = Output()
         out.close_log()
-        with open("backup/traj.pkl", "wb") as pkl:
-            self._single = Singleton.save()
-            pickle.dump(self, pkl)
+        if self._backup:
+            with open("backup/traj.pkl", "wb") as pkl:
+                self._single = Singleton.save()
+                pickle.dump(self, pkl)
         out.open_log()
 
     @staticmethod

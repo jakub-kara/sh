@@ -2,6 +2,8 @@ import numpy as np
 from typing import Callable
 from .nuclear import NuclearUpdater
 from .am import *
+from dynamics.dynamics import Dynamics
+from electronic.electronic import ESTProgram
 
 class SYBase(NuclearUpdater):
     substeps = 1
@@ -52,17 +54,27 @@ class SYAMBase(NuclearUpdater):
     sy: SYBase = None
     am: AMBase = None
 
-    def update(self, mols: list[Molecule], dt: float, fun: Callable):
-        temp = mols[-1].copy_all()
+    def update(self, mols: list[Molecule], dt: float, dyn: Dynamics):
+        out = mols[-1].copy_all()
+        temp = mols[-self.steps:]
         # find new position as a weighted sum of previous positions and accelerations
-        temp.pos_ad = -np.einsum("j,j...->...", self.sy.a[:-1], np.array([mol.pos_ad for mol in mols])) + dt**2*np.einsum("j,j...->...", self.sy.b[:-1], np.array([mol.acc_ad for mol in mols]))
-        temp.pos_ad /= self.sy.a[-1]
-        # calculate new acceleration
-        fun(temp)
-        # calculate new velocity from new acceleration, previous velocities, and previous accelerations
-        temp.vel_ad += dt*np.einsum("j,j...->...", self.am.b[:-1], np.array([mol.acc_ad for mol in mols])[1:]) + dt*self.am.b[-1]*temp.acc_ad
+        out.pos_ad = -np.einsum("j,j...->...", self.sy.a[:-1], np.array([mol.pos_ad for mol in temp])) + dt**2*np.einsum("j,j...->...", self.sy.b[:-1], np.array([mol.acc_ad for mol in temp]))
+        out.pos_ad /= self.sy.a[-1]
 
-        return temp
+        # calculate new acceleration
+        est = ESTProgram()
+        dyn.setup_est(mode = dyn.get_mode())
+        est.run(out)
+        est.read(out, ref = mols[-1])
+        est.reset_calc()
+
+        dyn.update_quantum(mols + [out], dt)
+        dyn.calculate_acceleration(out)
+
+        # calculate new velocity from new acceleration, previous velocities, and previous accelerations
+        out.vel_ad += dt*np.einsum("j,j...->...", self.am.b[:-1], np.array([mol.acc_ad for mol in temp])[1:]) + dt*self.am.b[-1]*out.acc_ad
+
+        return out
 
 class SYAM4(SYAMBase, key = "syam4"):
     steps = 4

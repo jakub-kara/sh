@@ -35,6 +35,9 @@ class Timestep(metaclass = Factory):
         self.time += self.dt
         self.step += 1
 
+    def save_state(self):
+        pass
+
 class Constant(Timestep, key = "const"):
     pass
 

@@ -10,23 +10,24 @@ def make_dirs(root):
 
 def sample_nuclear():
     gamma = 0.5
-    q0 = -15
-    e0 = 70
-    p0 = np.sqrt(2*e0/units["amu"])
+    q0 = -5
+    e0 = 0.022
+    m = 1 / units["amu"]
+    p0 = np.sqrt(2 * e0 * m)
 
     q = np.random.normal(q0, 1/np.sqrt(2*gamma), nsamp)
     p = np.random.normal(p0, np.sqrt(2*gamma), nsamp)
-    v = p * units["amu"]
+    v = p / m
 
     for i in range(nsamp):
         os.chdir(f"T{i}")
         with open("geom.xyz", "w") as f:
             f.write("1\n\n")
-            f.write(f"1 {q[i]} 0 0 {v[i]} 0 0")
+            f.write(f"H {q[i]} 0 0 {v[i]} 0 0")
         os.chdir("..")
 
 def sample_quantum():
-    nst = 3
+    nst = 2
     theta = np.arccos(np.random.uniform(0, 1, (nsamp, nst - 1)))
     phi = np.random.uniform(0, 2*np.pi, (nsamp, nst - 1))
 
@@ -41,7 +42,7 @@ def sample_quantum():
                 f.write(f"{sx[i,j]} {sy[i,j]} {sz[i,j]}\n")
         os.chdir("..")
 
-nsamp = 2000
+nsamp = 1500
 make_dirs(".")
 sample_nuclear()
 sample_quantum()

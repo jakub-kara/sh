@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from classes.molecule import Molecule
 from electronic.electronic import ESTProgram
 
@@ -20,6 +21,7 @@ class Model1D(ESTProgram, key = "model_1d"):
             "tully_3": self.tully_3,
             "sub_x": self.sub_x,
             "sub_s": self.sub_s,
+            "ho2": self.ho2,
         }
         return methods[key]
 
@@ -39,6 +41,9 @@ class Model1D(ESTProgram, key = "model_1d"):
 
     def execute(self):
         pass
+
+    def backup_wf(self):
+        np.save("backup/states.npy", self._trans)
 
     def _diagonalise(self):
         eval, evec = np.linalg.eigh(self._hamdia)
@@ -63,8 +68,16 @@ class Model1D(ESTProgram, key = "model_1d"):
     def read_nac(self):
         return self._nacdr.copy()
 
-    def read_ovlp(self):
-        raise NotImplementedError
+    def read_ovlp(self, *args, **kwargs):
+        old = np.load("../backup/states.npy")
+        new = self._trans
+
+        ovl = np.zeros((self.n_states, self.n_states))
+        for i in range(self.n_states):
+            for j in range(self.n_states):
+                ovl[i,j] = np.sum(old[:,i] * new[:,j])
+
+        return ovl
 
     def sub_1(self):
         a = 0.01
@@ -153,6 +166,7 @@ class Model1D(ESTProgram, key = "model_1d"):
         b = 1.0
         c = 0.005
         d = 0.5
+        e = 0.1
         x = self._geo[0,0]
 
         self._hamdia[0,0] = a*(np.tanh(b*(x - 7)) - np.tanh(b*(x + 7))) + a
@@ -162,17 +176,39 @@ class Model1D(ESTProgram, key = "model_1d"):
         self._hamdia[2,2] = 2*a*np.tanh(d*x)
         self._gradham[2,2,0,0] = 2*a*d*(1 - np.tanh(d*x)**2)
 
-        self._hamdia[0,1] = c*(np.exp(-(x - 7)**2) + np.exp(-(x + 7)**2))
-        self._gradham[0,1,0,0] = -2*c*((x - 7)*np.exp(-(x - 7)**2) + (x + 7)*np.exp(-(x + 7)**2))
+        self._hamdia[0,1] = c*(np.exp(-e*(x - 7)**2) + np.exp(-e*(x + 7)**2))
+        self._gradham[0,1,0,0] = -2*c*e*((x - 7)*np.exp(-e*(x - 7)**2) + (x + 7)*np.exp(-e*(x + 7)**2))
         self._hamdia[1,0] = self._hamdia[0,1]
         self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
 
-        self._hamdia[0,2] = c*np.exp(-x**2)
-        self._gradham[0,2,0,0] = -2*c*x*np.exp(-x**2)
+        self._hamdia[0,2] = c*np.exp(-e*x**2)
+        self._gradham[0,2,0,0] = -2*c*e*x*np.exp(-e*x**2)
         self._hamdia[2,0] = self._hamdia[0,2]
         self._gradham[2,0,0,0] = self._gradham[0,2,0,0]
 
-        self._hamdia[1,2] = c*np.exp(-x**2)
-        self._gradham[1,2,0,0] = -2*c*x*np.exp(-x**2)
+        self._hamdia[1,2] = c*np.exp(-e*x**2)
+        self._gradham[1,2,0,0] = -2*c*e*x*np.exp(-e*x**2)
         self._hamdia[2,1] = self._hamdia[1,2]
         self._gradham[2,1,0,0] = self._gradham[1,2,0,0]
+
+    def ho2(self):
+        a = 0.005
+        b = 4
+        c = 0.02
+        d = 0.1
+        x = self._geo[0,0]
+
+        self._hamdia[0,0] = a * (x - b)**2
+        self._gradham[0,0,0,0] = 2 * a * (x - b)
+        self._hamdia[1,1] = a * (x + b)**2
+        self._gradham[1,1,0,0] = 2 * a * (x + b)
+
+        # self._hamdia[0,1] = c * np.exp(-d * x**2)
+        # self._hamdia[1,0] = self._hamdia[0,1]
+        # self._gradham[0,1,0,0] = - 2 * c * d * x * np.exp(-d * x**2)
+        # self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
+
+        self._hamdia[0,1] = c
+        self._hamdia[1,0] = c
+        self._gradham[0,1,0,0] = 0
+        self._gradham[1,0,0,0] = 0

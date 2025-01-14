@@ -34,7 +34,6 @@ class MASH(SurfaceHopping, key = "mash"):
 
         print(mol.bloch_n3)
         print(f"target: {self.target} \t\tactive: {self.active}")
-        print(mol.nacdr_ssad[1,0,0,0])
 
         if self.hop_ready():
             if "n" not in self.get_mode():
@@ -50,7 +49,6 @@ class MASH(SurfaceHopping, key = "mash"):
                 self._hop()
 
                 self.setup_est(mode = "a")
-                breakpoint()
                 est = ESTProgram()
                 est.run(mol)
                 est.read(mol)
@@ -67,7 +65,7 @@ class MASH(SurfaceHopping, key = "mash"):
 
     def update_quantum(self, mols, dt: float):
         self.update_tdc(mols, dt)
-        self.update_coeff(mols, dt)
+        # self.update_coeff(mols, dt)
         self.update_bloch(mols, dt)
 
     def update_bloch(self, mols: list[MoleculeBloch], dt: float):
