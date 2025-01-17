@@ -1,7 +1,7 @@
 import numpy as np
 from .sh import SurfaceHopping
 from .checker import HoppingUpdater
-from classes.molecule import MoleculeBloch
+from classes.molecule import Molecule, BlochMixin
 from classes.timestep import Timestep
 from electronic.electronic import ESTProgram
 from updaters.coeff import BlochUpdater
@@ -10,12 +10,12 @@ from updaters.tdc import TDCUpdater
 class MASH(SurfaceHopping, key = "mash"):
     ''' Lawrence and Richardson's "unSMASH". Reduces to Mannouch and Richardson's "MASH" for two state case '''
     def __init__(self, **config):
-        config["nuclear"]["pes"] = "bloch"
+        config["nuclear"]["mixins"].append("bloch")
         super().__init__(**config)
         BlochUpdater(**config["quantum"])
         HoppingUpdater(key = "mash", **config["quantum"])
 
-    def read_coeff(self, mol: MoleculeBloch, file=None):
+    def read_coeff(self, mol: Molecule, file=None):
         if file is None:
             mol.bloch_n3[:, 2] = 1
             mol.bloch_n3[self.active, :] = None
@@ -28,7 +28,7 @@ class MASH(SurfaceHopping, key = "mash"):
         mol.bloch_n3[:self.active] = data[:self.active]
         mol.bloch_n3[self.active + 1:] = data[self.active:]
 
-    def adjust_nuclear(self, mols: list[MoleculeBloch], dt: float):
+    def adjust_nuclear(self, mols: list[Molecule], dt: float):
         mol = mols[-1]
         self.update_target(mols, dt)
 
@@ -68,18 +68,18 @@ class MASH(SurfaceHopping, key = "mash"):
         # self.update_coeff(mols, dt)
         self.update_bloch(mols, dt)
 
-    def update_bloch(self, mols: list[MoleculeBloch], dt: float):
+    def update_bloch(self, mols: list[Molecule], dt: float):
         bupd = BlochUpdater()
         bupd.run(mols, dt, self.active)
         mols[-1].bloch_n3 = bupd.bloch.out
 
-    def _has_energy(self, mol: MoleculeBloch):
+    def _has_energy(self, mol: Molecule):
         d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
         pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
         ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
         return np.sum(ppar**2) / 2 + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] >= 0
 
-    def _adjust_velocity(self, mol: MoleculeBloch):
+    def _adjust_velocity(self, mol: Molecule):
         d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
         pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
         ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
@@ -87,7 +87,7 @@ class MASH(SurfaceHopping, key = "mash"):
         pfin = np.sqrt(1 + 2 * (mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target]) / np.sum(ppar**2)) * ppar
         mol.vel_ad = (pperp + pfin) / np.sqrt(mol.mass_a[:,None])
 
-    def _reverse_velocity(self, mol: MoleculeBloch):
+    def _reverse_velocity(self, mol: Molecule):
         d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
         pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
         ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
@@ -95,12 +95,12 @@ class MASH(SurfaceHopping, key = "mash"):
         pfin = -ppar
         mol.vel_ad = (pperp + pfin) / np.sqrt(mol.mass_a[:,None])
 
-    def _swap_bloch(self, mol: MoleculeBloch):
+    def _swap_bloch(self, mol: Molecule):
         swp = np.array([1, -1, -1])
         for s in range(mol.n_states):
             if s == self.active:
                 mol.bloch_n3[s] = mol.bloch_n3[self._target] * swp
                 mol.bloch_n3[self._target] = None
 
-    def _reverse_bloch(self, mol: MoleculeBloch):
+    def _reverse_bloch(self, mol: Molecule):
         mol.bloch_n3[self._target, 2] *= -1

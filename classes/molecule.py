@@ -3,7 +3,14 @@ from copy import deepcopy
 from classes.meta import Factory
 from classes.constants import convert, atomic_masses
 
-class Molecule(metaclass = Factory):
+class Molecule:
+    def __new__(cls, *, mixins = [], **kwargs):
+        if not isinstance(mixins, (list, tuple)):
+            mixins = [mixins]
+        temp = type("Molecule", tuple([MoleculeMixin.subclass(key = mix) for mix in mixins] + [_Molecule]), {})
+        return temp(**kwargs)
+
+class _Molecule:
     def __init__(self, *, n_states: int, input="geom.xyz", **config):
         self.pos_ad = None
         self.vel_ad = None
@@ -220,12 +227,15 @@ class Molecule(metaclass = Factory):
     def n_states(self):
         return self.coeff_s.shape[0]
 
-class MoleculeBloch(Molecule, key = "bloch"):
+class MoleculeMixin(metaclass = Factory):
+    pass
+
+class BlochMixin(MoleculeMixin, key = "bloch"):
     def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
         self.bloch_n3 = np.zeros((n_states, 3))
 
-class MoleculeCSDM(Molecule, key = "csdm"):
+class CSDMMixin(MoleculeMixin, key = "csdm"):
     def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
-        self.coeff_co_s = np.zeros_like(self.coeff_s)
+        self.coeff_co_s = np.zeros(n_states, dtype=np.complex128)

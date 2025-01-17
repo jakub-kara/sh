@@ -16,6 +16,7 @@ from updaters.coeff import CoeffUpdater
 class Trajectory:
     def __init__(self, *, dynamics: dict, **config):
         self.mols: list[Molecule] = []
+        config["nuclear"]["mixins"] = []
         self.dyn: Dynamics = Dynamics(key = dynamics["method"], dynamics=dynamics, **config)
         self._timestep = Timestep(
             key = dynamics.get("timestep", "const"),
@@ -168,7 +169,7 @@ class Trajectory:
 
     def get_molecule(self, **nuclear):
         est = ESTProgram()
-        return Molecule(key = nuclear.get("pes", ""), n_states=est.n_states, **nuclear)
+        return Molecule(n_states=est.n_states, **nuclear)
 
     def bind_molecules(self, **nuclear):
         nupd = CompositeIntegrator()

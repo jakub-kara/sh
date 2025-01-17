@@ -17,7 +17,7 @@ for i, d in enumerate(dirs):
                     nst = line.count("Population")
                     # either enforce in printing or adapt
                     act = 1
-        nst = 2
+        nst = 3
         data = np.genfromtxt(f"{d}/0/data/out.dat", skip_header=1)
         pop = np.zeros((data.shape[0], nst))
         tim = data[:,0]

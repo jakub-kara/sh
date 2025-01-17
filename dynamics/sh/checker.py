@@ -1,5 +1,5 @@
 import numpy as np
-from classes.molecule import Molecule, MoleculeBloch
+from classes.molecule import Molecule, BlochMixin
 from classes.meta import SingletonFactory
 from updaters.updaters import Updater, Multistage, UpdateResult
 from updaters.coeff import CoeffUpdater
@@ -112,7 +112,7 @@ class GFHoppingChecker(HoppingUpdater, key = "gf"):
         self.hop.out = self._check_hop(prob, active)
 
 class MASHChecker(HoppingUpdater, key = "mash"):
-    def update(self, mols: list[MoleculeBloch], dt: float, active: int):
+    def update(self, mols: list[Molecule], dt: float, active: int):
         nst = mols[-1].n_states
         prob = self.prob.inp
         for s in range(nst):

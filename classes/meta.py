@@ -20,11 +20,14 @@ class Factory(ABCMeta):
         if key is not None:
             cls._keys[key] = cls
 
-    def _new(cls, key=None, **kwargs):
+    def subclass(cls, key):
         if key in cls._keys:
-            sub = cls._keys[key]
+            return cls._keys[key]
         else:
-            sub = cls
+            return cls
+
+    def _new(cls, key=None, **kwargs):
+        sub = cls.subclass(key)
         return object.__new__(sub)
 
 class Singleton(type):

@@ -22,6 +22,7 @@ class Model1D(ESTProgram, key = "model_1d"):
             "sub_x": self.sub_x,
             "sub_s": self.sub_s,
             "ho2": self.ho2,
+            "ho3": self.ho3,
         }
         return methods[key]
 
@@ -195,10 +196,10 @@ class Model1D(ESTProgram, key = "model_1d"):
         a = 0.005
         b = 4
         c = 0.02
-        d = 0.1
+        d = 0.01
         x = self._geo[0,0]
 
-        self._hamdia[0,0] = a * (x - b)**2
+        self._hamdia[0,0] = a * (x - b)**2 + d
         self._gradham[0,0,0,0] = 2 * a * (x - b)
         self._hamdia[1,1] = a * (x + b)**2
         self._gradham[1,1,0,0] = 2 * a * (x + b)
@@ -212,3 +213,37 @@ class Model1D(ESTProgram, key = "model_1d"):
         self._hamdia[1,0] = c
         self._gradham[0,1,0,0] = 0
         self._gradham[1,0,0,0] = 0
+
+    def ho3(self):
+        a = 0.005
+        b = 4
+        c = 0.02
+        d = 0.1
+        x = self._geo[0,0]
+
+        self._hamdia[0,0] = a * (x - 2*b)**2
+        self._hamdia[1,1] = a * x**2
+        self._hamdia[2,2] = a * (x + 2*b)**2
+        self._gradham[0,0,0,0] = 2 * a * (x - 2*b)
+        self._gradham[1,1,0,0] = 2 * a * x
+        self._gradham[2,2,0,0] = 2 * a * (x + 2*b)
+
+        # self._hamdia[0,1] = c * np.exp(-d * x**2)
+        # self._hamdia[1,0] = self._hamdia[0,1]
+        # self._gradham[0,1,0,0] = - 2 * c * d * x * np.exp(-d * x**2)
+        # self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
+
+        self._hamdia[0,1] = c
+        self._hamdia[1,0] = c
+        self._gradham[0,1,0,0] = 0
+        self._gradham[1,0,0,0] = 0
+
+        self._hamdia[1,2] = c
+        self._hamdia[2,1] = c
+        self._gradham[1,2,0,0] = 0
+        self._gradham[2,1,0,0] = 0
+
+        self._hamdia[0,2] = c
+        self._hamdia[2,0] = c
+        self._gradham[0,2,0,0] = 0
+        self._gradham[2,0,0,0] = 0

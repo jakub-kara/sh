@@ -1,5 +1,6 @@
 import time
 from classes.meta import Factory, SingletonFactory, Singleton
+from classes.molecule import Molecule
 
 class Parent(metaclass = SingletonFactory):
     def __init__(self, x):
@@ -15,5 +16,7 @@ class Child2(Parent, key = 2):
     pass
 
 x = Parent(x=1, key=3)
+
+mol = Molecule(n_states=1, mixins=("bloch", ))
 
 breakpoint()

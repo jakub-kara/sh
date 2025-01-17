@@ -12,9 +12,9 @@ class CompositeIntegrator(Updater, metaclass = Singleton):
         base = NuclearUpdater(key = nuc_upd)
         self._upds[0] = base
         if base.steps > 1:
-            self._upds[-1] = NuclearUpdater(key = "rkn4")
+            self._upds[-1] = NuclearUpdater(key = f"rkn{base.steps}")
 
-        self.steps = max([i.steps for i in self._upds.values()])
+        self.steps = base.steps
 
         self.to_init()
 

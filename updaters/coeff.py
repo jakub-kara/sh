@@ -3,7 +3,7 @@ from scipy.linalg import expm
 from .updaters import Updater, Multistage, UpdateResult
 from .tdc import TDCUpdater
 from classes.meta import Singleton, SingletonFactory
-from classes.molecule import Molecule, MoleculeBloch
+from classes.molecule import Molecule, BlochMixin
 
 class CoeffUpdater(Updater, metaclass = SingletonFactory):
     mode = ""
@@ -62,7 +62,7 @@ class BlochUpdater(Multistage, Updater, metaclass = Singleton):
         super().__init__(**kwargs)
         self.bloch = None
 
-    def new_result(self, mol: MoleculeBloch, *args, **kwargs):
+    def new_result(self, mol: Molecule, *args, **kwargs):
         self.bloch = UpdateResult(mol.bloch_n3, self.substeps)
 
     def update(self, mols: list[Molecule], dt: float, active: int):
@@ -88,5 +88,5 @@ class BlochUpdater(Multistage, Updater, metaclass = Singleton):
                 # print(bloch[s])
                 self.bloch.inter[i,s] = bloch[s]
 
-    def no_update(self, mols: list[MoleculeBloch], dt: float, active: int):
+    def no_update(self, mols: list[Molecule], dt: float, active: int):
         self.bloch.fill()

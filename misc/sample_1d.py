@@ -10,10 +10,10 @@ def make_dirs(root):
 
 def sample_nuclear():
     gamma = 0.5
-    q0 = -5
-    e0 = 0.022
+    q0 = -2
+    v0 = 0.005
     m = 1 / units["amu"]
-    p0 = np.sqrt(2 * e0 * m)
+    p0 = m * v0
 
     q = np.random.normal(q0, 1/np.sqrt(2*gamma), nsamp)
     p = np.random.normal(p0, np.sqrt(2*gamma), nsamp)
@@ -27,7 +27,7 @@ def sample_nuclear():
         os.chdir("..")
 
 def sample_quantum():
-    nst = 2
+    nst = 3
     theta = np.arccos(np.random.uniform(0, 1, (nsamp, nst - 1)))
     phi = np.random.uniform(0, 2*np.pi, (nsamp, nst - 1))
 

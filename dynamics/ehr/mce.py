@@ -32,30 +32,14 @@ class MultiEhrenfest(SimpleEhrenfest, key = "mce"):
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         mol = mols[-1]
         accbr = self._calculate_breaking(mol)
-        # print(self._accbr)
-        # print(np.abs(self.mol.nacdt_ss[0,1]))
 
-        # TODO: consider all subsets of states
-        # https://doi.org/10.1021/acs.jctc.1c00131
-        coeff = mol.coeff_s
-        mx = np.argmax(np.abs(coeff))
-        # w = 1/np.sum(np.abs(coeff)**4)
-        # cond1 = w > 1.3
-
-        # fmean = -np.einsum("s,sad->ad", np.abs(coeff)**2, self.mol.grad_sad)
-        fmean = mol.acc_ad * mol.mass_a[:,None]
-        fmax = -mol.grad_sad[mx]
-        theta = np.arccos((2 * np.sum(fmean * fmax)) / (np.sum(fmean**2) + np.sum(fmax**2)))
-        cond2 = theta > np.pi/12
-
-        delta = np.sum(np.abs(2 * np.real(coeff/coeff[mx]) * mol.nacdt_ss[:,mx]))
-        cond3 = delta < 5e-3
-
-        print(theta, delta)
-
-        if cond2 and cond3 and self._nspawn < self._maxspawn:
-            self.split = [mx]
-            self._nspawn += 1
+        for s in range(mol.n_states):
+            nac = np.sqrt(np.sum(mol.nacdt_ss[s]**2))
+            print(f"{s} {accbr[s]} {nac}")
+            if accbr[s] > self._dclone and nac < self._dnac and self._nspawn < self._maxspawn:
+                self.split = [s]
+                self._nspawn += 1
+                break
 
     def h5_dict(self):
         return {"phase": self._phase}
