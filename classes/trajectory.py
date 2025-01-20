@@ -141,6 +141,10 @@ class Trajectory:
         out.write_log(f"Wall time:      {time.time() - t1} s")
         out.write_log()
 
+        # print()
+        # print(f"TOTAL: {self.dyn.total_energy(self.mol)}")
+        # print()
+
         t2 = time.time()
         out.write_log(f"Adjust")
         self.dyn.adjust_nuclear(self.mols, self._timestep.dt)
