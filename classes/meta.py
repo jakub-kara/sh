@@ -1,6 +1,7 @@
 from abc import ABCMeta
 
-class Factory(ABCMeta):
+# class Factory(ABCMeta):
+class Factory(type):
     def __init__(cls, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for sup in cls.mro():
@@ -65,3 +66,10 @@ class Singleton(type):
 
 class SingletonFactory(Singleton, Factory):
     pass
+
+class DynamicClassProxy:
+    def __call__(self, kls, kls_name):
+        dyncls = getattr(kls, kls_name)
+        dyninst = DynamicClassProxy()
+        dyninst.__class__ = dyncls
+        return dyninst

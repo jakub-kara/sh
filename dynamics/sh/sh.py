@@ -91,7 +91,7 @@ class SurfaceHopping(Dynamics):
         return kin_proj
 
     def _has_energy(self, mol: Molecule, delta: np.ndarray):
-        return self._avail_kinetic_energy(mol,delta) + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] > 0
+        return self._avail_kinetic_energy(mol, delta) + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] > 0
 
     def _hop(self):
         self._active = self.target

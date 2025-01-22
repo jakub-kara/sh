@@ -4,7 +4,7 @@ import types
 import matplotlib.pyplot as plt
 import pickle
 import scipy
-import classes.constants 
+import classes.constants
 from classes.molecule import Molecule
 from electronic.electronic import ESTProgram
 
@@ -42,17 +42,17 @@ We also note that a vibronic coupling model is a *diabatic* hamiltonian. The thr
 
 For reference
 
-$i,j                     $ index the electronic states, 
-$\alpha,\beta            $ index the normal mode coordinates, 
-$\epsilon_{i}            $ are constant on-diagonal terms, representing excitation energies, 
-$\eta_{ij}               $ are constant off-diagonal terms, generally representing spin-orbit couplings, 
-$\omega_\alpha           $ are the harmonic frequencies, which define the coordinate system, 
-$\kappa_\alpha^i         $ are the on-diagonal linear terms, which shift the minima of each state in each DOF, 
-$\lambda_\alpha^{ij}     $ are the off-diagonal linear terms, which describe the coupling between states , 
-$\gamma_{\alpha\beta}^i  $ are on-diagonal quadratic (and bi-linear) terms. The quadratic terms modulate the frequencies of the individual states, the bi-linear terms change the potential based on two correlated states, 
-$\mu{\alpha\beta}^{ij}   $ are off-diagonal quadratic (and bi-linear) terms, which couple the states based on two displacements, 
+$i,j                     $ index the electronic states,
+$\alpha,\beta            $ index the normal mode coordinates,
+$\epsilon_{i}            $ are constant on-diagonal terms, representing excitation energies,
+$\eta_{ij}               $ are constant off-diagonal terms, generally representing spin-orbit couplings,
+$\omega_\alpha           $ are the harmonic frequencies, which define the coordinate system,
+$\kappa_\alpha^i         $ are the on-diagonal linear terms, which shift the minima of each state in each DOF,
+$\lambda_\alpha^{ij}     $ are the off-diagonal linear terms, which describe the coupling between states ,
+$\gamma_{\alpha\beta}^i  $ are on-diagonal quadratic (and bi-linear) terms. The quadratic terms modulate the frequencies of the individual states, the bi-linear terms change the potential based on two correlated states,
+$\mu{\alpha\beta}^{ij}   $ are off-diagonal quadratic (and bi-linear) terms, which couple the states based on two displacements,
 
-Be careful here, especially with the bi-linear terms. We use a factor of 1/2 in keeping with VCHAM, but be aware that our sum of $\beta$ is not truncated to $\beta>\alpha$, and so we have both $\omega_1\omega_2$ and $\omega_2\omega_1$ terms. 
+Be careful here, especially with the bi-linear terms. We use a factor of 1/2 in keeping with VCHAM, but be aware that our sum of $\beta$ is not truncated to $\beta>\alpha$, and so we have both $\omega_1\omega_2$ and $\omega_2\omega_1$ terms.
 
 Finally, we note that we can make use of "inactive modes" physically. These amount to removing one of the normal mode displacements. To do this, set the inactive_mode[i] variable to True for the index you want to be inactive. This can be done in the options section of the input file
 
@@ -84,7 +84,7 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         self.mu_b        = True
         self.expl        = []
         self.expl_b      = True
-        try: 
+        try:
             self.inactive_modes = np.array(self._options['inactive_modes']).astype(bool)
         except KeyError:
             self.inactive_modes = np.zeros(self.no_f,dtype=bool)
@@ -203,7 +203,7 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
 
         if self.hess_b:
             HESS += self.omega[:,None,None,None] * np.eye(self.no_f)[:,:,None,None] * In[None,None,:,:]
-        
+
         # On-diagonal linear terms. V = kappa x, V' = kappa
         if self.kappa_b:
             H += np.einsum('ij,i->j',self.kappa,disp) * In
@@ -212,7 +212,7 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         # Off-diagonal linear terms. V = lambda x, V' = lambda
         if self.lamb_b:
             H += np.einsum('ijk,i->jk',self.lamb,disp)
-            DDR += self.lamb       
+            DDR += self.lamb
 
         # have to deal with the definitial factor of 1/2 for on-nuclear-diagonal gamma and mu
         if self.gamma_b:
@@ -226,8 +226,8 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
             H += 0.5 * np.einsum('ijkl,i,j->kl ',self.mu,disp,disp)
             DDR +=     np.einsum('ijkl,i  ->jkl',self.mu,disp)
             if self.hess_b:
-                HESS += self.mu 
-        
+                HESS += self.mu
+
 
         if self.expl_b:
             eham,eddr,ehess = self.calc_explicit(disp)
@@ -246,7 +246,7 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
             self.hess = HESS
 
         return H, DDR
-    
+
     def calc_explicit(self,disp):
 
         H = np.zeros((self.no_s,self.no_s))
@@ -278,7 +278,7 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
                     for term2 in aa:
                         if term2 == term1: continue
                         mult *= disp[term[0]-1]**term[1] #* self.omega[term[0]-1]**(term[1]/2)
-                    
+
                 DDR[term[0]-1,j,k] += v * disp[term[0]-1]**(term[1]-1) * mult * term[1] #* self.omega[term[0]-1]**(term[1]/2)
 
             if self.hess_b:
@@ -298,19 +298,19 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
                         tmp = f.readline().split()
                         self.labels.append(tmp[1])
                         self.omega[i] = float(tmp[-1])
-        
+
                 if '*** On-diagonal constants ***' in line:
                     f.readline()
                     for i in range(self.no_s):
                         tmp = f.readline().split()
                         self.epsilon[i] = float(tmp[-1])
-        
+
                 if '*** On-diagonal linear coupling constants (kappa) ***' in line:
                     f.readline()
                     for i in range(self.no_f):
                         tmp = f.readline().split()
                         self.kappa[i,:] = [float(tmp[k+2]) for k in range(self.no_s)]
-                
+
                 if '*** Off-diagonal linear (lambda) coupling constants ***' in line:
                     for i in range(self.no_s):
                         for j in range(i+1,self.no_s):
@@ -319,13 +319,13 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
                                 tmp = f.readline().split()
                                 self.lamb[k,i,j] = float(tmp[-1])
                                 # self.lamb[k,j,i] = lamb[k,i,j]
-        
+
         #        if '*** On-diagonal quadratic constants (gamma) ***' in line:
         #            f.readline()
         #            for i in range(self.no_f):
         #                tmp = f.readline().split()
         #                gamma[i,i,:] = [float(tmp[i+2]) for i in range(self.no_s)]
-        
+
                 if '*** All on-diagonal bilinear (gamma) constants ***' in line:
                     for i in range(self.no_s):
                         f.readline()
@@ -336,7 +336,7 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
                                 self.gamma[k,j*6:min(k+1,6+j*6),i] = [float(l) for l in tmp[2:]]
                                 self.gamma[j*6:min(k+1,6+j*6),k,i] = [float(l) for l in tmp[2:]]
                         f.readline()
-        
+
                 if '*** Off-diagonal bilinear (mu) constants ***' in line:
                     for i in range(self.no_s):
                         for i2 in range(i+1,self.no_s):
@@ -349,11 +349,11 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
                                     self.mu[j*6:min(k+1,6+j*6),k,i,i2] = [float(l) for l in tmp[2:]]
                                     # self.mu[k,j*6:min(k+1,6+j*6),i2,i] = [float(l) for l in tmp[2:]]
                             f.readline()
-        
+
                 if '*** Explicitely added polynomial terms ***' in line:
                     self.expl = []
                     N = int(f.readline().split()[-1])
-        
+
                     for i in range(N):
                         self.expl.append(f.readline().split()[1:])
 
@@ -401,19 +401,19 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         # self.gamma[2,2,0] = 0.001
         # self.mu          = np.zeros((self.no_f,self.no_f,self.no_s,self.no_s))
         # self.expl         = []
-    
+
 def save_pickle(VC,filename):
     with open(filename,'wb') as f:
         pickle.dump(VC,f)
-        
+
 def load_pickle(filename):
     with open(filename,'rb') as f:
         VC = pickle.load(f)
     return VC
-    
 
-    
-    
+
+
+
     # print("frequencies")
     # print(frequencies)
     # print("constants")
@@ -429,17 +429,17 @@ def load_pickle(filename):
     # print("explicit")
     # print(explicit)
     #
-    
+
 if __name__ == "__main__":
     no_f = 39
     no_s = 3
-    par = VC(no_f=no_f,no_s=no_s)        
+    par = VC(no_f=no_f,no_s=no_s)
 
 
     par.read_vcham_file(sys.argv[1])
 
     # save_pickle(par,'save.pkl')
-    
+
     mol = mol()
     mol.pos_ad = np.zeros(par.no_f)
 
@@ -474,4 +474,4 @@ if __name__ == "__main__":
     ax.plot(x,hs[:,0,2])
     ax.plot(x,hs[:,0,2])
     plt.show()
-    
+

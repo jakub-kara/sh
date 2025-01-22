@@ -1,16 +1,18 @@
 import numpy as np
 from copy import deepcopy
-from classes.meta import Factory
+from classes.meta import Factory, DynamicClassProxy
 from classes.constants import convert, atomic_masses
 
 class Molecule:
-    def __new__(cls, *, mixins = [], **kwargs):
+    def __new__(cls, mixins, **kwargs):
         if not isinstance(mixins, (list, tuple)):
             mixins = [mixins]
-        temp = type("Molecule", tuple([MoleculeMixin.subclass(key = mix) for mix in mixins] + [_Molecule]), {})
-        return temp(**kwargs)
+        cls.Molecule = type(
+            "Molecule",
+            tuple([MoleculeMixin.subclass(key = mix) for mix in mixins] + [Molecule]),
+            {"__new__": lambda cls, *args, **kwargs: object.__new__(cls)})
+        return cls.Molecule(**kwargs)
 
-class _Molecule:
     def __init__(self, *, n_states: int, input="geom.xyz", **config):
         self.pos_ad = None
         self.vel_ad = None
@@ -223,9 +225,9 @@ class _Molecule:
         for i in range(self.n_states):
             self.grad_sad[i] = np.real(g_diag[i,i])
 
-    @property
-    def n_states(self):
-        return self.coeff_s.shape[0]
+
+    def __reduce__(self):
+        return (DynamicClassProxy(), (Molecule, self.__class__.__name__), self.__dict__.copy())
 
 class MoleculeMixin(metaclass = Factory):
     pass

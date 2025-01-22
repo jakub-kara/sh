@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from classes.meta import SingletonFactory
 from classes.molecule import Molecule
 from classes.constants import convert

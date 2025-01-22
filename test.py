@@ -1,3 +1,4 @@
+import pickle
 import time
 from classes.meta import Factory, SingletonFactory, Singleton
 from classes.molecule import Molecule
@@ -18,5 +19,11 @@ class Child2(Parent, key = 2):
 x = Parent(x=1, key=3)
 
 mol = Molecule(n_states=1, mixins=("bloch", ))
+
+with open("temp", "wb") as f:
+    pickle.dump(mol, f)
+
+with open("temp", "rb") as f:
+    temp = pickle.load(f)
 
 breakpoint()

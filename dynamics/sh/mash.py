@@ -15,6 +15,9 @@ class MASH(SurfaceHopping, key = "mash"):
         BlochUpdater(**config["quantum"])
         HoppingUpdater(key = "mash", **config["quantum"])
 
+        self._rescale = "nac"
+        self._reverse = True
+
     def read_coeff(self, mol: Molecule, file=None):
         if file is None:
             mol.bloch_n3[:, 2] = 1
@@ -43,8 +46,8 @@ class MASH(SurfaceHopping, key = "mash"):
                 est.read(mol, mols[-2])
                 est.reset_calc()
 
-            if self._has_energy(mol):
-                self._adjust_velocity(mol)
+            if self._has_energy(mol, self._get_delta(mol)):
+                self._adjust_velocity(mol, self._get_delta(mol))
                 self._swap_bloch(mol)
                 self._hop()
 
@@ -55,7 +58,7 @@ class MASH(SurfaceHopping, key = "mash"):
                 self.calculate_acceleration(mol)
                 est.reset_calc()
             else:
-                self._reverse_velocity(mol)
+                self._reverse_velocity(mol, self._get_delta(mol))
                 self._reverse_bloch(mol)
                 self._nohop()
 
@@ -73,27 +76,27 @@ class MASH(SurfaceHopping, key = "mash"):
         bupd.run(mols, dt, self.active)
         mols[-1].bloch_n3 = bupd.bloch.out
 
-    def _has_energy(self, mol: Molecule):
-        d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
-        pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
-        ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
-        return np.sum(ppar**2) / 2 + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] >= 0
+    # def _has_energy(self, mol: Molecule):
+    #     d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
+    #     pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
+    #     ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
+    #     return np.sum(ppar**2) / 2 + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] >= 0
 
-    def _adjust_velocity(self, mol: Molecule):
-        d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
-        pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
-        ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
-        pperp = pmw - ppar
-        pfin = np.sqrt(1 + 2 * (mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target]) / np.sum(ppar**2)) * ppar
-        mol.vel_ad = (pperp + pfin) / np.sqrt(mol.mass_a[:,None])
+    # def _adjust_velocity(self, mol: Molecule):
+    #     d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
+    #     pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
+    #     ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
+    #     pperp = pmw - ppar
+    #     pfin = np.sqrt(1 + 2 * (mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target]) / np.sum(ppar**2)) * ppar
+    #     mol.vel_ad = (pperp + pfin) / np.sqrt(mol.mass_a[:,None])
 
-    def _reverse_velocity(self, mol: Molecule):
-        d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
-        pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
-        ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
-        pperp = pmw - ppar
-        pfin = -ppar
-        mol.vel_ad = (pperp + pfin) / np.sqrt(mol.mass_a[:,None])
+    # def _reverse_velocity(self, mol: Molecule):
+    #     d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
+    #     pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
+    #     ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
+    #     pperp = pmw - ppar
+    #     pfin = -ppar
+    #     mol.vel_ad = (pperp + pfin) / np.sqrt(mol.mass_a[:,None])
 
     def _swap_bloch(self, mol: Molecule):
         swp = np.array([1, -1, -1])

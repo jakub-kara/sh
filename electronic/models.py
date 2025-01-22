@@ -3,7 +3,7 @@ import os
 from classes.molecule import Molecule
 from electronic.electronic import ESTProgram
 
-class Model(ESTProgram, key = "model"):
+class Model1D(ESTProgram, key = "model_1d"):
     def __init__(self, **config):
         super().__init__(**config)
         self._geo = None
@@ -24,7 +24,6 @@ class Model(ESTProgram, key = "model"):
             "ho": self.ho,
             "ho2": self.ho2,
             "ho3": self.ho3,
-            "ho2_2": self.ho2_2,
         }
         return methods[key]
 
@@ -39,11 +38,10 @@ class Model(ESTProgram, key = "model"):
             self._gradham = np.zeros((self._nstates, self._nstates, self._natoms, 3))
             self._trans = np.zeros((self._nstates, self._nstates))
         self._method()
-        self._diagonalise()
-        self._get_grad_nac()
 
     def execute(self):
-        pass
+        self._diagonalise()
+        self._get_grad_nac()
 
     def backup_wf(self):
         np.save("backup/states.npy", self._trans)
@@ -253,33 +251,6 @@ class Model(ESTProgram, key = "model"):
         self._gradham[0,1,0,0] = 0
         self._gradham[1,0,0,0] = 0
 
-    def ho2_2(self):
-        a = 0.005
-        b = 4
-        c = 3
-        d = 0
-
-        # a = 0.005
-        # b = 2
-        # c = 2
-        # d = 10
-        x = self._geo[0,0]
-
-        self._hamdia[0,0] = a * (x - b)**2
-        self._hamdia[1,1] = a * (x + b)**2
-        self._gradham[0,0,0,0] = 2 * a * (x - b)
-        self._gradham[1,1,0,0] = 2 * a * (x + b)
-
-        # self._hamdia[0,1] = c * np.exp(-d * x**2)
-        # self._hamdia[1,0] = self._hamdia[0,1]
-        # self._gradham[0,1,0,0] = - 2 * c * d * x * np.exp(-d * x**2)
-        # self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
-
-        self._hamdia[0,1] = a*c
-        self._hamdia[1,0] = a*c
-        self._gradham[0,1,0,0] = 0
-        self._gradham[1,0,0,0] = 0
-
     def ho3(self):
         a = 0.005
         b = 4
@@ -313,3 +284,32 @@ class Model(ESTProgram, key = "model"):
         self._hamdia[2,0] = c
         self._gradham[0,2,0,0] = 0
         self._gradham[2,0,0,0] = 0
+
+class Model2D(Model1D, key = "model_2d"):
+    def _select_method(self, key):
+        methods = {
+            "ho2_2": self.ho2_2,
+        }
+        return methods[key]
+
+    def execute(self):
+        pass
+
+    def ho2_2(self):
+        a = 0.005
+        b = 4
+        c = 3
+        d = 0
+
+        # a = 0.005
+        # b = 2
+        # c = 2
+        # d = 10
+        r = self._geo[0]
+        rn = np.linalg.norm(r)
+        ru = r / rn
+
+        self._hamdia[0,0] = a * (rn - b)**2
+        self._hamdia[1,1] = a * (rn + b)**2
+        self._grad[0,0] = 2 * a * (rn - b) * ru
+        self._grad[1,0] = 2 * a * (rn + b) * ru
