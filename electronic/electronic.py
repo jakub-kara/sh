@@ -16,6 +16,8 @@ class ESTProgram(metaclass = SingletonFactory):
         self._natoms = None
         self._spinsum = np.cumsum(self._states) - self._states
         self._refen = convert(refen, "au")
+        
+        self._type = type
 
         self._method = self._select_method(type)
         self._options = options

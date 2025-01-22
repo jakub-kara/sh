@@ -276,7 +276,7 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
                 # It's the way it is because otherwise you divide by zero and everything is rubbish
                 if len(aa) > 1:
                     for term2 in aa:
-                        if term2 == term1: continue
+                        if term2 == term: continue
                         mult *= disp[term[0]-1]**term[1] #* self.omega[term[0]-1]**(term[1]/2)
 
                 DDR[term[0]-1,j,k] += v * disp[term[0]-1]**(term[1]-1) * mult * term[1] #* self.omega[term[0]-1]**(term[1]/2)
