@@ -5,8 +5,10 @@ from classes.constants import convert, atomic_masses
 
 class Molecule:
     def __new__(cls, mixins, **kwargs):
+        print(mixins)
         if not isinstance(mixins, (list, tuple)):
             mixins = [mixins]
+        print(mixins)
         cls.Molecule = type(
             "Molecule",
             tuple([MoleculeMixin.subclass(key = mix) for mix in mixins] + [Molecule]),
@@ -85,6 +87,13 @@ class Molecule:
             self.name_a = np.array(name, dtype="S2")
             self.mass_a = np.array(mass)
         return self
+
+    def to_dist(self):
+        outstr = ''
+        for i in range(self.n_atoms):
+            outstr += f"{self.pos_ad[i,0]:18.12f} {self.pos_ad[i,1]:18.12f} {self.pos_ad[i,2]:18.12f} "
+        outstr += '\n'
+        return outstr
 
     def to_xyz(self):
         outstr = f"{self.n_atoms}\n\n"
@@ -241,3 +250,4 @@ class CSDMMixin(MoleculeMixin, key = "csdm"):
     def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
         self.coeff_co_s = np.zeros(n_states, dtype=np.complex128)
+

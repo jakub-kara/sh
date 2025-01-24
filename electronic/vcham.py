@@ -8,12 +8,6 @@ import classes.constants
 from classes.molecule import Molecule
 from electronic.electronic import ESTProgram
 
-def to_xyz(self):
-    outstr = ''
-    for i in range(self.n_atoms):
-        outstr += f"{self.pos_ad[i,0]:18.12f} {self.pos_ad[i,1]:18.12f} {self.pos_ad[i,2]:18.12f} "
-    outstr += '\n'
-    return outstr
 
 class VC(ESTProgram, key = "vcham"):
     r'''
@@ -117,8 +111,7 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
             print(self.disp)
             print("Ham:")
             print(self.ham)
-            raise RuntimeErrorError
-            exit(55)
+            raise RuntimeError
         self.trans = evec
         self.hameig = np.diag(eval)
 
@@ -137,7 +130,6 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         self.disp[self.inactive_modes] = 0.
         if not self.initiated:
             self.read_vcham_file(self.file)
-            mol.to_xyz = types.MethodType(to_xyz,mol)
         self.disp *= np.sqrt(self.omega)
         self.get_energy()
         self.grad[:,self.inactive_modes] = 0.

@@ -8,6 +8,7 @@ class Output(metaclass = Singleton):
     def __init__(self, *, file: int, record: list, **config):
         self.record = record
         self._file = file
+        self._dist = config.get('dist',False)
         self._options = {
             "compression": config.get("compression", "gzip"),
             "compression_opts": config.get("compression_opts", 9),
@@ -43,9 +44,14 @@ class Output(metaclass = Singleton):
                     file.write(data[rec])
             file.write("\n")
 
-    def write_xyz(self, msg, mode="a"):
-        with open(f"data/{self._file}.xyz", mode) as file:
+    def write_dist(self, msg, mode="a"):
+        with open(f"data/{self._file}.dist", mode) as file:
             file.write(msg)
+
+    def write_xyz(self, msg, mode="a"):
+        if self._dist:
+            with open(f"data/{self._file}.xyz", mode) as file:
+                file.write(msg)
 
     def write_mat(self, to_write: dict, mode="a"):
         with h5py.File(f"data/{self._file}.h5", mode) as file:

@@ -16,7 +16,7 @@ from updaters.coeff import CoeffUpdater
 class Trajectory:
     def __init__(self, *, dynamics: dict, **config):
         self.mols: list[Molecule] = []
-        config["nuclear"]["mixins"] = []
+        config["nuclear"].setdefault("mixins", [])
         self.dyn: Dynamics = Dynamics(key = dynamics["method"], dynamics=dynamics, **config)
         self._timestep = Timestep(
             key = dynamics.get("timestep", "const"),
@@ -227,12 +227,14 @@ class Trajectory:
         out.write_dat(self.dat_header(out.record), "w")
         out.write_mat(self.h5_info(), "w")
         out.write_xyz("", "w")
+        out.write_dist("", "w")
 
     def write_outputs(self):
         out = Output()
         out.write_dat(self.dat_dict(out.record))
         out.write_mat(self.h5_dict())
         out.write_xyz(self.vxyz_string())
+        out.write_dist(self.dist_string())
 
     def copy(self):
         return deepcopy(self)
@@ -327,6 +329,9 @@ class Trajectory:
 
         dic = self.dyn.dat_dict(dic, record)
         return dic
+
+    def dist_string(self):
+        return self.mol.to_dist()
 
     def xyz_string(self):
         return self.mol.to_xyz()
