@@ -5,6 +5,13 @@ from .electronic import ESTProgram
 from classes.constants import multiplets, convert
 
 class Molpro(ESTProgram, key = "molpro"):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self._options.setdefault("sa", self.n_states)
+        self._options.setdefault("df", False)
+        self._options.setdefault("dfbasis", False)
+
     def _select_method(self, key):
         methods = {
             "cas": self.cas,
@@ -18,6 +25,9 @@ class Molpro(ESTProgram, key = "molpro"):
 
     def backup_wf(self):
         os.system(f"cp est/{self._file}.wf backup/")
+        # if self.any_ovlp():
+        os.system(f"cp est/dets_a backup/")
+        os.system(f"cp est/lumorb_a backup/")
 
     def recover_wf(self):
         os.system(f"cp backup/{self._file}.wf est/")
@@ -596,10 +606,11 @@ class Molpro(ESTProgram, key = "molpro"):
         S_mat = U @ Vh
         return S_mat
 
+    # TODO: this is a temporary patch, requires more systematic fix
     def _move_old_files(self):
         """shifts files from previous calculation to new calculation"""
-        os.system('mv dets_a dets_a.old')
-        os.system('mv lumorb_a lumorb_a.old')
+        os.system('cp ../backup/dets_a dets_a.old')
+        os.system('cp ../backup/lumorb_a lumorb_a.old')
 
     # probably change args
     def read_ovlp(self, atoms, geom1, geom2):

@@ -9,7 +9,7 @@ class CSDM(SimpleEhrenfest, key = "csdm"):
     def __init__(self, *, dynamics, **config):
         config["nuclear"]["mixins"].append("csdm")
         super().__init__(dynamics=dynamics, **config)
-        HoppingUpdater(key = dynamics["prob"], **config["quantum"])
+        HoppingUpdater[dynamics["prob"]](**config["quantum"])
 
         self._pointer = self._state
         self._coeff_co = None

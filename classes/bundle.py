@@ -1,5 +1,8 @@
 import numpy as np
 import os, shutil
+import pickle
+from .meta import Singleton
+from .molecule import Molecule, MoleculeFactory
 from classes.trajectory import Trajectory
 
 class Bundle:
@@ -8,10 +11,26 @@ class Bundle:
         self._iactive: int = 0
         self._active: Trajectory = None
 
+    def save_setup(self):
+        with open("single.pkl", "wb") as pkl:
+            pickle.dump(Singleton.save(), pkl)
+
+        with open("mol.pkl", "wb") as pkl:
+            pickle.dump(MoleculeFactory.save(), pkl)
+
+    @staticmethod
+    def load_setup():
+        with open("single.pkl", "rb") as pkl:
+            Singleton.restore(pickle.load(pkl))
+
+        with open("mol.pkl", "rb") as pkl:
+            MoleculeFactory.restore(pickle.load(pkl))
+
     @staticmethod
     def from_pkl():
         bundle = Bundle()
         traj_dirs = [d for d in os.listdir() if (os.path.isdir(d) and d.isdigit())]
+        Bundle.load_setup()
         for d in traj_dirs:
             os.chdir(d)
             traj = Trajectory.load_step(f"backup/traj.pkl")
@@ -35,6 +54,7 @@ class Bundle:
 
     def setup(self, config: dict):
         traj = Trajectory(**config)
+        self.save_setup()
         self.add_trajectory(traj)
         with open("events.log", "w") as f:
             f.write(f"INIT 0\n")
@@ -45,8 +65,6 @@ class Bundle:
         for traj in self._trajs:
             os.chdir(f"{traj.index}")
             traj.prepare_traj()
-            traj.write_outputs()
-            traj.next_step()
             os.chdir("..")
 
     def run_step(self):

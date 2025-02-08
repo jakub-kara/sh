@@ -6,7 +6,7 @@ from classes.molecule import Molecule
 from classes.constants import convert
 
 class ESTProgram(metaclass = SingletonFactory):
-    def __init__(self, *, states: list, program: str, type: str, path: str = "", options: dict = {}, refen = 0, **config):
+    def __init__(self, *, states: list, program: str, type: str, path: str = "", options: dict = None, refen = 0, **config):
         self._path = path
         if isinstance(states, int):
             self._states = np.array([states])
@@ -16,10 +16,12 @@ class ESTProgram(metaclass = SingletonFactory):
         self._natoms = None
         self._spinsum = np.cumsum(self._states) - self._states
         self._refen = convert(refen, "au")
-        
+
         self._type = type
 
         self._method = self._select_method(type)
+        if options is None:
+            options = {}
         self._options = options
         self._file = program
         self._calc_grad = np.zeros(self._nstates)
@@ -63,12 +65,18 @@ class ESTProgram(metaclass = SingletonFactory):
 
     def add_nacs(self, *args):
         for arg in args:
+            if len(arg) != 2:
+                continue
             self._calc_nac[arg] = 1
+            self._calc_nac[arg[::-1]] = 1
         return self
 
     def remove_nacs(self, *args):
         for arg in args:
+            if len(arg) != 1:
+                continue
             self._calc_nac[arg] = 0
+            self._calc_nac[arg[::-1]] = 0
         return self
 
     def any_nacs(self):

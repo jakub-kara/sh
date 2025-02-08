@@ -3,7 +3,7 @@ import os
 from classes.molecule import Molecule
 from electronic.electronic import ESTProgram
 
-class Model1D(ESTProgram, key = "model_1d"):
+class Model(ESTProgram, key = "model"):
     def __init__(self, **config):
         super().__init__(**config)
         self._geo = None
@@ -31,12 +31,12 @@ class Model1D(ESTProgram, key = "model_1d"):
         self._geo = mol.pos_ad
         if self._hamdia is None:
             self._natoms = mol.n_atoms
-            self._hamdia = np.zeros((self._nstates, self._nstates))
-            self._hameig = np.zeros((self._nstates, self._nstates))
-            self._nacdr = np.zeros((self._nstates, self._nstates, self._natoms, 3))
-            self._grad = np.zeros((self._nstates, self._natoms, 3))
-            self._gradham = np.zeros((self._nstates, self._nstates, self._natoms, 3))
-            self._trans = np.zeros((self._nstates, self._nstates))
+            self._hamdia = np.zeros_like(mol.ham_eig_ss)
+            self._trans = np.zeros_like(mol.ham_eig_ss)
+            self._hameig = np.zeros_like(mol.ham_eig_ss)
+            self._grad = np.zeros_like(mol.grad_sad)
+            self._gradham = np.zeros_like(mol.nacdr_ssad)
+            self._nacdr = np.zeros_like(mol.nacdr_ssad)
         self._method()
 
     def execute(self):
@@ -285,31 +285,31 @@ class Model1D(ESTProgram, key = "model_1d"):
         self._gradham[0,2,0,0] = 0
         self._gradham[2,0,0,0] = 0
 
-class Model2D(Model1D, key = "model_2d"):
-    def _select_method(self, key):
-        methods = {
-            "ho2_2": self.ho2_2,
-        }
-        return methods[key]
+# class Model2D(Model1D, key = "model_2d"):
+#     def _select_method(self, key):
+#         methods = {
+#             "ho2_2": self.ho2_2,
+#         }
+#         return methods[key]
 
-    def execute(self):
-        pass
+#     def execute(self):
+#         pass
 
-    def ho2_2(self):
-        a = 0.005
-        b = 4
-        c = 3
-        d = 0
+#     def ho2_2(self):
+#         a = 0.005
+#         b = 4
+#         c = 3
+#         d = 0
 
-        # a = 0.005
-        # b = 2
-        # c = 2
-        # d = 10
-        r = self._geo[0]
-        rn = np.linalg.norm(r)
-        ru = r / rn
+#         # a = 0.005
+#         # b = 2
+#         # c = 2
+#         # d = 10
+#         r = self._geo[0]
+#         rn = np.linalg.norm(r)
+#         ru = r / rn
 
-        self._hamdia[0,0] = a * (rn - b)**2
-        self._hamdia[1,1] = a * (rn + b)**2
-        self._grad[0,0] = 2 * a * (rn - b) * ru
-        self._grad[1,0] = 2 * a * (rn + b) * ru
+#         self._hamdia[0,0] = a * (rn - b)**2
+#         self._hamdia[1,1] = a * (rn + b)**2
+#         self._grad[0,0] = 2 * a * (rn - b) * ru
+#         self._grad[1,0] = 2 * a * (rn + b) * ru

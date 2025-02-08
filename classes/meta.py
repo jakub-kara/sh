@@ -10,26 +10,15 @@ class Factory(type):
         else:
             cls._keys = {}
         cls.__init_subclass__ = classmethod(Factory._initsub)
-        cls.__new__ = classmethod(Factory._new)
 
-    def __call__(cls, *, key=None, **kwargs):
-        obj = cls.__new__(key, **kwargs)
-        obj.__init__(**kwargs)
-        return obj
+    def __getitem__(cls, key):
+        if key not in cls._keys:
+            raise ValueError(f"{key} option not found among the descendents of {cls}.")
+        return cls._keys[key]
 
     def _initsub(cls, key=None, **kwargs):
         if key is not None:
             cls._keys[key] = cls
-
-    def subclass(cls, key):
-        if key in cls._keys:
-            return cls._keys[key]
-        else:
-            return cls
-
-    def _new(cls, key=None, **kwargs):
-        sub = cls.subclass(key)
-        return object.__new__(sub)
 
 class Singleton(type):
     _instances = {}

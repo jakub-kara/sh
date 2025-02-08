@@ -16,6 +16,10 @@ class TDCUpdater(Updater, metaclass = SingletonFactory):
     def no_update(self, mols: list[Molecule], dt: float):
         self.tdc.fill()
 
+class BlankTDCUpdater(TDCUpdater, key = "none"):
+    def update(self, mols, dt):
+        self.no_update(mols, dt)
+
 class kTDCe(TDCUpdater, key = "ktdce"):
     # curvature-based TDC approximation, energy version
     mode = ""
@@ -67,7 +71,7 @@ class HST(TDCUpdater, key = "hst"):
     def update(self, mols: list[Molecule], dt: float):
         self.tdc.out = 1 / (2 * dt) * (mols[-1].ovlp_ss - mols[-1].ovlp_ss.T)
 
-class HSTSharc(TDCUpdater, key = "hstsharc"):
+class HSTSharc(TDCUpdater, key = "hst3"):
     # SHARC HST end-point finite difference, linearly interpolated across the region
     # Maybe don't trust this code too much...
     mode = "o"

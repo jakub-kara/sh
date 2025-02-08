@@ -10,7 +10,7 @@ class FSSH(SurfaceHopping, key = "fssh"):
 
     def __init__(self, *, dynamics, **config):
         super().__init__(dynamics=dynamics, **config)
-        HoppingUpdater(key = dynamics["prob"], **config["quantum"])
+        HoppingUpdater[dynamics["prob"]](**config["quantum"])
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         out = Output()

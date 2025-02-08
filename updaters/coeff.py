@@ -21,6 +21,10 @@ class CoeffUpdater(Updater, metaclass = SingletonFactory):
         self.coeff.fill()
         self.prop.fill()
 
+class BlankCoeffUpdater(CoeffUpdater, key = "none"):
+    def update(self, mols, dt):
+        self.no_update(mols, dt)
+
 class CoeffTDCUpdater(Multistage, CoeffUpdater, key = "tdc"):
     steps = 2
     mode = ""

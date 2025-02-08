@@ -13,8 +13,15 @@ class Output(metaclass = Singleton):
             "compression": config.get("compression", "gzip"),
             "compression_opts": config.get("compression_opts", 9),
         }
-        self._log = None
+
+        self._log = config.get("log", True)
+        self._logfile = None
         self._logmode = "w"
+
+        self._xyz = config.get("xyz", True)
+        self._dist = config.get("dist", False)
+        self._h5 = config.get("h5", True)
+        self._dat = config.get("dat", True)
 
     def __del__(self):
         self.write_log("TERMINATED")
@@ -25,18 +32,22 @@ class Output(metaclass = Singleton):
             self.write_log(f.read())
 
     def open_log(self):
-        self._log = open(f"data/{self._file}.log", self._logmode)
+        self._logfile = open(f"data/{self._file}.log", self._logmode)
         self._logmode = "a"
 
     def close_log(self):
-        self._log.close()
-        self._log = None
+        self._logfile.close()
+        self._logfile = None
 
     def write_log(self, msg = ""):
         print(msg)
-        self._log.write(msg + "\n")
+        if not self._log:
+            return
+        self._logfile.write(msg + "\n")
 
     def write_dat(self, data: dict, mode="a"):
+        if not self._dat:
+            return
         with open(f"data/{self._file}.dat", mode) as file:
             file.write(data["time"])
             for rec in self.record:
@@ -45,15 +56,20 @@ class Output(metaclass = Singleton):
             file.write("\n")
 
     def write_dist(self, msg, mode="a"):
+        if not self._dist:
+            return
         with open(f"data/{self._file}.dist", mode) as file:
             file.write(msg)
 
     def write_xyz(self, msg, mode="a"):
-        if self._dist:
-            with open(f"data/{self._file}.xyz", mode) as file:
-                file.write(msg)
+        if not self._xyz:
+            return
+        with open(f"data/{self._file}.xyz", mode) as file:
+            file.write(msg)
 
-    def write_mat(self, to_write: dict, mode="a"):
+    def write_h5(self, to_write: dict, mode="a"):
+        if not self._h5:
+            return
         with h5py.File(f"data/{self._file}.h5", mode) as file:
             if to_write is None:
                 return

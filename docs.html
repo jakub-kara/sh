@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<head>
+
+<style>
+    body {
+        font-family: monospace;
+        /* white-space: pre; */
+    }
+
+    td {
+        margin: 0px;
+        padding-right: 10px;
+        padding-left: 10px;
+        border: 1px solid black;
+
+        overflow: auto;
+    }
+
+    table {
+        border-collapse: collapse;
+        border: 1px solid black;
+        margin-bottom: 20px;
+    }
+
+    h4 {
+        margin-bottom: 0px;
+        padding-bottom: 0px;
+    }
+
+    .indent {
+        padding-left: 30px;
+    }
+
+</style>
+
+<script>
+
+function get_span() {
+    spans = Array.prototype.slice.call(document.getElementsByClassName("tab"));
+    for (var span of spans) {
+        create_table(span);
+    }
+}
+
+function create_table(el) {
+    typ = el.hasAttribute("data-type") ? el.getAttribute("data-type") : "any";
+    def = el.hasAttribute("data-default") ? el.getAttribute("data-default") : "";
+    opt = el.hasAttribute("data-options") ? JSON.parse(el.getAttribute("data-options")) : {};
+
+    tab = document.createElement("table");
+    tr = document.createElement("tr");
+    td = document.createElement("td");
+    td.innerHTML = "Type";
+    tr.appendChild(td);
+    td = document.createElement("td");
+    td.innerHTML = typ;
+    tr.appendChild(td);
+    tab.appendChild(tr);
+
+    tr = document.createElement("tr");
+    td = document.createElement("td");
+    td.innerHTML = "Default";
+    tr.appendChild(td);
+    td = document.createElement("td");
+    td.innerHTML = def;
+    tr.appendChild(td);
+    tab.appendChild(tr);
+
+    i = 0;
+    for (var prop in opt) {
+        tr = document.createElement("tr");
+        if (i == 0) {
+            td = document.createElement("td");
+            td.innerHTML = "Options";
+            if (Object.keys(opt).length > 1) {
+                td.setAttribute("rowspan", "0")
+            }
+            tr.appendChild(td);
+        }
+
+        td = document.createElement("td");
+        td.innerHTML = prop + "<br>" + opt[prop];
+        tr.appendChild(td);
+        tab.appendChild(tr);
+        i++;
+    }
+
+    par = el.parentElement
+    par.replaceChild(tab, el);
+
+}
+
+</script>
+
+</head>
+
+<body onload="get_span()">
+
+<h4>Keywords</h4>
+<div class="indent">
+    <h4>dynamics</h4>
+    <span class="tab"
+    data-type="dict"
+    data-default=""
+    ></span>
+
+    <div class="indent">
+        <h4>name</h4>
+        Sets the name of the simulation for printing
+        <span class="tab"
+            data-type="str"
+            data-default=""
+            data-options='{
+                "any": "Name of the system"
+            }'
+        ></span>
+
+        <h4>method</h4>
+        Specifies the nonadiabatic dynamics algorithm
+        <span class="tab"
+        data-type="str"
+        data-default=""
+        data-options='{
+            "fssh": "Fewest switches surface hopping [Tully]",
+            "mash": "Mapping approach to surface hopping [Richardson]",
+            "mish": "Mapping-inspired surface hopping [Runeson]",
+            "ehr": "Simple Ehrenfest",
+            "gse": "Generalised semiclassical Ehrenfest [Truhlar]",
+            "csdm": "Cohorent switches with decay of mixing [Truhlar]",
+            "bcmf": "Branching-corrected mean-field Ehrenfest [Xu]"
+        }'
+        ></span>
+
+        <h4>prob</h4>
+        Scheme for calculating probability for changing active / pointer states <br>
+        Only if method == "fssh" or "csdm"
+
+        <span class="tab"
+        data-type="str"
+        data-default="tdc"
+        data-options='{
+            "none": "No hopping",
+            "tdc": "Probability evaluated directly using TDCs",
+            "prop": "Probability computed from propagator matrix [SHARC]",
+            "gf": "Probability calculated from global flux [Prezhdo]"
+        }'
+        ></span>
+
+        <h4>seed</h4>
+        Numpy seed for random number generation
+
+        <h4>decoherence</h4>
+        Decoherence correction
+        <span class="tab"
+        data-type="str"
+        data-default="none"
+        data-options='{
+            "none": "No decoherence correction",
+            "edc": "Energy-based decoherence correction [Truhlar]"
+        }'
+        ></span>
+
+        <h4>initstate</h4>
+        Electronic state at the start of dynamics
+        <span class="tab"
+        data-type="uint"
+        data-default=""
+        data-options='{
+            "any": "Initial adiabatic states, starting with 0 for the ground state"
+        }'
+        ></span>
+
+        <h4>backup</h4>
+        Save the trajectory after each step
+        <span class="tab"
+        data-type="bool"
+        data-default="true"
+        data-options='{
+            "true": "Backup trajectory every step",
+            "false": "Create no backups"
+            }'
+        ></span>
+
+        <h4>tmax</h4>
+        Duration of the dynamics
+        <span class="tab"
+        data-type="float | str"
+        data-default=""
+        data-options='{
+            "any": "Any positive number specifying the duration of the simulation <br> Units can be provided in the string form, otherwise atomic units are assumed"
+        }'
+        ></span>
+
+        <h4>dt</h4>
+        Maximum timestep size
+        <span class="tab"
+        data-type="float | str"
+        data-default=""
+        data-options='{
+            "any": "Any positive number specifying the maximum stepsize in the simulation <br> Units can be provided in the string form, otherwise atomic units are assumed"
+        }'
+        ></span>
+
+        <h4>timestep</h4>
+        Scheme for determining the stepsize
+        <span class="tab"
+        data-type="str"
+        data-default="const"
+        data-options='{
+            "const": "Stepsize fixed at dt",
+            "half": "Step halving procedure based on energy conservation [Thiel]"
+        }'
+        ></span>
+
+        <h4>enthresh</h4>
+        Total energy change threshold for rejecting step <br>
+        Only if timestep == "half"
+        <span class="tab"
+        data-type="float | string"
+        data-default=""
+        data-options='{
+            "any": "Any positive number specifying the maximum fluctuation in total energy in one timestep; <br> step is rejected otherwise and re-run with half of the initial size <br> Units can be provided in the string form, otherwise atomic units are assumed"
+        }'
+        ></span>
+
+        <h4>max_depth</h4>
+        Number of maximum step-halvings, simulation terminates if exceeded <br>
+        Only if timestep == "half"
+        <span class="tab"
+        data-type="uint"
+        data-default=""
+        data-options='{
+            "any": "Maximum depth of timestep halvings with respect to the maximum stepsize"
+        }'
+        ></span>
+
+    </div>
+
+    <h4>nuclear</h4>
+    <span class="tab"
+    data-type="dict"
+    data-default=""
+    ></span>
+
+    <div class="indent">
+
+        <h4>input</h4>
+        Path to geometry input file in xyz format with velocities, number of dimensions is arbitrary
+        <span class="tab"
+        data-type="str"
+        data-default=""
+        data-options='{
+            "any": "Any valid absolute or relative path to a file of the specified format"
+        }'
+        ></span>
+
+        <pre>
+            N_atoms
+            comment
+            at1 x1 y1 .. vx1 vx2 ..
+            at2 x2 y2 .. vx1 vx2 ..
+            :   :  :     :   :
+        </pre>
+
+        <h4>nuc_upd</h4>
+        Numerical scheme for integrating nuclear equations of motion
+        <span class="tab"
+        data-type="str"
+        data-default="vv"
+        data-options='{
+            "vv": "Velocity verlet",
+            "rkn<i>N</i>": "<i>N</i>th order Runge-Kutta-Nystrom (<i>N</i> = 4, 6, 8)",
+            "syam<i>N</i>": "<i>N</i>th order symmetric multistep method with Adams-Moulton for velocities (<i>N</i> = 4, 6, 8) <br> the starter method used is always rkn<i>N</i>",
+            "y4": "4th order symplectic Yoshida integrator"
+        }'
+        ></span>
+    </div>
+
+    <h4>quantum</h4>
+    <span class="tab"
+    data-type="dict"
+    data-default=""
+    ></span>
+
+    <div class="indent">
+
+        <h4>input</h4>
+        Path to quantum input file, format depends on the dynamics method <br>
+        <span class="tab"
+        data-type="str"
+        data-default=""
+        data-options='{
+            "any": "Any valid absolute or relative path to a file of the specified format <br> If not provided, the quantum subsystem starts purely in initstate"
+        }'
+        ></span>
+
+        If wavefunction coefficients are used (e.g. in fssh or ehr), specify the real (r) and complex (c) part for each state (number of lines == number of states)
+        <pre>
+            r1 c1
+            r2 c2
+            :  :
+        </pre>
+
+        If Bloch spheres are used (e.g. in mash), specify the Sx, Sy, and Sz components for each pairwise Bloch spheres (number of lines == number of states - 1)
+
+        <pre>
+            Sx1 Sy1 Sz1
+            Sx2 Sy2 Sz2
+            :   :   :
+        </pre>
+
+        <h4>tdc_upd</h4>
+        Scheme for updating time-derivative couplings (TDCs)
+        <span class="tab"
+        data-type="str"
+        data-default="npi"
+        data-options='{
+            "none": "No TDC updating",
+            "namce": "Calculate TDC directly from nonadiabatic coupling matrix elements and nuclear velocities",
+            "hst": "Hammes-Schiffer-Tully scheme using overlaps",
+            "hst3": "Extension of hst to a 3-step scheme",
+            "npi": "Norm-preserving interpolation integrated across timestep",
+            "npisharc": "Mid-point averaged npi",
+            "npimeek": "Npi by Meek and Levine [Meek]",
+            "ktdce": "Curvature-driven approximation calculated from energies [Truhlar]",
+            "ktdcg": "Curvature-driven approximation calculated from gradients [Truhlar]"
+        }'
+        ></span>
+
+        <h4>coeff_upd</h4>
+        Scheme for updating wavefunction coefficients
+        <span class="tab"
+        data-type="str"
+        data-default="tdc"
+        data-options='{
+            "none": "No coefficient updating",
+            "tdc": "Intgrate directly with TDCs",
+            "ld": "Local diabatisation procedure"
+        }'
+        ></span>
+
+        <h4>n_substeps</h4>
+        Number of quantum substeps for methods where interpolation or substepping is possible
+        <span class="tab"
+        data-type="uint"
+        data-default="50"
+        data-options='{
+            "any": "Number of quantum substeps"
+        }'
+        ></span>
+    </div>
+
+    <h4>electronic</h4>
+    <span class="tab"
+    data-type="dict"
+    data-default=""
+    ></span>
+
+    <div class="indent">
+
+        <h4>program</h4>
+        Name of electronic structure program
+        <span class="tab"
+        data-type="str"
+        data-default=""
+        data-options='{
+            "model": "Access to model systems defined internally",
+            "molcas": "Interface to OpenMolcas 24.10",
+            "molpro": "Interface to Molpro 2022",
+            "turbomole": "Interface to Turbomole v7.5+",
+            "vcham": "VCHam reader for vibronic coupling models"
+        }'
+        ></span>
+
+        <h4>path</h4>
+        Path to the electronic structure program executable if not found in $PATH environment variable
+        <span class="tab"
+        data-type="str"
+        data-default=""
+        data-options='{
+            "any": "Any valid absolute or relative path to an ES program executable"
+        }'
+        ></span>
+
+        <h4>type</h4>
+        Electronic structure method
+
+        <h4>states</h4>
+        Number of states in each spin multiplicity counting all spin projections <br>
+        For example, [4, 0, 3] gives 4 singlet states and 1 triplet state with three spin projections
+        <span class="tab"
+        data-type="uint | list[uint]"
+        data-default=""
+        data-options='{
+            "any": "Number of states in each spin multiplicity <br> Singlet assumed if only one value provided"
+        }'
+        ></span>
+
+        <h4>options</h4>
+        Specific options for each electronic structure method <br>
+        <span class="tab"
+        data-type="dict"
+        data-default="{}"
+        ></span>
+
+        <div class="indent">
+
+            <h4>basis</h4>
+            <span class="tab"
+            data-type="str"
+            data-default=""
+            data-options='{
+                "any": "Basis for ES calculations"
+            }'
+            ></span>
+
+            <h4>closed</h4>
+            <span class="tab"
+            data-type="uint"
+            data-default=""
+            data-options='{
+                "any": "Number of closed orbitals"
+            }'
+            ></span>
+
+            <h4>active</h4>
+            <span class="tab"
+            data-type="str"
+            data-default=""
+            data-options='{
+                "any": "Number of active orbitals (including the closed ones)"
+            }'
+            ></span>
+
+            <h4>sa</h4>
+            <span class="tab"
+            data-type="uint"
+            data-default=""
+            data-options='{
+                "any": "Number of states to state-average over"
+            }'
+            ></span>
+
+            <h4>nel</h4>
+            <span class="tab"
+            data-type="uint"
+            data-default=""
+            data-options='{
+                "any": "Number of electrons in the system"
+            }'
+            ></span>
+
+            <h4>df</h4>
+            <span class="tab"
+            data-type="bool"
+            data-default="false"
+            data-options='{
+                "true": "Use density fitting",
+                "false": "Do not use density fitting"
+            }'
+            ></span>
+
+            <h4>dfbasis</h4>
+            Only is df == true
+            <span class="tab"
+            data-type="str"
+            data-default="avdz"
+            data-options='{
+                "any": "Basis for density fitting"
+            }'
+            ></span>
+        </div>
+    </div>
+
+    <h4>output</h4>
+    <span class="tab"
+    data-type="dict"
+    data-default=""
+    ></span>
+
+    <div class="indent">
+
+        <h4>file</h4>
+        All output files will be named <i>file.extension</i>
+        <span class="tab"
+        data-type="str"
+        data-default="out"
+        data-options='{
+            "any": "Name of output file base"
+        }'
+        ></span>
+
+        <h4>log</h4>
+        Contains all the information about the course of the simulation
+        <span class="tab"
+        data-type="bool"
+        data-default="true"
+        data-options='{
+            "true": "Enable log file generation",
+            "false": "Disable log file generation"
+        }'
+        ></span>
+
+        <h4>verbosity</h4>
+        Verbosity of the log file <br>
+        Only if log == true
+        <span class="tab"
+        data-type="uint"
+        data-default="0"
+        data-options='{
+            "0": "TODO",
+            "1": "TODO ..."
+        }'
+        ></span>
+
+        <h4>timer</h4>
+        [WIP]
+        <span class="tab"
+        data-type="bool"
+        data-default="true"
+        data-options='{
+            "true": "Enable dat file generation",
+            "false": "Disable dat file generation"
+        }'
+        ></span>
+
+        <h4>dat</h4>
+        Contains selected data in a human-readable form for convenient, fast access
+        <span class="tab"
+        data-type="bool"
+        data-default="true"
+        data-options='{
+            "true": "Enable dat file generation",
+            "false": "Disable dat file generation"
+        }'
+        ></span>
+
+        <h4>record</h4>
+        Specifies which quantities to write to dat files <br>
+        Only if dat == true
+        <span class="tab"
+        data-type="str | list[str]"
+        data-default="pes"
+        data-options='{
+            "act": "Active state for surface hopping",
+            "TODO": "the rest"
+        }'
+        ></span>
+
+        <h4>h5</h4>
+        Contains all the dynamical data in a h5-encrypted binary file
+        <span class="tab"
+        data-type="bool"
+        data-default="true"
+        data-options='{
+            "true": "Enable h5 file generation",
+            "false": "Disable h5 file generation"
+        }'
+        ></span>
+
+        <h4>xyz</h4>
+        Contains all the geometries in the extended xyz format inclusing velocities
+        <span class="tab"
+        data-type="bool"
+        data-default="true"
+        data-options='{
+            "true": "Enable xyz file generation",
+            "false": "Disable xyz file generation"
+        }'
+        ></span>
+
+        <h4>dist</h4>
+        ???
+        <span class="tab"
+        data-type="bool"
+        data-default="false"
+        data-options='{
+            "true": "Enable dist file generation",
+            "false": "Disable dist file generation"
+        }'
+        ></span>
+    </div>
+</div>
+
+<h4>Example</h4>
+
+</body>
+</html>

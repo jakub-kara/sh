@@ -2,7 +2,7 @@ import numpy as np
 import sys, pickle
 import time
 from copy import deepcopy
-from .molecule import Molecule
+from .molecule import Molecule, MoleculeFactory
 from .out import Printer, Output
 from .constants import convert
 from .meta import Singleton
@@ -17,7 +17,7 @@ class Trajectory:
     def __init__(self, *, dynamics: dict, **config):
         self.mols: list[Molecule] = []
         config["nuclear"].setdefault("mixins", [])
-        self.dyn: Dynamics = Dynamics(key = dynamics["method"], dynamics=dynamics, **config)
+        self.dyn: Dynamics = Dynamics[dynamics["method"]](dynamics=dynamics, **config)
         self._timestep = Timestep(
             key = dynamics.get("timestep", "const"),
             steps=1,
@@ -95,8 +95,8 @@ class Trajectory:
         out.to_log("../" + sys.argv[1])
         out.write_log("="*40)
         out.write_log(f"Initialising trajectory")
-        out.write_log(f"Step:           {self.curr_step}")
-        out.write_log(f"Time:           {self.curr_time} fs")
+        # out.write_log(f"Step:           {self.curr_step}")
+        # out.write_log(f"Time:           {self.curr_time} fs")
         out.write_log()
 
         self.write_headers()
@@ -107,6 +107,8 @@ class Trajectory:
         out.write_log()
         out.close_log()
 
+        self.write_outputs()
+
     # TODO: find a better way of timing things
     def run_step(self):
         out = Output()
@@ -114,6 +116,7 @@ class Trajectory:
         out.write_log("="*40)
         out.write_log(f"Step:           {self.curr_step}")
         out.write_log(f"Time:           {convert(self.curr_time, 'au', 'fs'):.4f} fs")
+        out.write_log(f"Stepsize:       {convert(self._timestep.dt, 'au', 'fs')} fs")
         out.write_log()
 
         self.dyn.steps_elapsed(self._timestep.step)
@@ -134,6 +137,7 @@ class Trajectory:
         valid = self._timestep.validate(self.energy_diff(temp, self.mols))
         if not valid:
             self._timestep.fail()
+            ESTProgram().recover_wf()
             return
         self.add_molecule(temp)
         self.pop_molecule(0)
@@ -156,9 +160,9 @@ class Trajectory:
         out.write_log()
         out.close_log()
 
-        self.write_outputs()
         self.next_step()
         self._timestep.success()
+        self.write_outputs()
 
     def bind_components(self, *, electronic: dict, nuclear: dict, quantum: dict, output: dict, **config):
         self.bind_est(**electronic)
@@ -173,7 +177,7 @@ class Trajectory:
 
     def get_molecule(self, **nuclear):
         est = ESTProgram()
-        return Molecule(n_states=est.n_states, **nuclear)
+        return MoleculeFactory.create_molecule(n_states=est.n_states, **nuclear)
 
     def bind_molecules(self, **nuclear):
         nupd = CompositeIntegrator()
@@ -181,16 +185,16 @@ class Trajectory:
             self.add_molecule(self.mol.copy_all())
 
     def bind_est(self, **electronic):
-        ESTProgram(key = electronic["program"], **electronic)
+        ESTProgram[electronic["program"]](**electronic)
 
     def bind_nuclear_integrator(self, type: str):
         CompositeIntegrator(nuc_upd = type)
 
     def bind_tdc_updater(self, **quantum):
-        TDCUpdater(key = quantum["tdc_upd"], **quantum)
+        TDCUpdater[quantum["tdc_upd"]](**quantum)
 
     def bind_coeff_updater(self, **quantum):
-        CoeffUpdater(key = quantum["coeff_upd"], **quantum)
+        CoeffUpdater[quantum["coeff_upd"]](**quantum)
 
     def bind_io(self, **output):
         Output(**output)
@@ -199,7 +203,6 @@ class Trajectory:
         print(np.abs(self.dyn.total_energy(mol) - self.dyn.total_energy(mols[-1])))
         return np.abs(self.dyn.total_energy(mol) - self.dyn.total_energy(mols[-1]))
 
-    # These two are quite hacky, could improve
     def save_step(self):
         est = ESTProgram()
         est.backup_wf()
@@ -208,7 +211,6 @@ class Trajectory:
         out.close_log()
         if self._backup:
             with open("backup/traj.pkl", "wb") as pkl:
-                self._single = Singleton.save()
                 pickle.dump(self, pkl)
         out.open_log()
 
@@ -216,7 +218,6 @@ class Trajectory:
     def load_step(file):
         with open(file, "rb") as pkl:
             traj: Trajectory = pickle.load(pkl)
-            Singleton.restore(traj._single)
         out = Output()
         out.open_log()
         out.write_log("Restarting from pickle file.")
@@ -225,14 +226,14 @@ class Trajectory:
     def write_headers(self):
         out = Output()
         out.write_dat(self.dat_header(out.record), "w")
-        out.write_mat(self.h5_info(), "w")
+        out.write_h5(self.h5_info(), "w")
         out.write_xyz("", "w")
         out.write_dist("", "w")
 
     def write_outputs(self):
         out = Output()
         out.write_dat(self.dat_dict(out.record))
-        out.write_mat(self.h5_dict())
+        out.write_h5(self.h5_dict())
         out.write_xyz(self.vxyz_string())
         out.write_dist(self.dist_string())
 

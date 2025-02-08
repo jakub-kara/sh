@@ -3,41 +3,63 @@ from copy import deepcopy
 from classes.meta import Factory, DynamicClassProxy
 from classes.constants import convert, atomic_masses
 
-class Molecule:
-    def __new__(cls, mixins, **kwargs):
-        print(mixins)
+class MoleculeFactory:
+    _products: dict = {}
+
+    @classmethod
+    def create_molecule(cls, mixins, *args, **kwargs):
         if not isinstance(mixins, (list, tuple)):
             mixins = [mixins]
-        print(mixins)
-        cls.Molecule = type(
-            "Molecule",
-            tuple([MoleculeMixin.subclass(key = mix) for mix in mixins] + [Molecule]),
-            {"__new__": lambda cls, *args, **kwargs: object.__new__(cls)})
-        return cls.Molecule(**kwargs)
+        name = "Molecule" + "".join(mixins)
+        cls._products[name] = mixins
+        mol = cls._get_molecule(name, mixins)
+        setattr(cls, name, mol)
+        return mol(*args, **kwargs)
 
+    @classmethod
+    def _get_molecule(cls, name, mixins):
+        return type(
+            name,
+            tuple([MoleculeMixin[mix] for mix in mixins] + [Molecule]),
+            {})
+
+    @classmethod
+    def save(cls):
+        return cls._products.copy()
+
+    @classmethod
+    def restore(cls, dic: dict):
+        cls._products = dic
+        for key, val in cls._products.items():
+            setattr(cls, key, cls._get_molecule(key, val))
+
+class Molecule:
     def __init__(self, *, n_states: int, input="geom.xyz", **config):
-        self.pos_ad = None
-        self.vel_ad = None
-        self.acc_ad = None
-        self.name_a = None
-        self.mass_a = None
         self.from_vxyz(input)
 
         self.ham_eig_ss = np.zeros((n_states, n_states))
         self.ham_dia_ss = np.zeros((n_states, n_states), dtype=np.complex128)
         self.trans_ss = np.eye(n_states, dtype=np.complex128)
-        self.grad_sad = np.zeros((n_states, self.n_atoms, 3))
-        self.nacdr_ssad = np.zeros((n_states, n_states, self.n_atoms, 3))
+        self.grad_sad = np.zeros((n_states, self.n_atoms, self.n_dim))
+        self.nacdr_ssad = np.zeros((n_states, n_states, self.n_atoms, self.n_dim))
         self.nacdt_ss = np.zeros((n_states, n_states))
         self.ovlp_ss = np.zeros((n_states, n_states))
-        self.dipmom_ssd = np.zeros((n_states, n_states, 3))
+        self.dipmom_ssd = np.zeros((n_states, n_states, self.n_dim))
         self.nacflp_ss = np.zeros((n_states, n_states))
         self.phase_s = np.ones(n_states)
         self.coeff_s = np.zeros(n_states, dtype=np.complex128)
 
     @property
     def n_atoms(self):
-        return self.mass_a.shape[0]
+        return self.pos_ad.shape[0]
+
+    @property
+    def n_dim(self):
+        return self.pos_ad.shape[1]
+
+    @property
+    def n_dof(self):
+        return self.n_dim * self.n_atoms
 
     @property
     def n_states(self):
@@ -60,26 +82,30 @@ class Molecule:
 
     # probably should be static
     def from_xyz(self, filename: str):
-        with open(filename, "r") as file:
+        with open(filename, "r") as f:
             pos = []
             name = []
             mass = []
-            for i, line in enumerate(file):
+
+            data = f.readline().strip().split()
+            assert len(data) == 1, "Wrong xyz format in line 1."
+            nat = int(data[0])
+
+            f.readline()
+
+            for i in range(nat):
+                data = f.readline().strip().split()
                 if i == 0:
-                    assert len(line.split()) == 1
-                elif i == 1:
-                    comment = line
+                    ndim = len(data) - 1
                 else:
-                    line_list = line.split()
-                    if len(line_list) > 0:
-                        assert len(line_list) == 4, "wrong xyz file format"
-                        temp = line_list[0].split('_')
-                        name.append(temp[0])
-                        if len(temp) > 1:
-                            mass.append(convert(float(temp[1]), "amu", "au"))
-                        else:
-                            mass.append(convert(atomic_masses[temp[0].upper()], "amu", "au"))
-                        pos.append([float(num.replace('d', 'e')) for num in line_list[1:4]])
+                    assert len(data) - 1 == ndim, f"Inconsistent number of dimensions in line {i+3}."
+                temp = data[0].split('_')
+                name.append(temp[0])
+                if len(temp) > 1:
+                    mass.append(convert(float(temp[1]), "amu", "au"))
+                else:
+                    mass.append(convert(atomic_masses[temp[0].upper()], "amu", "au"))
+                pos.append([float(num.replace('d', 'e')) for num in data[1:]])
 
             self.pos_ad = np.array(pos)
             self.vel_ad = np.zeros_like(self.pos_ad)
@@ -89,10 +115,11 @@ class Molecule:
         return self
 
     def to_dist(self):
-        outstr = ''
+        outstr = ""
         for i in range(self.n_atoms):
-            outstr += f"{self.pos_ad[i,0]:18.12f} {self.pos_ad[i,1]:18.12f} {self.pos_ad[i,2]:18.12f} "
-        outstr += '\n'
+            for j in range(self.n_dim):
+                outstr += f"{self.pos_ad[i,j]:18.12f}"
+        outstr += "\n"
         return outstr
 
     def to_xyz(self):
@@ -100,32 +127,39 @@ class Molecule:
         pos = convert(self.pos_ad, "au", "aa")
         name = self.name_a.astype("<U2")
         for i in range(self.n_atoms):
-            outstr += f"{name[i]} {pos[i,0]} {pos[i,1]} {pos[i,2]}\n"
+            outstr += f"{name[i]}"
+            for j in range(self.n_dim):
+                outstr += f" {pos[i,j]}"
+            outstr += "\n"
         return outstr
 
     def from_vxyz(self, filename: str):
-        with open(filename, "r") as file:
+        with open(filename, "r") as f:
             pos = []
             vel = []
             name = []
             mass = []
-            for i, line in enumerate(file):
+
+            data = f.readline().strip().split()
+            assert len(data) == 1, "Wrong xyz format in line 1."
+            nat = int(data[0])
+
+            f.readline()
+
+            for i in range(nat):
+                data = f.readline().strip().split()
                 if i == 0:
-                    assert len(line.split()) == 1
-                elif i == 1:
-                    comment = line
+                    ndim = (len(data) - 1) // 2
                 else:
-                    line_list = line.split()
-                    if len(line_list) > 0:
-                        assert len(line_list) == 7, "wrong xyz file format"
-                        temp = line_list[0].split('_')
-                        name.append(temp[0])
-                        if len(temp) > 1:
-                            mass.append(convert(float(temp[1]), "amu", "au"))
-                        else:
-                            mass.append(convert(atomic_masses[temp[0].upper()], "amu", "au"))
-                        pos.append([float(num.replace('d', 'e')) for num in line_list[1:4]])
-                        vel.append([float(num.replace('d', 'e')) for num in line_list[4:7]])
+                    assert (len(data) - 1) // 2 == ndim, f"Inconsistent number of dimensions in line {i+3}."
+                temp = data[0].split('_')
+                name.append(temp[0])
+                if len(temp) > 1:
+                    mass.append(convert(float(temp[1]), "amu", "au"))
+                else:
+                    mass.append(convert(atomic_masses[temp[0].upper()], "amu", "au"))
+                pos.append([float(num.replace('d', 'e')) for num in data[1:ndim+1]])
+                vel.append([float(num.replace('d', 'e')) for num in data[ndim+1:]])
 
             self.pos_ad = np.array(pos)
             self.vel_ad = np.array(vel)
@@ -140,7 +174,12 @@ class Molecule:
         vel = convert(self.vel_ad, "au", "aa fs^-1")
         name = self.name_a.astype("<U2")
         for i in range(self.n_atoms):
-            outstr += f"{name[i]} {pos[i,0]} {pos[i,1]} {pos[i,2]} {vel[i,0]} {vel[i,1]} {vel[i,2]}\n"
+            outstr += f"{name[i]}"
+            for j in range(self.n_dim):
+                outstr += f" {pos[i,j]}"
+            for j in range(self.n_dim):
+                outstr += f" {vel[i,j]}"
+            outstr += "\n"
         return outstr
 
     @property
@@ -190,6 +229,7 @@ class Molecule:
                 # calculate overlap
                 if np.sum(other.nacdr_ssad[s1,s2] * self.nacdr_ssad[s1,s2]) < 0:
                     # flip sign if overlap < 0
+                    print("FLIP")
                     self.nacdr_ssad[s1,s2] = -self.nacdr_ssad[s1,s2]
                 self.nacdr_ssad[s2,s1] = -self.nacdr_ssad[s1,s2]
 
@@ -234,9 +274,8 @@ class Molecule:
         for i in range(self.n_states):
             self.grad_sad[i] = np.real(g_diag[i,i])
 
-
     def __reduce__(self):
-        return (DynamicClassProxy(), (Molecule, self.__class__.__name__), self.__dict__.copy())
+        return (DynamicClassProxy(), (MoleculeFactory, self.__class__.__name__), self.__dict__.copy())
 
 class MoleculeMixin(metaclass = Factory):
     pass

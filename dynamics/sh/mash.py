@@ -13,7 +13,7 @@ class MASH(SurfaceHopping, key = "mash"):
         config["nuclear"]["mixins"].append("bloch")
         super().__init__(**config)
         BlochUpdater(**config["quantum"])
-        HoppingUpdater(key = "mash", **config["quantum"])
+        HoppingUpdater["mash"](**config["quantum"])
 
         self._rescale = "nac"
         self._reverse = True
@@ -39,13 +39,6 @@ class MASH(SurfaceHopping, key = "mash"):
         print(f"target: {self.target} \t\tactive: {self.active}")
 
         if self.hop_ready():
-            if "n" not in self.get_mode():
-                self.setup_est(mode = "n")
-                est = ESTProgram()
-                est.run(mol)
-                est.read(mol, mols[-2])
-                est.reset_calc()
-
             if self._has_energy(mol, self._get_delta(mol)):
                 self._adjust_velocity(mol, self._get_delta(mol))
                 self._swap_bloch(mol)

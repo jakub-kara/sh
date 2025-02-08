@@ -9,10 +9,10 @@ class CompositeIntegrator(Updater, metaclass = Singleton):
         self._count = 0
         self._upds: dict[int, NuclearUpdater] = {}
 
-        base = NuclearUpdater(key = nuc_upd)
+        base = NuclearUpdater[nuc_upd]()
         self._upds[0] = base
         if base.steps > 1:
-            self._upds[-1] = NuclearUpdater(key = f"rkn{base.steps}")
+            self._upds[-1] = NuclearUpdater[f"rkn{base.steps}"]()
 
         self.steps = base.steps
 

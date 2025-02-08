@@ -7,6 +7,7 @@ from classes.timestep import Timestep
 from electronic.electronic import ESTProgram
 from updaters.composite import CompositeIntegrator
 
+
 class SurfaceHopping(Dynamics):
     mode = "a"
 
@@ -68,8 +69,8 @@ class SurfaceHopping(Dynamics):
         if self._rescale == "nac":
             # rescale along nacdr
             if "n" not in self.mode:
-                self.setup_est(mode = "n")
                 est = ESTProgram()
+                est.add_nacs((self.active, self.target))
                 est.run(mol)
                 est.read(mol, mol)
                 est.reset_calc()
@@ -86,9 +87,8 @@ class SurfaceHopping(Dynamics):
         return delta
 
     def _avail_kinetic_energy(self, mol: Molecule, delta: np.ndarray):
-        vel_proj = np.sum(mol.vel_ad * delta) * delta
-        kin_proj = 0.5*np.sum(mol.mass_a[:,None]*vel_proj**2)
-        return kin_proj
+        a, b, _ = self._get_ABC(mol, delta)
+        return b**2/(4*a)
 
     def _has_energy(self, mol: Molecule, delta: np.ndarray):
         return self._avail_kinetic_energy(mol, delta) + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] > 0
@@ -148,13 +148,15 @@ class SurfaceHopping(Dynamics):
             # reverse if no real solution and flag set
             gamma = -b/a
         else:
-            print('Issue with rescaling...')
-            # print(self._avail_kinetic_energy(mol,delta))
-            # print(mol.vel_ad * delta, np.sum((mol.vel_ad*delta)**2)/2,np.sum(mol.vel_ad/np.linalg.norm(mol.vel_ad)*delta/np.linalg.norm(delta)))
-            # print(mol.vel_ad,'\n',delta,'\n',a,b,c,D)
-            raise RuntimeError
+            print(self._avail_kinetic_energy(mol,delta))
+            print(mol.vel_ad * delta, np.sum((mol.vel_ad*delta)**2)/2,np.sum(mol.vel_ad/np.linalg.norm(mol.vel_ad)*delta/np.linalg.norm(delta)))
+            print(mol.vel_ad,'\n',delta,'\n',a,b,c,D)
+            breakpoint()
+            raise RuntimeError("Issue with rescaling...")
 
         mol.vel_ad -= gamma * delta
+
+        CompositeIntegrator().to_init()
 
     def _decoherence_none(*args):
         pass

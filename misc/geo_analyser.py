@@ -4,10 +4,10 @@ from typing import List, Callable
 
 class Geo:
     def __init__(self, comm: str, n: int):
-        self.t = 0 #float(comm.replace(" ", "").replace("t=", ""))
         self.x = np.zeros((n, 3))
         self.v = np.zeros((n, 3))
         self.l = np.full(n, "00")
+        self.t = 0 #float(comm.replace(" ", "").replace("t=", ""))
 
 class Traj:
     def __init__(self, filename):
@@ -24,8 +24,9 @@ class Traj:
                     self.g.append(Geo(line, n))
                     ig += 1
                     continue
-                
+
                 data = line.strip().split()
+                self.g[ig].t = ig
                 self.g[ig].l[i%n-2] = data[0]
                 self.g[ig].x[i%n-2] = np.array([float(data[1]), float(data[2]), float(data[3])])
                 self.g[ig].v[i%n-2] = np.array([float(data[4]), float(data[5]), float(data[6])])
@@ -70,9 +71,9 @@ def kabsch(geo_in: Geo, ref_in: Geo, rotate: bool = False, noh: bool = False):
         geov = 1*geo_in.v
         refx = 1*ref_in.x
         refv = 1*ref_in.v
-        
+
     n_atoms = geox.shape[0]
-    
+
 
     centre = np.sum(refx, axis=0)/n_atoms
     refx -= centre
@@ -133,7 +134,7 @@ def main():
             while inp[i] not in flags:
                 trajs.append(Traj(inp[i]))
                 i += 1
-        
+
         if inp[i] == "-c":
             i += 1
 
@@ -158,5 +159,5 @@ def main():
 
             outfile.write("\n")
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     main()

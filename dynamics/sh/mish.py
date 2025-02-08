@@ -18,7 +18,7 @@ class MISH(SurfaceHopping, key = "mish"):
             #out.write_log(f"MISH called without MISH rescaling. Changing to default MISH rescaling\t")
             self._rescale = "mish"
 
-        HoppingUpdater(key = "mish", **config["quantum"])
+        HoppingUpdater["mish"](**config["quantum"])
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         out = Output()
