@@ -285,6 +285,19 @@ class BlochMixin(MoleculeMixin, key = "bloch"):
         super().__init__(n_states=n_states, **nuclear)
         self.bloch_n3 = np.zeros((n_states, 3))
 
+class MMSTMixin(MoleculeMixin, key = "mmst"):
+    def __init__(self, *, n_states, **nuclear):
+        super().__init__(n_states=n_states, **nuclear)
+        self.x_s = np.zeros(n_states)
+        self.p_s = np.zeros(n_states)
+        self.dxdt_s = np.zeros(n_states)
+        self.dpdt_s = np.zeros(n_states)
+        self.dRdt_s = np.zeros((self.n_atoms,3))
+        self.dPkindt_s = np.zeros((self.n_atoms,3))
+
+    def r2(self):
+        return self.x_s**2 + self.p_s**2
+
 class CSDMMixin(MoleculeMixin, key = "csdm"):
     def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
