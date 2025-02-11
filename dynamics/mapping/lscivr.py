@@ -3,6 +3,8 @@ from classes.molecule import Molecule
 from classes.out import Output
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
+import scipy
+
 
 class LSCIVR(Dynamics, key = "lscivr"):
     #Implements the linear semi-classical initial value representations
@@ -16,37 +18,27 @@ class LSCIVR(Dynamics, key = "lscivr"):
         super().__init__(dynamics=dynamics, **config)
 
         pop_est = {
-            "wigner": self._wigner_pe,
-            "semiclassical": self._semiclassical_pe,
-            "spin_mapping_W": self._spin_mapping_W_pe,
+            "wigner": wigner_PE,
+            "semiclassical": semiclassical_PE,
+            "spin_mapping_W": spin_mapping_W_PE,
         }
-        # pop_start = {
-        #     "wigner": self._wigner_init,
-        #     "semiclassical": self._semiclassical_init,
-        #     "spin_mapping_W": self._spin_mapping_W_init,
-        # }
 
 
         inistate = dynamics["initstate"]
         self._state = inistate
 
-        self.population = pop_est[dynamics["pop_est"]]
+        self.PE = pop_est[dynamics["pop_est"]]
 
-    def _wigner_pe(self, mol: Molecule, s: int):
-        #Wigner population estimator
-        a = 2**(mol.n_states+1) * np.exp(-np.sum(mol.r2()))
-        return a * (mol.r2()[s] - 0.5)
 
-    def _semiclassical_pe(self, mol: Molecule, s: int):
-        #semiclassical population estimator
-        return 0.5 * mol.r2()[s] - 0.5
 
-    def _spin_mapping_W_pe(self, mol: Molecule, s: int):
-        if mol.n_states != 3:
-            raise NotImplementedError
-        else:
-            return 1/3 + 0.5*mol.r2()[s] - 1/6 * np.sum(mol.r2())
-        # return 1/mol.n_states 
+    def population(self, mol: Molecule, s: int):
+        return self.PE.population(mol, s)
+
+
+    def setup_x_p(self, mol: Molecule, s: int):
+        self.PE.initial_pop(mol, s, self.PE.sr2(mol))
+
+
 
 
     def read_coeff(self, mol: Molecule, file = None):
@@ -59,6 +51,8 @@ class LSCIVR(Dynamics, key = "lscivr"):
             raise ValueError(f"Invalid coeff input format in {file}")
         mol.x_s[:] = data[:,0]
         mol.p_s[:] = data[:,1]
+
+
 
     def potential_energy(self, mol: Molecule):
         # From Eq. 9 in https://doi.org/10.1063/5.0163371
@@ -180,3 +174,60 @@ class LSCIVR(Dynamics, key = "lscivr"):
         out.write_log(f"Initial state:      {self._state}")
         out.write_log("\n")
         super().prepare_traj(mol)
+        #current hack to generate correct initial distributinos if no file given
+        self.setup_x_p(mol,self._state)
+
+class pop_estimator:
+    def population(mol: Molecule, s: int):
+        raise NotImplementedError
+
+    def sr2(mol: Molecule):
+        #return sampling radii squared for (occupiued, unoccupied)
+        raise NotImplementedError
+
+    def initial_pop(mol: Molecule, s: int,sr2):
+        for i in range(mol.n_states):
+            mol.x_s[i],mol.p_s[i] = 2*np.random.random(2)-1
+            r2 = mol.r2()[i]
+            mol.x_s[i] /= np.sqrt(r2)
+            mol.p_s[i] /= np.sqrt(r2)
+            if i == s:
+                mol.x_s[i] *= np.sqrt(sr2[0])
+                mol.p_s[i] *= np.sqrt(sr2[0])
+            else:                     
+                mol.x_s[i] *= np.sqrt(sr2[1])
+                mol.p_s[i] *= np.sqrt(sr2[1])
+
+
+
+class wigner_PE(pop_estimator):
+    def sr2(mol: Molecule):
+        def f(r):
+            return 2**(mol.n_states+1)*(r**2-0.5)*np.exp(-r**2) * np.exp(-(mol.n_states-1)*0.5)-1
+        #3 seems to guarantee the upper solution for N<100 which I've tried. I don't know if it eventually collapses
+        a = scipy.optimize.fsolve(f, 3,maxfev=10000)[0]**2
+        return (a,1/2)
+    def population(mol: Molecule, s: int):
+        #Wigner population estimator
+        a = 2**(mol.n_states+1) * np.exp(-np.sum(mol.r2()))
+        return a * (mol.r2()[s] - 0.5)
+
+class semiclassical_PE(pop_estimator):
+    def sr2(mol: Molecule):
+        return (3,1)
+
+    def population(mol: Molecule, s: int):
+        #semiclassical population estimator
+        return 0.5 * mol.r2()[s] - 0.5
+
+
+class spin_mapping_W_PE(pop_estimator):
+    def sr2(mol:Molecule):
+        return (8/3,2/3)
+    def population(mol: Molecule, s: int):
+        if mol.n_states != 3:
+            raise NotImplementedError
+        else:
+            return 1/3 + 0.5*mol.r2()[s] - 1/6 * np.sum(mol.r2())
+        # return 1/mol.n_states 
+
