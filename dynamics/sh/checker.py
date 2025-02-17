@@ -100,6 +100,7 @@ class TDCHoppingChecker(Multistage, HoppingUpdater, key = "tdc"):
                     prob[s] = max(0, temp)
             self.prob.inter[i] = prob
             self.hop.inter[i] = self._check_hop(prob, active, dt/self.substeps)
+            target = self.hop.inter[i]
 
 class PropHoppingChecker(HoppingUpdater, key = "prop"):
     steps = 2
@@ -120,7 +121,7 @@ class PropHoppingChecker(HoppingUpdater, key = "prop"):
                          np.real(cupd.coeff.out[active] * np.conj(cupd.prop.out[active, active]) * np.conj(cupd.coeff.inp[active])))
                 prob[s] = max(0, temp)
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, active, dt/self.substeps)
+        self.hop.out = self._check_hop(prob, active, dt)
 
 class GFHoppingChecker(HoppingUpdater, key = "gf"):
     steps = 2
@@ -140,7 +141,7 @@ class GFHoppingChecker(HoppingUpdater, key = "gf"):
                 prob[s] = max(0, temp)
 
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, active, dt/self.substeps)
+        self.hop.out = self._check_hop(prob, active, dt)
 
 class MASHChecker(HoppingUpdater, key = "mash"):
     def update(self, mols: list[Molecule], dt: float, active: int):
