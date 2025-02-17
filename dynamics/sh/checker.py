@@ -1,3 +1,4 @@
+import enum
 import numpy as np
 from classes.molecule import Molecule, BlochMixin
 from classes.meta import SingletonFactory
@@ -14,6 +15,18 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
             self._seed = seed
         self._rng = np.random.default_rng(self._seed)
 
+        options = {
+            "i" : self._check_hop_i,
+            "c" : self._check_hop_c
+        }
+
+        self._check_hop = options[config.get("prob_type","i")]
+
+        if self._check_hop == self._check_hop_c:
+            self._r = None
+            self._cum_prob = None
+
+
     def new_result(self, mol: Molecule, active: int):
         self.hop = UpdateResult(active, self.substeps)
         self.prob = UpdateResult(np.zeros(mol.n_states), self.substeps)
@@ -21,7 +34,25 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
     def no_update(self, mols: list[Molecule], dt: float, active: int):
         self.hop.fill()
 
-    def _check_hop(self, prob: np.ndarray, active: int):
+    def _check_hop_c(self, prob: np.ndarray, active : int, dt: float):
+        if self._r is None:
+            self._r= self._rng.random()
+            self._cum_prob = 0.
+
+        self._cum_prob += (1-self._cum_prob) * (1-np.exp(-dt*np.sum(prob)))
+
+        if self._r < self._cum_prob:
+            norm_prob = prob/np.sum(prob)
+            a = self._rng.random()
+            for s, p in enumerate(norm_prob):
+                if a < p:
+                    break
+            self._r = None
+            return s
+        return active
+
+
+    def _check_hop_i(self, prob: np.ndarray, active: int, dt: float):
         r = self._rng.random()
         cum_prob = 0
         for s, p in enumerate(prob):
@@ -65,10 +96,10 @@ class TDCHoppingChecker(Multistage, HoppingUpdater, key = "tdc"):
                 else:
                     # TODO: check timestep changes with variable timestep
                     temp = np.real(tdc[s, active] * np.conj(coeff[active]) * coeff[s])
-                    temp *= -2 * dt / np.abs(coeff[active])**2
+                    temp *= -2 * (dt/self.substeps) /  np.abs(coeff[active])**2
                     prob[s] = max(0, temp)
             self.prob.inter[i] = prob
-            self.hop.inter[i] = self._check_hop(prob, active)
+            self.hop.inter[i] = self._check_hop(prob, active, dt/self.substeps)
 
 class PropHoppingChecker(HoppingUpdater, key = "prop"):
     steps = 2
@@ -89,7 +120,7 @@ class PropHoppingChecker(HoppingUpdater, key = "prop"):
                          np.real(cupd.coeff.out[active] * np.conj(cupd.prop.out[active, active]) * np.conj(cupd.coeff.inp[active])))
                 prob[s] = max(0, temp)
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, active)
+        self.hop.out = self._check_hop(prob, active, dt/self.substeps)
 
 class GFHoppingChecker(HoppingUpdater, key = "gf"):
     steps = 2
@@ -109,7 +140,7 @@ class GFHoppingChecker(HoppingUpdater, key = "gf"):
                 prob[s] = max(0, temp)
 
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, active)
+        self.hop.out = self._check_hop(prob, active, dt/self.substeps)
 
 class MASHChecker(HoppingUpdater, key = "mash"):
     def update(self, mols: list[Molecule], dt: float, active: int):
@@ -121,7 +152,7 @@ class MASHChecker(HoppingUpdater, key = "mash"):
             if mols[-1].bloch_n3[s,2] < 0:
                 prob[s] = 1
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, active)
+        self.hop.out = self._check_hop(prob, active, dt)
 
 class MISHChecker(HoppingUpdater, key = "mish"):
     def update(self, mols: list[Molecule], dt: float, active: int):
@@ -130,5 +161,12 @@ class MISHChecker(HoppingUpdater, key = "mish"):
         target = np.argmax(np.abs(mols[-1].coeff_s)**2)
         prob[target] = 1.
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, active)
+        self.hop.out = self._check_hop(prob, active, dt)
 
+# class FSSHCChecker(HoppingUpdater, key = "fssh-c"):
+#     def __init__(self, *, seed = None, **config):
+#         super().__init__(**config)
+#         self.r = 0.
+#     def _check_hop(self, prob: np.ndarray, active: int):
+#         return 
+#
