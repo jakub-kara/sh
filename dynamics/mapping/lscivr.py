@@ -1,9 +1,10 @@
 import numpy as np
+from classes.meta import Factory
 from classes.molecule import Molecule
 from classes.out import Output
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
-import scipy
+from scipy.optimize import fsolve
 
 
 class LSCIVR(Dynamics, key = "lscivr"):
@@ -17,29 +18,16 @@ class LSCIVR(Dynamics, key = "lscivr"):
         config["nuclear"]["mixins"].append("mmst")
         super().__init__(dynamics=dynamics, **config)
 
-        pop_est = {
-            "wigner": wigner_PE,
-            "semiclassical": semiclassical_PE,
-            "spin_mapping_W": spin_mapping_W_PE,
-        }
-
-
         inistate = dynamics["initstate"]
         self._state = inistate
 
-        self.PE = pop_est[dynamics["pop_est"]]
-
-
+        self.PE: PopulationEstimator = PopulationEstimator[dynamics.get("pop_est", "wigner")]()
 
     def population(self, mol: Molecule, s: int):
         return self.PE.population(mol, s)
 
-
     def setup_x_p(self, mol: Molecule, s: int):
         self.PE.initial_pop(mol, s, self.PE.sr2(mol))
-
-
-
 
     def read_coeff(self, mol: Molecule, file = None):
         if file is None:
@@ -52,13 +40,11 @@ class LSCIVR(Dynamics, key = "lscivr"):
         mol.x_s[:] = data[:,0]
         mol.p_s[:] = data[:,1]
 
-
-
     def potential_energy(self, mol: Molecule):
         # From Eq. 9 in https://doi.org/10.1063/5.0163371
         V_bar = 1/mol.n_states * np.sum(mol.ham_eig_ss)
         V = 0
-        r2 = mol.r2()
+        r2 = mol.r2
         for i in range(mol.n_states):
             for j in range(mol.n_states):
                 if i==j: continue
@@ -80,8 +66,8 @@ class LSCIVR(Dynamics, key = "lscivr"):
         force = - 1/mol.n_states * np.sum(mol.grad_sad,axis=0)
         x = mol.x_s
         p = mol.p_s
-        r2 = mol.r2()
-        
+        r2 = mol.r2
+
         for i in range(mol.n_states):
             for j in range(mol.n_states):
                 if i == j:
@@ -105,12 +91,6 @@ class LSCIVR(Dynamics, key = "lscivr"):
 
                 mol.dpdt_s[i] -= mol.x_s[i] * 1/mol.n_states * (mol.ham_eig_ss[i,i]-mol.ham_eig_ss[j,j])
                 mol.dpdt_s[i] += mol.p_s[j] * np.sum(mol.nacdr_ssad[j,i]*mol.mom_ad/mol.mass_a[:,None])
-
-    # def calculate_acceleration(self, mol: Molecule):
-    #     pass
-    #
-    # def update_quantum(self, mols: list[Molecule], dt: float):
-    #     pass
 
     def update_quantum(self, mols: list[Molecule], dt: float):
         def get_grad(coeff, ham, nac, vel):
@@ -148,8 +128,8 @@ class LSCIVR(Dynamics, key = "lscivr"):
         force = - 1/mol.n_states * np.sum(mol.grad_sad,axis=0)
         x = mol.x_s
         p = mol.p_s
-        r2 = mol.r2()
-        
+        r2 = mol.r2
+
         for i in range(mol.n_states):
             for j in range(mol.n_states):
                 if i == j:
@@ -160,15 +140,6 @@ class LSCIVR(Dynamics, key = "lscivr"):
 
         mol.acc_ad[:,:] = force / mol.mass_a[:,None]
 
-    def adjust_nuclear(self, mol: Molecule, dt: float):
-        pass
-
-
-    def _get_projector(self, mol: Molecule):
-        proj = np.zeros((mol.n_atoms, mol.n_atoms, 3, 3))
-        inv_iner = np.linalg.inv(mol.inertia)
-
-
     def prepare_traj(self, mol: Molecule):
         out = Output()
         out.write_log(f"Initial state:      {self._state}")
@@ -177,7 +148,7 @@ class LSCIVR(Dynamics, key = "lscivr"):
         #current hack to generate correct initial distributinos if no file given
         self.setup_x_p(mol,self._state)
 
-class pop_estimator:
+class PopulationEstimator(metaclass = Factory):
     def population(mol: Molecule, s: int):
         raise NotImplementedError
 
@@ -188,46 +159,45 @@ class pop_estimator:
     def initial_pop(mol: Molecule, s: int,sr2):
         for i in range(mol.n_states):
             mol.x_s[i],mol.p_s[i] = 2*np.random.random(2)-1
-            r2 = mol.r2()[i]
+            r2 = mol.r2[i]
             mol.x_s[i] /= np.sqrt(r2)
             mol.p_s[i] /= np.sqrt(r2)
             if i == s:
                 mol.x_s[i] *= np.sqrt(sr2[0])
                 mol.p_s[i] *= np.sqrt(sr2[0])
-            else:                     
+            else:
                 mol.x_s[i] *= np.sqrt(sr2[1])
                 mol.p_s[i] *= np.sqrt(sr2[1])
 
-
-
-class wigner_PE(pop_estimator):
+class WignerPE(PopulationEstimator, key = "wigner"):
     def sr2(mol: Molecule):
         def f(r):
             return 2**(mol.n_states+1)*(r**2-0.5)*np.exp(-r**2) * np.exp(-(mol.n_states-1)*0.5)-1
         #3 seems to guarantee the upper solution for N<100 which I've tried. I don't know if it eventually collapses
-        a = scipy.optimize.fsolve(f, 3,maxfev=10000)[0]**2
+        a = fsolve(f, 3,maxfev=10000)[0]**2
         return (a,1/2)
+
     def population(mol: Molecule, s: int):
         #Wigner population estimator
-        a = 2**(mol.n_states+1) * np.exp(-np.sum(mol.r2()))
-        return a * (mol.r2()[s] - 0.5)
+        a = 2**(mol.n_states+1) * np.exp(-np.sum(mol.r2))
+        return a * (mol.r2[s] - 0.5)
 
-class semiclassical_PE(pop_estimator):
+class SemiclassicalPE(PopulationEstimator, key = "semiclassical"):
     def sr2(mol: Molecule):
         return (3,1)
 
     def population(mol: Molecule, s: int):
         #semiclassical population estimator
-        return 0.5 * mol.r2()[s] - 0.5
+        return 0.5 * mol.r2[s] - 0.5
 
 
-class spin_mapping_W_PE(pop_estimator):
+class SpinMappingPE(PopulationEstimator, key = "spinmap"):
     def sr2(mol:Molecule):
         return (8/3,2/3)
     def population(mol: Molecule, s: int):
         if mol.n_states != 3:
             raise NotImplementedError
         else:
-            return 1/3 + 0.5*mol.r2()[s] - 1/6 * np.sum(mol.r2())
-        # return 1/mol.n_states 
+            return 1/3 + 0.5*mol.r2[s] - 1/6 * np.sum(mol.r2)
+        # return 1/mol.n_states
 

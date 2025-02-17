@@ -95,8 +95,6 @@ class Trajectory:
         out.to_log("../" + sys.argv[1])
         out.write_log("="*40)
         out.write_log(f"Initialising trajectory")
-        # out.write_log(f"Step:           {self.curr_step}")
-        # out.write_log(f"Time:           {self.curr_time} fs")
         out.write_log()
 
         self.write_headers()

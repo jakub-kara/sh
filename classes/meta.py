@@ -21,7 +21,7 @@ class Factory(type):
             cls._keys[key] = cls
 
 class Singleton(type):
-    _instances = {}
+    _instances: dict = {}
 
     def __call__(cls, *args, **kwargs):
         subs = Singleton._allsubs(cls)

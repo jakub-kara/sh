@@ -2,7 +2,7 @@ import numpy as np
 import os, shutil
 import pickle
 from .meta import Singleton
-from .molecule import Molecule, MoleculeFactory
+from .molecule import MoleculeFactory
 from classes.trajectory import Trajectory
 
 class Bundle:

@@ -295,6 +295,7 @@ class MMSTMixin(MoleculeMixin, key = "mmst"):
         self.dRdt_s = np.zeros((self.n_atoms,3))
         self.dPkindt_s = np.zeros((self.n_atoms,3))
 
+    @property
     def r2(self):
         return self.x_s**2 + self.p_s**2
 

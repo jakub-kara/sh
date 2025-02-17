@@ -151,7 +151,6 @@ class SurfaceHopping(Dynamics):
             print(self._avail_kinetic_energy(mol,delta))
             print(mol.vel_ad * delta, np.sum((mol.vel_ad*delta)**2)/2,np.sum(mol.vel_ad/np.linalg.norm(mol.vel_ad)*delta/np.linalg.norm(delta)))
             print(mol.vel_ad,'\n',delta,'\n',a,b,c,D)
-            breakpoint()
             raise RuntimeError("Issue with rescaling...")
 
         mol.vel_ad -= gamma * delta
