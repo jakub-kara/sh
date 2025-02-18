@@ -58,8 +58,8 @@ class Dynamics(metaclass = Factory):
         pass
 
     def steps_elapsed(self, steps: int):
-        TDCUpdater().elapsed(steps)
-        CoeffUpdater().elapsed(steps)
+        TDCUpdater().elapsed(steps + 1)
+        CoeffUpdater().elapsed(steps + 1)
 
     def update_nuclear(self, mols: list[Molecule], dt: float):
         nupd = CompositeIntegrator()
