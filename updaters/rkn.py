@@ -54,7 +54,8 @@ class RKNBase(NuclearUpdater):
         out.inter[:-1] = out.inter[1:]
         out.inter[-1] = temp
 
-class RKN4(RKNBase, key = "rkn4"):
+class RKN4(RKNBase):
+    key = "rkn4"
     substeps = 4
     a = np.array([
         1/18,
@@ -68,7 +69,8 @@ class RKN4(RKNBase, key = "rkn4"):
     b = np.array([13/120,   3/10,   3/40,   1/60])
     d = np.array([1/8,      3/8,    3/8,    1/8])
 
-class RKN4b(RKNBase, key = "rkn4b"):
+class RKN4b(RKNBase):
+    key = "rkn4b"
     substeps = 3
     a = np.array([
         1/8,
@@ -79,9 +81,9 @@ class RKN4b(RKNBase, key = "rkn4b"):
     b = np.array([1/6, 1/3, 0])
     d = np.array([1/6, 2/3, 1/6])
 
-class RKN6(RKNBase, key = "rkn6"):
+class RKN6(RKNBase, ):
+    key = "rkn6"
     substeps = 7
-    order = 6
     a = np.array([
         1/200,
         1/150,
@@ -109,8 +111,8 @@ class RKN6(RKNBase, key = "rkn6"):
     b = np.array([61/1008,  0,  475/2016,   25/504, 125/1008, 25/1008, 11/2016])
     d = np.array([19/288,   0,  25/96,      25/144, 25/144,   25/96,   19/288])
 
-class RKN8(RKNBase, key = "rkn8"):
-    name = "rkn8"
+class RKN8(RKNBase):
+    key = "rkn8"
     substeps = 11
     a = np.array([
         49/12800,

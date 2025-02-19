@@ -4,7 +4,8 @@ from classes.molecule import Molecule
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
 
-class Yoshida4(NuclearUpdater, key = "y4"):
+class Yoshida4(NuclearUpdater):
+    key = "y4"
     substeps = 4
     w0 = -np.cbrt(2) / (2 - np.cbrt(2))
     w1 = 1 / (2 - np.cbrt(2))

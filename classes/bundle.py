@@ -21,19 +21,19 @@ class Bundle:
     @staticmethod
     def load_setup():
         with open("single.pkl", "rb") as pkl:
-            Singleton.restore(pickle.load(pkl))
+            Singleton.restart(pickle.load(pkl))
 
         with open("mol.pkl", "rb") as pkl:
-            MoleculeFactory.restore(pickle.load(pkl))
+            MoleculeFactory.restart(pickle.load(pkl))
 
     @staticmethod
-    def from_pkl():
+    def restart(**config):
         bundle = Bundle()
         traj_dirs = [d for d in os.listdir() if (os.path.isdir(d) and d.isdigit())]
         Bundle.load_setup()
         for d in traj_dirs:
             os.chdir(d)
-            traj = Trajectory.load_step(f"backup/traj.pkl")
+            traj = Trajectory.restart(**config)
             bundle.add_trajectory(traj)
             os.chdir("..")
         return bundle
@@ -52,7 +52,7 @@ class Bundle:
         self._active = self._trajs[self._iactive]
         return self
 
-    def setup(self, config: dict):
+    def setup(self, **config):
         traj = Trajectory(**config)
         self.save_setup()
         self.add_trajectory(traj)

@@ -61,14 +61,16 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
                 return s
         return active
 
-class NoHoppingUpdater(HoppingUpdater, key = "none"):
+class NoHoppingUpdater(HoppingUpdater):
+    key = "none"
     steps = 1
 
     def update(self, mols, dt, *args, **kwargs):
         self.hop.fill()
 
-class TDCHoppingChecker(Multistage, HoppingUpdater, key = "tdc"):
+class TDCHoppingChecker(Multistage, HoppingUpdater):
     ''' CLASSIC TULLY '''
+    key = "tdc"
     steps = 1
 
     def update(self, mols: list[Molecule], dt: float, active: int):
@@ -102,7 +104,8 @@ class TDCHoppingChecker(Multistage, HoppingUpdater, key = "tdc"):
             self.hop.inter[i] = self._check_hop(prob, active, dt/self.substeps)
             target = self.hop.inter[i]
 
-class PropHoppingChecker(HoppingUpdater, key = "prop"):
+class PropHoppingChecker(HoppingUpdater):
+    key = "prop"
     steps = 2
 
     def update(self, mols: list[Molecule], dt: float, active: int):
@@ -123,7 +126,8 @@ class PropHoppingChecker(HoppingUpdater, key = "prop"):
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active, dt)
 
-class GFHoppingChecker(HoppingUpdater, key = "gf"):
+class GFHoppingChecker(HoppingUpdater):
+    key = "gf"
     steps = 2
 
     def update(self, mols: list[Molecule], dt: float, active: int):
@@ -143,7 +147,9 @@ class GFHoppingChecker(HoppingUpdater, key = "gf"):
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active, dt)
 
-class MASHChecker(HoppingUpdater, key = "mash"):
+class MASHChecker(HoppingUpdater):
+    key = "mash"
+
     def update(self, mols: list[Molecule], dt: float, active: int):
         nst = mols[-1].n_states
         prob = self.prob.inp
@@ -155,7 +161,9 @@ class MASHChecker(HoppingUpdater, key = "mash"):
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active, dt)
 
-class MISHChecker(HoppingUpdater, key = "mish"):
+class MISHChecker(HoppingUpdater):
+    key = "mish"
+
     def update(self, mols: list[Molecule], dt: float, active: int):
         prob = self.prob.inp
         prob[:] = 0
@@ -164,10 +172,12 @@ class MISHChecker(HoppingUpdater, key = "mish"):
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active, dt)
 
-# class FSSHCChecker(HoppingUpdater, key = "fssh-c"):
+# class FSSHCChecker(HoppingUpdater, ):
+#     key = "fssh-c"
+#
 #     def __init__(self, *, seed = None, **config):
 #         super().__init__(**config)
 #         self.r = 0.
 #     def _check_hop(self, prob: np.ndarray, active: int):
-#         return 
+#         return
 #

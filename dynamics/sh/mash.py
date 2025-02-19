@@ -7,8 +7,10 @@ from electronic.electronic import ESTProgram
 from updaters.coeff import BlochUpdater
 from updaters.tdc import TDCUpdater
 
-class MASH(SurfaceHopping, key = "mash"):
+class MASH(SurfaceHopping):
     ''' Lawrence and Richardson's "unSMASH". Reduces to Mannouch and Richardson's "MASH" for two state case '''
+    key = "mash"
+
     def __init__(self, **config):
         config["nuclear"]["mixins"].append("bloch")
         super().__init__(**config)

@@ -7,11 +7,12 @@ from electronic.electronic import ESTProgram
 from scipy.optimize import fsolve
 
 
-class LSCIVR(Dynamics, key = "lscivr"):
+class LSCIVR(Dynamics):
     #Implements the linear semi-classical initial value representations
 
     #The key difference is in the propatation of the electronic degrees of freedom, which is performed in a single-excitation basis
     #We store the classical phase space variables of the electron in this basis in the coeff_s variable as z = x + ip
+    key = "lscivr"
     mode = "gn"
 
     def __init__(self, *, dynamics: dict, **config):
@@ -169,7 +170,9 @@ class PopulationEstimator(metaclass = Factory):
                 mol.x_s[i] *= np.sqrt(sr2[1])
                 mol.p_s[i] *= np.sqrt(sr2[1])
 
-class WignerPE(PopulationEstimator, key = "wigner"):
+class WignerPE(PopulationEstimator):
+    key = "wigner"
+
     def sr2(mol: Molecule):
         def f(r):
             return 2**(mol.n_states+1)*(r**2-0.5)*np.exp(-r**2) * np.exp(-(mol.n_states-1)*0.5)-1
@@ -182,7 +185,9 @@ class WignerPE(PopulationEstimator, key = "wigner"):
         a = 2**(mol.n_states+1) * np.exp(-np.sum(mol.r2))
         return a * (mol.r2[s] - 0.5)
 
-class SemiclassicalPE(PopulationEstimator, key = "semiclassical"):
+class SemiclassicalPE(PopulationEstimator):
+    key = "semiclassical"
+
     def sr2(mol: Molecule):
         return (3,1)
 
@@ -191,7 +196,9 @@ class SemiclassicalPE(PopulationEstimator, key = "semiclassical"):
         return 0.5 * mol.r2[s] - 0.5
 
 
-class SpinMappingPE(PopulationEstimator, key = "spinmap"):
+class SpinMappingPE(PopulationEstimator):
+    key = "spinmap"
+
     def sr2(mol:Molecule):
         return (8/3,2/3)
     def population(mol: Molecule, s: int):

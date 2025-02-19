@@ -1,14 +1,17 @@
 import numpy as np
 from .meta import Factory
 from .constants import convert
+from updaters.composite import CompositeIntegrator
 
 class Timestep(metaclass = Factory):
-    def __init__(self, *, dt, steps, **config):
-        self._end = convert(config["tmax"], "au")
+    def __init__(self, *, dt, steps, tmax, **kwargs):
+        self._end = convert(tmax, "au")
         self.time = 0
         self.step = 0
         self.dts = np.zeros(steps)
         self.dts[:] = convert(dt, "au")
+
+        self._nupd: dict = None
 
     @property
     def dt(self):
@@ -29,20 +32,25 @@ class Timestep(metaclass = Factory):
 
     @property
     def finished(self):
-        return self.time > self._end
+        return self.time >= self._end
 
     def next_step(self):
         self.time += self.dt
         self.step += 1
 
+    def adjust(self, *, tmax, **kwargs):
+        self._end = convert(tmax, "au")
+        CompositeIntegrator().adjust(**self._nupd)
 
-    def save_state(self):
-        pass
+    def save_nupd(self):
+        self._nupd = CompositeIntegrator().save()
 
-class Constant(Timestep, key = "const"):
-    pass
+class Constant(Timestep):
+    key = "const"
 
-class Half(Timestep, key = "half"):
+class Half(Timestep):
+    key = "half"
+
     def __init__(self, **config):
         super().__init__(**config)
         self.maxdt = self.dt

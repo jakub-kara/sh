@@ -4,7 +4,8 @@ from classes.out import Output
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
 
-class SimpleEhrenfest(Dynamics, key = "ehr"):
+class SimpleEhrenfest(Dynamics):
+    key = "ehr"
     mode = "g"
 
     def __init__(self, *, dynamics: dict, **config):

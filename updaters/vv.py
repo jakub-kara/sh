@@ -5,7 +5,9 @@ from classes.molecule import Molecule
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
 
-class VelocityVerlet(NuclearUpdater, key = "vv"):
+class VelocityVerlet(NuclearUpdater):
+    key = "vv"
+
     def update(self, mols: list[Molecule], dt: float, dyn: Dynamics):
         # update position
         mol = mols[-1]

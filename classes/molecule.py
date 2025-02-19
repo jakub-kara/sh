@@ -28,7 +28,7 @@ class MoleculeFactory:
         return cls._products.copy()
 
     @classmethod
-    def restore(cls, dic: dict):
+    def restart(cls, dic: dict):
         cls._products = dic
         for key, val in cls._products.items():
             setattr(cls, key, cls._get_molecule(key, val))
@@ -280,12 +280,16 @@ class Molecule:
 class MoleculeMixin(metaclass = Factory):
     pass
 
-class BlochMixin(MoleculeMixin, key = "bloch"):
+class BlochMixin(MoleculeMixin):
+    key = "bloch"
+
     def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
         self.bloch_n3 = np.zeros((n_states, 3))
 
-class MMSTMixin(MoleculeMixin, key = "mmst"):
+class MMSTMixin(MoleculeMixin):
+    key = "mmst"
+
     def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
         self.x_s = np.zeros(n_states)
@@ -299,7 +303,9 @@ class MMSTMixin(MoleculeMixin, key = "mmst"):
     def r2(self):
         return self.x_s**2 + self.p_s**2
 
-class CSDMMixin(MoleculeMixin, key = "csdm"):
+class CSDMMixin(MoleculeMixin):
+    key = "csdm"
+
     def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
         self.coeff_co_s = np.zeros(n_states, dtype=np.complex128)

@@ -2,10 +2,10 @@ import numpy as np
 import sys, pickle
 import time
 from copy import deepcopy
+from .meta import Singleton
 from .molecule import Molecule, MoleculeFactory
 from .out import Printer, Output
 from .constants import convert
-from .meta import Singleton
 from .timestep import Timestep
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
@@ -17,14 +17,10 @@ class Trajectory:
     def __init__(self, *, dynamics: dict, **config):
         self.mols: list[Molecule] = []
         config["nuclear"].setdefault("mixins", [])
-        self.dyn: Dynamics = Dynamics[dynamics["method"]](dynamics=dynamics, **config)
-        self._timestep = Timestep(
-            key = dynamics.get("timestep", "const"),
-            steps=1,
-            **dynamics)
 
         self.index = None
         self._backup = dynamics.get("backup", True)
+        self.dyn: Dynamics = Dynamics[dynamics["method"]](dynamics=dynamics, **config)
         self.bind_components(dynamics=dynamics, **config)
 
     @property
@@ -114,6 +110,7 @@ class Trajectory:
         out.write_log("="*40)
         out.write_log(f"Step:           {self.curr_step}")
         out.write_log(f"Time:           {convert(self.curr_time, 'au', 'fs'):.4f} fs")
+        # out.write_log(f"Time:           {convert(self.curr_time, 'au', 'fs')} fs")
         out.write_log(f"Stepsize:       {convert(self._timestep.dt, 'au', 'fs')} fs")
         out.write_log()
 
@@ -160,9 +157,13 @@ class Trajectory:
 
         self.next_step()
         self._timestep.success()
+        self._timestep.save_nupd()
         self.write_outputs()
 
-    def bind_components(self, *, electronic: dict, nuclear: dict, quantum: dict, output: dict, **config):
+        if self.is_finished:
+            self.save_step()
+
+    def bind_components(self, *, dynamics: dict, electronic: dict, nuclear: dict, quantum: dict, output: dict, **kwargs):
         self.bind_est(**electronic)
         self.bind_nuclear_integrator(nuclear["nuc_upd"])
         mol = self.get_molecule(**nuclear)
@@ -172,6 +173,7 @@ class Trajectory:
         self.bind_coeff_updater(**quantum)
         self.bind_io(**output)
         self.bind_molecules(**nuclear)
+        self.bind_timestep(**dynamics)
 
     def get_molecule(self, **nuclear):
         est = ESTProgram()
@@ -182,16 +184,26 @@ class Trajectory:
         for _ in range(max(nupd.steps, CoeffUpdater().steps, nuclear.get("keep", 0))):
             self.add_molecule(self.mol.copy_all())
 
+    def bind_timestep(self, **dynamics):
+        self._timestep: Timestep = Timestep[dynamics.get("timestep", "const")](
+            steps = len(self.mols), **dynamics)
+
+
+    # TODO: rework
     def bind_est(self, **electronic):
+        ESTProgram.reset()
         ESTProgram[electronic["program"]](**electronic)
 
     def bind_nuclear_integrator(self, type: str):
+        CompositeIntegrator.reset()
         CompositeIntegrator(nuc_upd = type)
 
     def bind_tdc_updater(self, **quantum):
+        TDCUpdater.reset()
         TDCUpdater[quantum["tdc_upd"]](**quantum)
 
     def bind_coeff_updater(self, **quantum):
+        CoeffUpdater.reset()
         CoeffUpdater[quantum["coeff_upd"]](**quantum)
 
     def bind_io(self, **output):
@@ -213,13 +225,24 @@ class Trajectory:
         out.open_log()
 
     @staticmethod
-    def load_step(file):
-        with open(file, "rb") as pkl:
+    def restart(**config):
+        with open("backup/traj.pkl", "rb") as pkl:
             traj: Trajectory = pickle.load(pkl)
+        traj.restart_components(**config)
+
         out = Output()
         out.open_log()
-        out.write_log("Restarting from pickle file.")
+        out.write_log("Succesfully restarted from backups.")
         return traj
+
+    def restart_components(self, *, dynamics: dict, electronic: dict, nuclear: dict, quantum: dict, output: dict, **kwargs):
+        self._backup = dynamics.get("backup", True)
+        self.bind_est(**electronic)
+        self.bind_nuclear_integrator(nuclear["nuc_upd"])
+        self.bind_tdc_updater(**quantum)
+        self.bind_coeff_updater(**quantum)
+        self.bind_io(**output)
+        self._timestep.adjust(**dynamics)
 
     def write_headers(self):
         out = Output()

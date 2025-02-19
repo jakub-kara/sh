@@ -4,7 +4,9 @@ import os, sys
 from .electronic import ESTProgram
 from classes.constants import multiplets, convert
 
-class Molpro(ESTProgram, key = "molpro"):
+class Molpro(ESTProgram):
+    key = "molpro"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 

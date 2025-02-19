@@ -8,8 +8,10 @@ from electronic.electronic import ESTProgram
 from updaters.coeff import BlochUpdater
 from updaters.tdc import TDCUpdater
 
-class MISH(SurfaceHopping, key = "mish"):
+class MISH(SurfaceHopping):
     ''' Runeson and Manolopoulos "Multi Mash". Also known as "MISH", the artist previously known as SHIAM '''
+    key = "mish"
+
     def __init__(self, **config):
         super().__init__(**config)
 

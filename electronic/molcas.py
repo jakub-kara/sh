@@ -4,7 +4,9 @@ import os, sys
 from .electronic import ESTProgram
 from classes.constants import Constants
 
-class Molcas(ESTProgram, key = "molcas"):
+class Molcas(ESTProgram):
+    key = "molcas"
+
     def _select_method(self, key):
         methods = {
             "cas": self.cas,
@@ -115,7 +117,7 @@ class Molcas(ESTProgram, key = "molcas"):
         with open(f"{self._file}.input", "a") as file:
             file.write(f"&CASPT2\n")
             file.write(f"GRDT\n")
-    
+
             file.write(f"imag={self._options['imag']}\n")
             file.write(f"shift={self._options['shift']}\n")
             file.write(f"ipea={self._options['ipea']}\n")
@@ -274,12 +276,12 @@ class Molcas(ESTProgram, key = "molcas"):
                         data = file.readline().split()
                         for j in range(i//5):
                             data += file.readline().split()
-    
+
                         ovlp[i,:len(data)] = [float(q) for q in data]
-    
+
             ovlp =ovlp[self._options['sa']:,:self._options['sa']]
             ovlp =ovlp[:self._nstates,:self._nstates]
             U,_,Vt = np.linalg.svd(ovlp)
             ovlp = U@Vt
-    
+
         return ovlp

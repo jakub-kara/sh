@@ -3,7 +3,9 @@ from .ehr import SimpleEhrenfest
 from classes.molecule import Molecule
 from classes.out import Output, Printer
 
-class BCMF(SimpleEhrenfest, key = "bcmf"):
+class BCMF(SimpleEhrenfest):
+    key = "bcmf"
+
     def _adjust_coeff(self, coeff: np.ndarray, selected: np.ndarray):
         tot = np.sum(np.abs(coeff)**2 * selected)
         coeff *= selected / np.sqrt(tot)

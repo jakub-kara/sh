@@ -3,7 +3,8 @@ from .ehr import SimpleEhrenfest
 from classes.molecule import Molecule
 from electronic.electronic import ESTProgram
 
-class GSE(SimpleEhrenfest, key = "gse"):
+class GSE(SimpleEhrenfest):
+    key = "gse"
     mode = "g"
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):

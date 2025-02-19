@@ -5,7 +5,9 @@ from dynamics.sh.checker import HoppingUpdater
 from classes.molecule import Molecule, CSDMMixin
 from updaters.coeff import CoeffUpdater
 
-class CSDM(SimpleEhrenfest, key = "csdm"):
+class CSDM(SimpleEhrenfest):
+    key = "csdm"
+
     def __init__(self, *, dynamics, **config):
         config["nuclear"]["mixins"].append("csdm")
         super().__init__(dynamics=dynamics, **config)

@@ -3,7 +3,9 @@ from copy import deepcopy
 from .ehr import SimpleEhrenfest
 from classes.molecule import Molecule
 
-class MultiEhrenfest(SimpleEhrenfest, key = "mce"):
+class MultiEhrenfest(SimpleEhrenfest):
+    key = "mce"
+
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
 

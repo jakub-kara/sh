@@ -16,37 +16,30 @@ class Factory(type):
             raise ValueError(f"{key} option not found among the descendents of {cls}.")
         return cls._keys[key]
 
-    def _initsub(cls, key=None, **kwargs):
-        if key is not None:
-            cls._keys[key] = cls
+    def _initsub(cls):
+        if hasattr(cls, "key"):
+            cls._keys[cls.key] = cls
 
 class Singleton(type):
     _instances: dict = {}
 
     def __call__(cls, *args, **kwargs):
-        subs = Singleton._allsubs(cls)
-        inter = list(set(subs) & set(cls._instances))
-
-        if len(inter) == 0:
+        if cls in cls._instances.keys():
+            return cls._instances[cls]
+        else:
             obj = super().__call__(*args, **kwargs)
             cls._instances[cls] = obj
             return obj
-        elif len(inter) == 1:
-            return cls._instances[inter[0]]
-        else:
-            raise RuntimeError(f"More than one instance of singleton among {cls} and its descendants.")
-
-    def _allsubs(cls):
-        return set([cls]).union(cls.__subclasses__()).union(
-            [s for c in cls.__subclasses__() for s in Singleton._allsubs(c)])
 
     def reset(cls):
-        subs = Singleton._allsubs(cls)
-        for sub in subs:
-            cls._instances.pop(sub, None)
+        cls._instances.pop(cls, None)
+
+    @property
+    def initialised(cls):
+        return cls in cls._instances
 
     @staticmethod
-    def restore(instances: dict):
+    def restart(instances: dict):
         Singleton._instances.update(instances)
 
     @staticmethod
@@ -54,7 +47,21 @@ class Singleton(type):
         return Singleton._instances
 
 class SingletonFactory(Singleton, Factory):
-    pass
+    def __call__(cls, *args, **kwargs):
+        par = cls.par
+        if par in cls._instances.keys():
+            return cls._instances[par]
+        else:
+            obj = super().__call__(*args, **kwargs)
+            cls._instances[par] = obj
+            return obj
+
+    @property
+    def par(cls):
+        return [x for x in cls.mro() if type(x) == type(cls)][-1]
+
+    def reset(cls):
+        cls._instances.pop(cls.par, None)
 
 class DynamicClassProxy:
     def __call__(self, kls, kls_name):

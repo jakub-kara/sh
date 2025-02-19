@@ -36,7 +36,8 @@ class Output(metaclass = Singleton):
         self._logmode = "a"
 
     def close_log(self):
-        self._logfile.close()
+        if self._logfile:
+            self._logfile.close()
         self._logfile = None
 
     def write_log(self, msg = ""):

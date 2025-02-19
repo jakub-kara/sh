@@ -21,11 +21,15 @@ class CoeffUpdater(Updater, metaclass = SingletonFactory):
         self.coeff.fill()
         self.prop.fill()
 
-class BlankCoeffUpdater(CoeffUpdater, key = "none"):
+class BlankCoeffUpdater(CoeffUpdater):
+    key = "none"
+
     def update(self, mols, dt):
         self.no_update(mols, dt)
 
-class CoeffTDCUpdater(Multistage, CoeffUpdater, key = "tdc"):
+class CoeffTDCUpdater(Multistage, CoeffUpdater):
+    key = "tdc"
+
     steps = 2
     mode = ""
 
@@ -42,7 +46,8 @@ class CoeffTDCUpdater(Multistage, CoeffUpdater, key = "tdc"):
             self.prop.inter[i] = prop
             self.coeff.inter[i] = prop @ coeff
 
-class CoeffLDUpdater(Multistage, CoeffUpdater, key = "ld"):
+class CoeffLDUpdater(Multistage, CoeffUpdater):
+    key = "ld"
     steps = 2
     mode = "o"
 

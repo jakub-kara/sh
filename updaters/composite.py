@@ -14,9 +14,11 @@ class CompositeIntegrator(Updater, metaclass = Singleton):
         if base.steps > 1:
             self._upds[-1] = NuclearUpdater[f"rkn{base.steps}"]()
 
-        self.steps = base.steps
-
         self.to_init()
+
+    @property
+    def steps(self):
+        return max(upd.steps for upd in self._upds.values())
 
     @property
     def active(self):
@@ -35,3 +37,13 @@ class CompositeIntegrator(Updater, metaclass = Singleton):
         self._set_state()
         self._count += 1
         self.active.run(*args, **kwargs)
+
+    def save(self):
+        return {"state": self._state,
+                "count": self._count,
+                "upds": self._upds}
+
+    def adjust(self, *, state, count, upds):
+        self._state = state
+        self._count = count
+        self._upds = upds

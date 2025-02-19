@@ -5,7 +5,8 @@ from classes.molecule import Molecule
 from classes.out import Output
 from electronic.electronic import ESTProgram
 
-class FSSH(SurfaceHopping, key = "fssh"):
+class FSSH(SurfaceHopping):
+    key = "fssh"
     mode = "a"
 
     def __init__(self, *, dynamics, **config):

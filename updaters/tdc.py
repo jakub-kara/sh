@@ -16,12 +16,15 @@ class TDCUpdater(Updater, metaclass = SingletonFactory):
     def no_update(self, mols: list[Molecule], dt: float):
         self.tdc.fill()
 
-class BlankTDCUpdater(TDCUpdater, key = "none"):
+class BlankTDCUpdater(TDCUpdater):
+    key = "none"
+
     def update(self, mols, dt):
         self.no_update(mols, dt)
 
-class kTDCe(TDCUpdater, key = "ktdce"):
+class kTDCe(TDCUpdater):
     # curvature-based TDC approximation, energy version
+    key = "ktdce"
     mode = ""
     steps = 4
 
@@ -40,8 +43,9 @@ class kTDCe(TDCUpdater, key = "ktdce"):
                 tdc[j,i] = -tdc[i,j]
         self.tdc.out = tdc
 
-class kTDCg(TDCUpdater, key =  "ktdcg"):
+class kTDCg(TDCUpdater):
     # curvature-based TDC approximation, gradient version
+    key = "ktdcg"
     mode = "g"
     steps = 2
 
@@ -63,33 +67,35 @@ class kTDCg(TDCUpdater, key =  "ktdcg"):
                 tdc[j,i] = -tdc[i,j]
         self.tdc.out = tdc
 
-class HST(TDCUpdater, key = "hst"):
+class HST(TDCUpdater):
     # Classic Hammes-Schiffer-Tully mid point approximation (paper in 1994)
+    key = "hst"
     mode = "o"
     steps = 2
 
     def update(self, mols: list[Molecule], dt: float):
         self.tdc.out = 1 / (2 * dt) * (mols[-1].ovlp_ss - mols[-1].ovlp_ss.T)
 
-class HSTSharc(TDCUpdater, key = "hst3"):
-    # SHARC HST end-point finite difference, linearly interpolated across the region
-    # Maybe don't trust this code too much...
+class HSTSharc(TDCUpdater):
+    key = "hst3"
     mode = "o"
     steps = 3
 
     def update(self, mols: list[Molecule], dt: float):
         self.tdc.out = 1 / (4 * dt) * (3 * (mols[-1].ovlp_ss - mols[-1].ovlp_ss.T) - (mols[-2].ovlp_ss - mols[-2].ovlp_ss.T))
 
-class NACME(TDCUpdater, key = "nacme"):
+class NACME(TDCUpdater):
     # ddt = nacme . velocity (i.e. original Tully 1990 paper model)
+    key = "nacme"
     mode = "n"
     steps = 1
 
     def update(self, mols: list[Molecule], dt: float):
         self.tdc.out = np.einsum("ijad, ad -> ij", mols[-1].nacdr_ssad, mols[-1].vel_ad)
 
-class NPI(TDCUpdater, key = "npi"):
+class NPI(TDCUpdater):
     # Meek and Levine's norm preserving interpolation, but integrated across the time-step
+    key = "npi"
     mode = "o"
     steps = 2
 
@@ -102,8 +108,9 @@ class NPI(TDCUpdater, key = "npi"):
 
         self.tdc.out = (U.T @ dU) * (1 - np.eye(nst)) # to get rid of non-zero diagonal elements
 
-class NPISharc(Multistage, TDCUpdater, key = "npisharc"):
+class NPISharc(Multistage, TDCUpdater):
     # NPI sharc mid-point averaged
+    key = "npisharc"
     mode = "o"
     steps = 2
 
@@ -119,8 +126,9 @@ class NPISharc(Multistage, TDCUpdater, key = "npisharc"):
             Utot += np.matmul(U.T, dU)
             self.tdc.inter[i] = Utot / (i + 1) * (1 - np.eye(nst))
 
-class NPIMeek(TDCUpdater, key = "npimeek"):
+class NPIMeek(TDCUpdater):
     # NPI Meek and Levine mid-point averaged
+    key = "npimeek"
     mode = "o"
     steps = 2
 

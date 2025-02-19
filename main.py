@@ -1,17 +1,30 @@
 import __init__
 import sys, json
-from classes.bundle import Bundle
 import time
+import argparse
 
+from classes.bundle import Bundle
+
+
+parser = argparse.ArgumentParser(
+    prog = "SHREC",
+    description = "Main script to run SHREC",
+    epilog = ""
+)
+parser.add_argument("infile", help="path to input file")
+parser.add_argument("-r", "--restart", action="store_true")
+args = parser.parse_args()
 
 t_ini = time.time()
-if len(sys.argv) > 1:
-    input = sys.argv[1]
-    with open(input, "r") as file:
-        config = json.load(file)
-    bundle = Bundle().setup(config)
+input = args.infile
+with open(input, "r") as file:
+    config = json.load(file)
+
+bundle: Bundle
+if args.restart:
+    bundle = Bundle.restart(**config)
 else:
-    bundle = Bundle.from_pkl()
+    bundle = Bundle().setup(**config)
 
 while not bundle.is_finished:
     bundle.run_step()
