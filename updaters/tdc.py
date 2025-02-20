@@ -26,7 +26,7 @@ class kTDCe(TDCUpdater):
     # curvature-based TDC approximation, energy version
     key = "ktdce"
     mode = ""
-    steps = 4
+    steps = 3
 
     def _dh(self, mol: Molecule, i: int, j: int):
         return mol.ham_eig_ss[i,i] - mol.ham_eig_ss[j,j]
@@ -47,7 +47,7 @@ class kTDCg(TDCUpdater):
     # curvature-based TDC approximation, gradient version
     key = "ktdcg"
     mode = "g"
-    steps = 2
+    steps = 1
 
     def _dh(self, mol: Molecule, i: int, j: int):
         return mol.ham_eig_ss[i,i] - mol.ham_eig_ss[j,j]
@@ -71,7 +71,7 @@ class HST(TDCUpdater):
     # Classic Hammes-Schiffer-Tully mid point approximation (paper in 1994)
     key = "hst"
     mode = "o"
-    steps = 2
+    steps = 1
 
     def update(self, mols: list[Molecule], dt: float):
         self.tdc.out = 1 / (2 * dt) * (mols[-1].ovlp_ss - mols[-1].ovlp_ss.T)
@@ -79,7 +79,7 @@ class HST(TDCUpdater):
 class HSTSharc(TDCUpdater):
     key = "hst3"
     mode = "o"
-    steps = 3
+    steps = 2
 
     def update(self, mols: list[Molecule], dt: float):
         self.tdc.out = 1 / (4 * dt) * (3 * (mols[-1].ovlp_ss - mols[-1].ovlp_ss.T) - (mols[-2].ovlp_ss - mols[-2].ovlp_ss.T))
@@ -88,7 +88,6 @@ class NACME(TDCUpdater):
     # ddt = nacme . velocity (i.e. original Tully 1990 paper model)
     key = "nacme"
     mode = "n"
-    steps = 1
 
     def update(self, mols: list[Molecule], dt: float):
         self.tdc.out = np.einsum("ijad, ad -> ij", mols[-1].nacdr_ssad, mols[-1].vel_ad)
@@ -101,7 +100,6 @@ class NPI(TDCUpdater):
 
     def update(self, mols: list[Molecule], dt: float):
         nst = mols[-1].n_states
-        print(mols[-1].ovlp_ss)
         U =    np.eye(nst)      *   np.cos(np.arccos(mols[-1].ovlp_ss))
         U -=  (np.eye(nst) - 1) *   np.sin(np.arcsin(mols[-1].ovlp_ss))
         dU =   np.eye(nst)      * (-np.sin(np.arccos(mols[-1].ovlp_ss)) * np.arccos(mols[-1].ovlp_ss) / dt)
@@ -113,7 +111,7 @@ class NPISharc(Multistage, TDCUpdater):
     # NPI sharc mid-point averaged
     key = "npisharc"
     mode = "o"
-    steps = 2
+    steps = 1
 
     def update(self, mols: list[Molecule], dt: float):
         nst = mols[-1].n_states
@@ -131,7 +129,7 @@ class NPIMeek(TDCUpdater):
     # NPI Meek and Levine mid-point averaged
     key = "npimeek"
     mode = "o"
-    steps = 2
+    steps = 1
 
     def update(self, mols: list[Molecule], dt: float, **kwargs):
         def sinc(x):

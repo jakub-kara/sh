@@ -47,7 +47,7 @@ class CoeffTDCUpdater(Multistage, CoeffUpdater):
 
 class CoeffLDUpdater(Multistage, CoeffUpdater):
     key = "ld"
-    steps = 2
+    steps = 1
     mode = "o"
 
     def update(self, mols: list[Molecule], dt: float):
@@ -63,7 +63,7 @@ class CoeffLDUpdater(Multistage, CoeffUpdater):
             self.coeff.inter[i] = prop @ coeff
 
 class BlochUpdater(Multistage, Updater, metaclass = Singleton):
-    steps = 2
+    steps = 1
     mode = ""
 
     def __init__(self, **kwargs):

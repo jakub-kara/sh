@@ -63,7 +63,6 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
 
 class NoHoppingUpdater(HoppingUpdater):
     key = "none"
-    steps = 1
 
     def update(self, mols, dt, *args, **kwargs):
         self.hop.fill()
@@ -106,7 +105,7 @@ class TDCHoppingChecker(Multistage, HoppingUpdater):
 
 class PropHoppingChecker(HoppingUpdater):
     key = "prop"
-    steps = 2
+    steps = 1
 
     def update(self, mols: list[Molecule], dt: float, active: int):
         cupd = CoeffUpdater()
@@ -128,7 +127,7 @@ class PropHoppingChecker(HoppingUpdater):
 
 class GFHoppingChecker(HoppingUpdater):
     key = "gf"
-    steps = 2
+    steps = 1
 
     def update(self, mols: list[Molecule], dt: float, active: int):
         cupd = CoeffUpdater()

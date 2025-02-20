@@ -4,7 +4,7 @@ from classes.molecule import Molecule
 
 class Updater:
     name = ""
-    steps = 1
+    steps = 0
     substeps = 1
 
     def __init__(self, **kwargs):

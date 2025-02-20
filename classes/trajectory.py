@@ -95,7 +95,9 @@ class Trajectory:
 
         self.write_headers()
         t0 = time.time()
+        self.dyn.steps_elapsed(-1)
         self.dyn.prepare_traj(self.mol)
+        self.dyn.update_quantum(self.mols, self.dt)
         out.write_log(f"Total time:     {time.time() - t0} s")
         out.write_border()
         out.write_log()
@@ -109,9 +111,9 @@ class Trajectory:
         out.open_log()
         out.write_border()
         out.write_log(f"Step:           {self.curr_step}")
-        out.write_log(f"Time:           {convert(self.curr_time, 'au', 'fs'):.4f} fs")
+        out.write_log(f"Time:           {convert(self.curr_time, 'au', 'fs'):.6f} fs")
         # out.write_log(f"Time:           {convert(self.curr_time, 'au', 'fs')} fs")
-        out.write_log(f"Stepsize:       {convert(self._timestep.dt, 'au', 'fs')} fs")
+        out.write_log(f"Stepsize:       {convert(self._timestep.dt, 'au', 'fs'):.6f} fs")
         out.write_log()
 
         self.dyn.steps_elapsed(self._timestep.step)
@@ -126,10 +128,8 @@ class Trajectory:
 
         t1 = time.time()
         out.write_log(f"Nuclear + EST")
-        print(np.abs(self.mol.coeff_s)**2)
         self.dyn.update_nuclear(self.mols, self._timestep.dt)
         temp = CompositeIntegrator().active.out.out
-        print(np.abs(temp.coeff_s)**2)
         valid = self._timestep.validate(self.energy_diff(temp, self.mols))
         if not valid:
             self._timestep.fail()
@@ -278,7 +278,7 @@ class Trajectory:
         dic["pen"] = Printer.write("Total Pot En [eV]", "s")
         dic["ten"] = Printer.write("Total En [eV]", "s")
         dic["nacdr"] = "".join([Printer.write(f"NACdr {j}-{i} [au]", "s") for i in range(nst) for j in range(i)])
-        dic["nacdt"] = "".join([Printer.write(f"NACdr {j}-{i} [au]", "s") for i in range(nst) for j in range(i)])
+        dic["nacdt"] = "".join([Printer.write(f"NACdt {j}-{i} [au]", "s") for i in range(nst) for j in range(i)])
         dic["coeff"] = "".join([Printer.write(f"Coeff {i}", f" <{Printer.field_length*2+1}") for i in range(nst)])
         dic["posx"] = Printer.write("X-Position [au]", "s")
         dic["posy"] = Printer.write("Y-Position [au]", "s")
