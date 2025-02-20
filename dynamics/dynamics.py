@@ -41,7 +41,7 @@ class Dynamics(metaclass = Factory):
         out = Output()
         out.open_log()
         est = ESTProgram()
-        self.setup_est(mode = self.mode)
+        self.setup_est(mode = self.get_mode())
         est.run(mol)
         est.read(mol, mol)
         self.calculate_acceleration(mol)
@@ -104,11 +104,11 @@ class Dynamics(metaclass = Factory):
         out2.coeff_s /= np.sqrt(np.sum(np.abs(out2.coeff_s)**2))
         return out1, out2
 
-    def dat_header(self, dic: dict, record: list):
-        return dic
+    def dat_header(self):
+        return {}
 
-    def dat_dict(self, dic: dict, record: list):
-        return dic
+    def dat_dict(self):
+        return {}
 
     def h5_dict(self):
         return {}

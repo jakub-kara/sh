@@ -188,14 +188,12 @@ class SurfaceHopping(Dynamics):
         hop.run(mols, dt, self.active)
         self._target = hop.hop.out
 
-    def dat_header(self, dic: dict, record: list):
-        for rec in record:
-            if rec == "act":
-                dic[rec] += Printer.write("Active State", "s")
+    def dat_header(self):
+        dic = super().dat_header()
+        dic["act"] = Printer.write("Active State", "s")
         return dic
 
-    def dat_dict(self, dic: dict, record: list):
-        for rec in record:
-            if rec == "act":
-                dic[rec] += Printer.write(self.active, "i")
+    def dat_dict(self):
+        dic = super().dat_dict()
+        dic["act"] = Printer.write(self.active, "i")
         return dic

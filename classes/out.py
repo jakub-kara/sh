@@ -3,12 +3,11 @@ import pickle, h5py
 import time
 from classes.meta import Singleton
 
-
 class Output(metaclass = Singleton):
     def __init__(self, *, file: int, record: list, **config):
-        self.record = record
+        self._record = record
         self._file = file
-        self._dist = config.get('dist',False)
+        self._dist = config.get("dist",False)
         self._options = {
             "compression": config.get("compression", "gzip"),
             "compression_opts": config.get("compression_opts", 9),
@@ -16,7 +15,6 @@ class Output(metaclass = Singleton):
 
         self._log = config.get("log", True)
         self._logfile = None
-        self._logmode = "w"
 
         self._xyz = config.get("xyz", True)
         self._dist = config.get("dist", False)
@@ -24,21 +22,27 @@ class Output(metaclass = Singleton):
         self._dat = config.get("dat", True)
 
     def __del__(self):
-        self.write_log("TERMINATED")
+        self.write_log()
+        self.write_border()
+        self.write_log("Program terminated.")
+        self.write_log("Exiting.")
+        self.write_border()
         self.close_log()
 
     def to_log(self, filename):
         with open(filename, "r") as f:
             self.write_log(f.read())
 
-    def open_log(self):
-        self._logfile = open(f"data/{self._file}.log", self._logmode)
-        self._logmode = "a"
+    def open_log(self, mode = "a"):
+        self._logfile = open(f"data/{self._file}.log", mode = mode)
 
     def close_log(self):
         if self._logfile:
             self._logfile.close()
         self._logfile = None
+
+    def write_border(self):
+        self.write_log("="*40)
 
     def write_log(self, msg = ""):
         print(msg)
@@ -51,7 +55,7 @@ class Output(metaclass = Singleton):
             return
         with open(f"data/{self._file}.dat", mode) as file:
             file.write(data["time"])
-            for rec in self.record:
+            for rec in self._record:
                 if rec in data.keys():
                     file.write(data[rec])
             file.write("\n")
@@ -75,8 +79,6 @@ class Output(metaclass = Singleton):
             if to_write is None:
                 return
             key = str(to_write["step"])
-            if key in file.keys():
-                del file[key]
             grp = file.create_group(key)
             to_write.pop("step")
             for key, val in to_write.items():

@@ -97,10 +97,11 @@ class NPI(TDCUpdater):
     # Meek and Levine's norm preserving interpolation, but integrated across the time-step
     key = "npi"
     mode = "o"
-    steps = 2
+    steps = 1
 
     def update(self, mols: list[Molecule], dt: float):
         nst = mols[-1].n_states
+        print(mols[-1].ovlp_ss)
         U =    np.eye(nst)      *   np.cos(np.arccos(mols[-1].ovlp_ss))
         U -=  (np.eye(nst) - 1) *   np.sin(np.arcsin(mols[-1].ovlp_ss))
         dU =   np.eye(nst)      * (-np.sin(np.arccos(mols[-1].ovlp_ss)) * np.arccos(mols[-1].ovlp_ss) / dt)

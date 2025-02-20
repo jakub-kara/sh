@@ -1,8 +1,8 @@
 import numpy as np
 
-from classes.out import Output
 from .sh import SurfaceHopping
 from .checker import HoppingUpdater
+from classes.out import Output
 from classes.molecule import Molecule
 from electronic.electronic import ESTProgram
 from updaters.coeff import BlochUpdater

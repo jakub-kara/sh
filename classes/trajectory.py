@@ -87,9 +87,9 @@ class Trajectory:
 
     def prepare_traj(self):
         out = Output()
-        out.open_log()
+        out.open_log(mode="w")
         out.to_log("../" + sys.argv[1])
-        out.write_log("="*40)
+        out.write_border()
         out.write_log(f"Initialising trajectory")
         out.write_log()
 
@@ -97,7 +97,7 @@ class Trajectory:
         t0 = time.time()
         self.dyn.prepare_traj(self.mol)
         out.write_log(f"Total time:     {time.time() - t0} s")
-        out.write_log("="*40)
+        out.write_border()
         out.write_log()
         out.close_log()
 
@@ -107,7 +107,7 @@ class Trajectory:
     def run_step(self):
         out = Output()
         out.open_log()
-        out.write_log("="*40)
+        out.write_border()
         out.write_log(f"Step:           {self.curr_step}")
         out.write_log(f"Time:           {convert(self.curr_time, 'au', 'fs'):.4f} fs")
         # out.write_log(f"Time:           {convert(self.curr_time, 'au', 'fs')} fs")
@@ -126,9 +126,10 @@ class Trajectory:
 
         t1 = time.time()
         out.write_log(f"Nuclear + EST")
+        print(np.abs(self.mol.coeff_s)**2)
         self.dyn.update_nuclear(self.mols, self._timestep.dt)
         temp = CompositeIntegrator().active.out.out
-
+        print(np.abs(temp.coeff_s)**2)
         valid = self._timestep.validate(self.energy_diff(temp, self.mols))
         if not valid:
             self._timestep.fail()
@@ -151,7 +152,7 @@ class Trajectory:
         out.write_log()
 
         out.write_log(f"Total time:     {time.time() - t0} s")
-        out.write_log("="*40)
+        out.write_border()
         out.write_log()
         out.close_log()
 
@@ -232,7 +233,11 @@ class Trajectory:
 
         out = Output()
         out.open_log()
+        out.write_log()
+        out.write_border()
         out.write_log("Succesfully restarted from backups.")
+        out.write_border()
+        out.write_log()
         return traj
 
     def restart_components(self, *, dynamics: dict, electronic: dict, nuclear: dict, quantum: dict, output: dict, **kwargs):
@@ -241,19 +246,19 @@ class Trajectory:
         self.bind_nuclear_integrator(nuclear["nuc_upd"])
         self.bind_tdc_updater(**quantum)
         self.bind_coeff_updater(**quantum)
-        self.bind_io(**output)
+        # self.bind_io(**output)
         self._timestep.adjust(**dynamics)
 
     def write_headers(self):
         out = Output()
-        out.write_dat(self.dat_header(out.record), "w")
+        out.write_dat(self.dat_header(), "w")
         out.write_h5(self.h5_info(), "w")
         out.write_xyz("", "w")
         out.write_dist("", "w")
 
     def write_outputs(self):
         out = Output()
-        out.write_dat(self.dat_dict(out.record))
+        out.write_dat(self.dat_dict())
         out.write_h5(self.h5_dict())
         out.write_xyz(self.vxyz_string())
         out.write_dist(self.dist_string())
@@ -261,95 +266,54 @@ class Trajectory:
     def copy(self):
         return deepcopy(self)
 
-    def dat_header(self, record):
+    def dat_header(self):
+        nst = self.mol.n_states
+
         dic = {}
         dic["time"] = "#" + Printer.write("Time [fs]", "s")
-        for rec in record:
-            dic[rec] = ""
-            if rec == "pop":
-                for s in range(self.n_states):
-                    dic[rec] += Printer.write(f'{s} Population', "s")
-            if rec == "pes":
-                for s in range(self.n_states):
-                    dic[rec] += Printer.write(f'{s} Pot En [eV]', "s")
-            if rec == "ken":
-                dic[rec] += Printer.write('Total Kin En [eV]', "s")
-            if rec == "pen":
-                dic[rec] += Printer.write('Total Pot En [eV]', "s")
-            if rec == "ten":
-                dic[rec] += Printer.write('Total En [eV]', "s")
-            if rec == "nacdr":
-                for s1 in range(self.n_states):
-                    for s2 in range(s1):
-                        dic[rec] += Printer.write(f'{s2}-{s1} NACdr [au]', "s")
-            if rec == "nacdt":
-                for s1 in range(self.n_states):
-                    for s2 in range(s1):
-                        dic[rec] += Printer.write(f'{s2}-{s1} NACdt [au]', "s")
-            if rec == "coeff":
-                for s in range(self.n_states):
-                    dic[rec] += Printer.write(f'{s} State Coeff', f" <{Printer.field_length*2+1}")
-            if rec == "posx":
-                dic[rec] += Printer.write('Pos[0,0] [au]', "s")
-            if rec == "momx":
-                dic[rec] += Printer.write('Mom[0,0] [au]', "s")
-            if rec == "posy":
-                dic[rec] += Printer.write('Pos[0,1] [au]', "s")
-            if rec == "momy":
-                dic[rec] += Printer.write('Mom[0,1] [au]', "s")
-            if rec == "posz":
-                dic[rec] += Printer.write('Pos[0,2] [au]', "s")
-            if rec == "momz":
-                dic[rec] += Printer.write('Mom[0,2] [au]', "s")
 
-        dic = self.dyn.dat_header(dic, record)
+        dic["pop"] = "".join([Printer.write(f"Population {i}", "s") for i in range(nst)])
+        dic["pes"] = "".join([Printer.write(f"Pot En {i} [eV]", "s") for i in range(nst)])
+        dic["ken"] = Printer.write("Total Kin En [eV]", "s")
+        dic["pen"] = Printer.write("Total Pot En [eV]", "s")
+        dic["ten"] = Printer.write("Total En [eV]", "s")
+        dic["nacdr"] = "".join([Printer.write(f"NACdr {j}-{i} [au]", "s") for i in range(nst) for j in range(i)])
+        dic["nacdt"] = "".join([Printer.write(f"NACdr {j}-{i} [au]", "s") for i in range(nst) for j in range(i)])
+        dic["coeff"] = "".join([Printer.write(f"Coeff {i}", f" <{Printer.field_length*2+1}") for i in range(nst)])
+        dic["posx"] = Printer.write("X-Position [au]", "s")
+        dic["posy"] = Printer.write("Y-Position [au]", "s")
+        dic["posz"] = Printer.write("Z-Position [au]", "s")
+        dic["momx"] = Printer.write("X-Momentum [au]", "s")
+        dic["momy"] = Printer.write("Y-Momentum [au]", "s")
+        dic["momz"] = Printer.write("Z-Momentum [au]", "s")
+
+        dic |= self.dyn.dat_header()
         return dic
 
-    def dat_dict(self, record):
+    def dat_dict(self):
+        nst = self.mol.n_states
+        mol = self.mol
+        dyn = self.dyn
+
         dic = {}
         dic["time"] = Printer.write(convert(self.curr_time, "au", "fs"), "f")
-        for rec in record:
-            dic[rec] = ""
-            if rec == "pop":
-                for s in range(self.n_states):
-                    # dic[rec] += Printer.write(np.abs(self.mol.coeff_s[s])**2, "f")
-                    dic[rec] += Printer.write(self.dyn.population(self.mol, s), "f")
-            if rec == "pes":
-                for s in range(self.n_states):
-                    dic[rec] += Printer.write(convert(self.mol.ham_eig_ss[s,s], "au", "ev"), "f")
-            if rec == "ken":
-                dic[rec] += Printer.write(convert(self.mol.kinetic_energy, "au", "ev"), "f")
-            if rec == "pen":
-                dic[rec] += Printer.write(convert(self.dyn.potential_energy(self.mol), "au", "ev"), "f")
-            if rec == "ten":
-                dic[rec] += Printer.write(convert(self.dyn.total_energy(self.mol), "au", "ev"), "f")
-            if rec == "nacdr":
-                for s1 in range(self.n_states):
-                    for s2 in range(s1):
-                        nac = np.sum(self.mol.nacdr_ssad[s1,s2]**2)
-                        nac = np.sqrt(nac)
-                        dic[rec] += Printer.write(nac, "f")
-            if rec == "nacdt":
-                for s1 in range(self.n_states):
-                    for s2 in range(s1):
-                        dic[rec] += Printer.write(self.mol.nacdt_ss[s1,s2], "f")
-            if rec == "coeff":
-                for s in range(self.n_states):
-                    dic[rec] += Printer.write(self.mol.coeff_s[s], "z")
-            if rec == "posx":
-                dic[rec] += Printer.write(self.mol.pos_ad[0,0], "f")
-            if rec == "momx":
-                dic[rec] += Printer.write(self.mol.mom_ad[0,0], "f")
-            if rec == "posy":
-                dic[rec] += Printer.write(self.mol.pos_ad[0,1], "f")
-            if rec == "momy":
-                dic[rec] += Printer.write(self.mol.mom_ad[0,1], "f")
-            if rec == "posz":
-                dic[rec] += Printer.write(self.mol.pos_ad[0,2], "f")
-            if rec == "momz":
-                dic[rec] += Printer.write(self.mol.mom_ad[0,2], "f")
 
-        dic = self.dyn.dat_dict(dic, record)
+        dic["pop"] = "".join([Printer.write(dyn.population(self.mol, i), "f") for i in range(nst)])
+        dic["pes"] = "".join([Printer.write(convert(mol.ham_eig_ss[i,i], "au", "ev"), "f") for i in range(nst)])
+        dic["ken"] = Printer.write(convert(mol.kinetic_energy, "au", "ev"), "f")
+        dic["pen"] = Printer.write(convert(dyn.potential_energy(self.mol), "au", "ev"), "f")
+        dic["ten"] = Printer.write(convert(dyn.total_energy(self.mol), "au", "ev"), "f")
+        dic["nacdr"] = "".join([Printer.write(mol.nac_norm_ss[i,j], "f") for i in range(nst) for j in range(i)])
+        dic["nacdt"] = "".join([Printer.write(mol.nacdt_ss[i,j], "f") for i in range(nst) for j in range(i)])
+        dic["coeff"] = "".join([Printer.write(mol.coeff_s[i], "z") for i in range(nst)])
+        dic["posx"] = Printer.write(mol.pos_ad[0,0], "f")
+        dic["posy"] = Printer.write(mol.pos_ad[0,1], "f")
+        dic["posz"] = Printer.write(mol.pos_ad[0,2], "f")
+        dic["momx"] = Printer.write(mol.mom_ad[0,0], "f")
+        dic["momy"] = Printer.write(mol.mom_ad[0,1], "f")
+        dic["momz"] = Printer.write(mol.mom_ad[0,2], "f")
+
+        dic |= dyn.dat_dict()
         return dic
 
     def dist_string(self):

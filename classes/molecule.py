@@ -73,6 +73,12 @@ class Molecule:
     def force_ad(self):
         return self.mass_a[:, None] * self.acc_ad
 
+
+
+    @property
+    def nac_norm_ss(self):
+        return np.sqrt(np.sum(self.nacdr_ssad**2, axis=(2,3)))
+
     def copy_empty(self):
         pass
 
@@ -276,6 +282,9 @@ class Molecule:
 
     def __reduce__(self):
         return (DynamicClassProxy(), (MoleculeFactory, self.__class__.__name__), self.__dict__.copy())
+
+    def to_dict(self):
+        pass
 
 class MoleculeMixin(metaclass = Factory):
     pass

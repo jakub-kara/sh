@@ -29,8 +29,7 @@ class BlankCoeffUpdater(CoeffUpdater):
 
 class CoeffTDCUpdater(Multistage, CoeffUpdater):
     key = "tdc"
-
-    steps = 2
+    steps = 1
     mode = ""
 
     def update(self, mols: list[Molecule], dt: float):

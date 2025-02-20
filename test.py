@@ -1,6 +1,6 @@
 from classes.meta import Singleton, Factory, SingletonFactory
 
-class Parent(metaclass = SingletonFactory):
+class Parent(metaclass = Factory):
     def __init__(self, x):
         self.x = x
 
@@ -17,5 +17,4 @@ class Child2(Parent):
     pass
 
 x = Parent[2](x=1)
-
 breakpoint()

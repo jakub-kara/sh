@@ -29,8 +29,6 @@ class FSSH(SurfaceHopping):
                 self._adjust_velocity(mol, delta)
                 self._hop()
                 out.write_log(f"New state: {self.active}")
-                hop = HoppingUpdater()
-                out.write_log(f"Integrated hopping probability: {np.sum(hop.prob.inter)}")
 
                 self.setup_est(mode = "a")
                 est = ESTProgram()
@@ -39,10 +37,11 @@ class FSSH(SurfaceHopping):
                 self.calculate_acceleration(mol)
             else:
                 out.write_log("Hop failed")
-                out.write_log(f'vel: \n{mol.vel_ad}')
-                out.write_log(f'delta: \n{delta}')
+                # out.write_log(f'vel: \n{mol.vel_ad}')
+                # out.write_log(f'delta: \n{delta}')
                 out.write_log(f'available kinetic energy = {self._avail_kinetic_energy(mol,delta)}')
                 out.write_log(f'energy difference {mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target]}')
                 if self._reverse:
+                    out.write_log("Reversing velocity")
                     self._reverse_velocity(mol, delta)
                 self._nohop()

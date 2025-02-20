@@ -1,7 +1,7 @@
 import numpy as np
-from copy import deepcopy
 from .ehr import SimpleEhrenfest
 from classes.molecule import Molecule
+from classes.out import Printer
 
 class MultiEhrenfest(SimpleEhrenfest):
     key = "mce"
@@ -42,6 +42,16 @@ class MultiEhrenfest(SimpleEhrenfest):
                 self.split = [s]
                 self._nspawn += 1
                 break
+
+    def dat_header(self):
+        dic = super().dat_header()
+        dic["phs"] = Printer.write("Phase", "s")
+        return dic
+
+    def dat_dict(self):
+        dic = super().dat_dict()
+        dic["phs"] = Printer.write(self._phase, "f")
+        return dic
 
     def h5_dict(self):
         return {"phase": self._phase}
