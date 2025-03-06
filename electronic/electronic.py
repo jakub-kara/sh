@@ -5,8 +5,16 @@ from classes.meta import SingletonFactory
 from classes.molecule import Molecule
 from classes.constants import convert
 
+def est_method(func):
+    func._estmethod = True
+    return func
+
 class ESTProgram(metaclass = SingletonFactory):
+    _methods = {}
+
     def __init__(self, *, states: list, program: str, type: str, path: str = "", options: dict = None, refen = 0, **config):
+        self._register_methods()
+
         self._path = path
         if isinstance(states, int):
             self._states = np.array([states])
@@ -28,13 +36,19 @@ class ESTProgram(metaclass = SingletonFactory):
         self._calc_nac = np.zeros((self._nstates, self._nstates))
         self._calc_ovlp = False
 
+
     @property
     def n_states(self):
         return self._nstates
 
-    @abstractmethod
+    def _register_methods(self):
+        cls = self.__class__
+        for key, val in cls.__dict__.items():
+            if hasattr(val, "_estmethod"):
+                cls._methods[key] = val
+
     def _select_method(self, key: str):
-        pass
+        return self._methods[key]
 
     def reset_calc(self):
         self._calc_grad = np.zeros(self._nstates)
@@ -127,7 +141,7 @@ class ESTProgram(metaclass = SingletonFactory):
         self._natoms = mol.n_atoms
         with open(f"{self._file}.xyz", "w") as file:
             file.write(mol.to_xyz())
-        self._method()
+        self._method(self)
 
     def backup_wf(self):
         pass

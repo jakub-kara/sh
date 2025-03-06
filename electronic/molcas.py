@@ -1,18 +1,11 @@
 import numpy as np
 import os, sys
 
-from .electronic import ESTProgram
+from .electronic import ESTProgram, est_method
 from classes.constants import Constants
 
 class Molcas(ESTProgram):
     key = "molcas"
-
-    def _select_method(self, key):
-        methods = {
-            "cas": self.cas,
-            "pt2": self.pt2,
-        }
-        return methods[key]
 
     def execute(self):
         err = os.system(f"pymolcas -f -b1 {self._file}.input")
@@ -26,6 +19,7 @@ class Molcas(ESTProgram):
     def recover_wf(self):
         os.system(f"cp backup/{self._file}.wf est/")
 
+    @est_method
     def cas(self):
         self._create_input_stem()
 
@@ -40,6 +34,7 @@ class Molcas(ESTProgram):
 
         self._add_input_rassi(False)
 
+    @est_method
     def pt2(self):
         self._create_input_stem()
 

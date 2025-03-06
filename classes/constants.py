@@ -30,7 +30,7 @@ units = {
 
     #energy
     "ev": 2.721138505e1,
-    "cm-1": 219474.63,
+    "cm-1": 2.1947463e5,
 }
 
 atomic_masses = {

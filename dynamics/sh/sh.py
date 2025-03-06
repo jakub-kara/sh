@@ -1,7 +1,7 @@
 import numpy as np
 from .checker import HoppingUpdater
 from dynamics.dynamics import Dynamics
-from classes.molecule import Molecule
+from classes.molecule import Molecule, SHMixin
 from classes.out import Printer, Output
 from classes.timestep import Timestep
 from electronic.electronic import ESTProgram
@@ -13,8 +13,7 @@ class SurfaceHopping(Dynamics):
 
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
-        self._active = dynamics["initstate"]
-        self._target = self._active
+        config["nuclear"]["mixins"].append("sh")
         dectypes = {
             "none": self._decoherence_none,
             "edc": self._decoherence_edc,
@@ -24,35 +23,20 @@ class SurfaceHopping(Dynamics):
         self._reverse = dynamics.get("reverse", False)
         self._decoherence = dectypes[dynamics.get("decoherence", "none")]
 
-    @property
-    def active(self):
-        return self._active
-
-    @property
-    def target(self):
-        return self._target
-
-    def hop_ready(self):
-        return self.active != self.target
-
-    @property
-    def rescaling(self):
-        return self._rescale
-
     def calculate_acceleration(self, mol: Molecule):
-        mol.acc_ad = -mol.grad_sad[self.active] / mol.mass_a[:,None]
+        mol.acc_ad = -mol.grad_sad[mol.active] / mol.mass_a[:,None]
 
     def potential_energy(self, mol: Molecule):
-        return mol.ham_eig_ss[self.active, self.active]
+        return mol.ham_eig_ss[mol.active, mol.active]
 
     @property
     def mode(self):
         return "a" + super().mode
 
-    def setup_est(self, mode: str):
+    def setup_est(self, mol: Molecule, mode: str):
         est = ESTProgram()
         if "a" in mode:
-            est.add_grads(self.active)
+            est.add_grads(mol.active)
         if "g" in mode:
             est.all_grads()
         if "o" in mode:
@@ -70,13 +54,13 @@ class SurfaceHopping(Dynamics):
             # rescale along nacdr
             if "n" not in self.mode:
                 est = ESTProgram()
-                est.add_nacs((self.active, self.target))
+                est.add_nacs((mol.active, mol.target))
                 est.run(mol)
                 est.read(mol, mol)
                 est.reset_calc()
 
             # check this works
-            delta = mol.nacdr_ssad[self.active, self.target]
+            delta = mol.nacdr_ssad[mol.active, mol.target]
             delta /= mol.mass_a[:,None]
             delta = normalise(delta)
         elif self._rescale == "eff":
@@ -91,26 +75,18 @@ class SurfaceHopping(Dynamics):
         return b**2/(4*a)
 
     def _has_energy(self, mol: Molecule, delta: np.ndarray):
-        return self._avail_kinetic_energy(mol, delta) + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] > 0
-
-    def _hop(self):
-        self._active = self.target
-        self._recalc = True
-        CompositeIntegrator().to_init()
-
-    def _nohop(self):
-        self._target = self.active
+        return self._avail_kinetic_energy(mol, delta) + mol.ham_eig_ss[mol.active, mol.active] - mol.ham_eig_ss[mol.target, mol.target] > 0
 
     def _get_ABC(self, mol : Molecule, delta: np.ndarray):
         #to use later
-        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active]
+        ediff =  mol.ham_eig_ss[mol.target, mol.target] - mol.ham_eig_ss[mol.active, mol.active]
         a = 0.5 * np.einsum('a,ai->',mol.mass_a, delta**2)
         b = -np.einsum('a,ai,ai->',mol.mass_a, mol.vel_ad, delta)
         c = ediff
         return a, b, c
 
     def _adjust_velocity(self, mol: Molecule, delta: np.ndarray):
-        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active]
+        ediff =  mol.ham_eig_ss[mol.target, mol.target] - mol.ham_eig_ss[mol.active, mol.active]
 
         # compute coefficients in the quadratic equation
         a = 0.5 * np.einsum('a,ai->',mol.mass_a, delta**2)
@@ -135,7 +111,7 @@ class SurfaceHopping(Dynamics):
         mol.vel_ad -= gamma * delta
 
     def _reverse_velocity(self, mol: Molecule, delta: np.ndarray):
-        ediff =  mol.ham_eig_ss[self.target, self.target] - mol.ham_eig_ss[self.active, self.active]
+        ediff =  mol.ham_eig_ss[mol.target, mol.target] - mol.ham_eig_ss[mol.active, mol.active]
 
         # compute coefficients in the quadratic equation
         a = 0.5 * np.einsum('a,ai->',mol.mass_a, delta**2)
@@ -163,21 +139,14 @@ class SurfaceHopping(Dynamics):
     def _decoherence_edc(self, mol: Molecule, dt, c = 0.1):
         kin_en = mol.kinetic_energy
         for s in range(mol.n_states):
-            if s == self.active:
+            if s == mol.active:
                 continue
             else:
-                decay_rate = 1/np.abs(mol.ham_eig_ss[s,s] - mol.ham_eig_ss[self.active, self.active]) * (1 + c/kin_en)
+                decay_rate = 1/np.abs(mol.ham_eig_ss[s,s] - mol.ham_eig_ss[mol.active, mol.active]) * (1 + c/kin_en)
                 mol.coeff_s[s] *= np.exp(-dt/decay_rate)
 
-        tot_pop = np.sum(np.abs(mol.coeff_s)**2) - np.abs(mol.coeff_s[self.active])**2
-        mol.coeff_s[self.active] *= np.sqrt(1 - tot_pop)/np.abs(mol.coeff_s[self.active])
-
-    def prepare_traj(self, mol):
-        out = Output()
-        out.write_log(f"Initial state:      {self.active}")
-        mol.coeff_s[self.active] = 1
-        out.write_log("\n")
-        super().prepare_traj(mol)
+        tot_pop = np.sum(np.abs(mol.coeff_s)**2) - np.abs(mol.coeff_s[mol.active])**2
+        mol.coeff_s[mol.active] *= np.sqrt(1 - tot_pop)/np.abs(mol.coeff_s[mol.active])
 
     def steps_elapsed(self, steps):
         super().steps_elapsed(steps)
@@ -185,15 +154,16 @@ class SurfaceHopping(Dynamics):
 
     def update_target(self, mols: list[Molecule], dt: float):
         hop = HoppingUpdater()
-        hop.run(mols, dt, self.active)
-        self._target = hop.hop.out
+        hop.run(mols, dt)
+        mols[-1].target = hop.hop.out
 
-    def dat_header(self):
-        dic = super().dat_header()
+    # TODO: move to molecule
+    def dat_header(self, mol: Molecule):
+        dic = super().dat_header(mol)
         dic["act"] = Printer.write("Active State", "s")
         return dic
 
-    def dat_dict(self):
-        dic = super().dat_dict()
-        dic["act"] = Printer.write(self.active, "i")
+    def dat_dict(self, mol: Molecule):
+        dic = super().dat_dict(mol)
+        dic["act"] = Printer.write(mol.active, "i")
         return dic

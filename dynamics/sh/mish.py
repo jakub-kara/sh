@@ -29,20 +29,19 @@ class MISH(SurfaceHopping):
 
         #self._decoherence(mol, self._dt)
 
-        out.write_log(f"target: {self.target} \t\tactive: {self.active}")
+        out.write_log(f"target: {mol.target} \t\tactive: {mol.active}")
         # print(f"Final pops: {np.abs(mol.coeff_s)**2}")
         # print(f"Check sum:  {np.sum(np.abs(mol.coeff_s)**2)}")
-        if self.hop_ready():
+        if mol.hop_ready():
             delta = self._get_delta(mol)
             if self._has_energy(mol, delta):
                 out.write_log("Hop succesful")
                 self._adjust_velocity(mol, delta)
-                self._hop()
-                out.write_log(f"New state: {self.active}")
+                mol.hop()
+                out.write_log(f"New state: {mol.active}")
                 hop = HoppingUpdater()
-                out.write_log(f"Integrated hopping probability: {np.sum(hop.prob.inter)}")
 
-                self.setup_est(mode = "a")
+                self.setup_est(mol, mode = "a")
                 est = ESTProgram()
                 est.run(mol)
                 est.read(mol)
@@ -52,7 +51,7 @@ class MISH(SurfaceHopping):
                 if self._reverse:
                     out.write_log(f"Reversing along vector = {self._rescale}")
                     self._reverse_velocity(mol, delta)
-                self._nohop()
+                mol.nohop()
 
 
 
@@ -64,10 +63,11 @@ class MISH(SurfaceHopping):
 
 
 
-    def prepare_traj(self, mol: Molecule):
+    def prepare_dynamics(self, mols: list[Molecule], dt: float):
         ''' UPDATE '''
+        mol = mols[-1]
         nst = mol.n_states
-        super().prepare_traj(mol)
+        super().prepare_dynamics(mols, dt)
 
         def _uniform_cap_distribution(nst: int, init_state: int):
             while True:
@@ -79,9 +79,9 @@ class MISH(SurfaceHopping):
                     break
             return coeff
 
-        coeff = _uniform_cap_distribution(nst,self.active)
+        coeff = _uniform_cap_distribution(nst, mol.active)
         out = Output()
-        out.write_log(f"Uniform cap initial conditions\t\tInitial state:      {self.active},\t\tInitial coeff:     {coeff}")
+        out.write_log(f"Uniform cap initial conditions\t\tInitial state:      {mol.active},\t\tInitial coeff:     {coeff}")
         out.write_log("\n")
 
         mol.coeff_s = coeff
@@ -92,7 +92,7 @@ class MISH(SurfaceHopping):
             return a / np.linalg.norm(a)
 
         if "n" not in self.mode:
-            self.setup_est(mode = "n")
+            self.setup_est(mol, mode = "n")
             est = ESTProgram()
             est.run(mol)
             est.read(mol, mol)
@@ -101,8 +101,8 @@ class MISH(SurfaceHopping):
         nst = mol.n_states
         coeff = mol.coeff_s
         d = mol.nacdr_ssad
-        a = self.active
-        target = self.target
+        a = mol.active
+        target = mol.target
 
         delta = np.zeros_like(mol.vel_ad)
 

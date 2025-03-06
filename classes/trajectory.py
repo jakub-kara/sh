@@ -14,14 +14,18 @@ from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
 
 class Trajectory:
-    def __init__(self, *, dynamics: dict, **config):
-        self.mols: list[Molecule] = []
-        config["nuclear"].setdefault("mixins", [])
-
+    def __init__(self, *, dynamics: dict, nuclear: dict, quantum: dict, **config):
         self.index = None
         self._backup = dynamics.get("backup", True)
-        self.dyn: Dynamics = Dynamics[dynamics["method"]](dynamics=dynamics, **config)
-        self.bind_components(dynamics=dynamics, **config)
+
+        self.mols: list[Molecule] = []
+        mol = self.get_molecule(**nuclear, **dynamics)
+        Dynamics().read_coeff(mol, quantum.get("input", None))
+        self.add_molecule(mol)
+        self.set_molecules(**nuclear)
+
+        self.timestep = None
+        self.set_timestep(**dynamics)
 
     @property
     def n_steps(self):
@@ -32,35 +36,11 @@ class Trajectory:
         return self.mols[-1]
 
     @property
-    def n_states(self):
-        return self.mol.n_states
-
-    @property
-    def n_atoms(self):
-        return self.mol.n_atoms
-
-    @property
     def is_finished(self):
-        return self._timestep.finished
-
-    @property
-    def dt(self):
-        return self._timestep.dt
-
-    @property
-    def curr_step(self):
-        return self._timestep.step
-
-    @property
-    def curr_time(self):
-        return self._timestep.time
-
-    @property
-    def en_thresh(self):
-        return self.en_thresh
+        return self.timestep.finished
 
     def next_step(self):
-        self._timestep.next_step()
+        self.timestep.next_step()
 
     def add_molecule(self, mol: Molecule):
         self.mols.append(mol)
@@ -74,19 +54,9 @@ class Trajectory:
         self.mols.remove(mol)
         return self
 
-    @property
-    def split(self):
-        return self.dyn.split
-
-    def split_traj(self):
-        clone = deepcopy(self)
-        self.mols[-1], clone.mols[-1] = self.dyn.split_mol(self.mol)
-        self.dyn.split = None
-        clone.dyn.split = None
-        return clone
-
     def prepare_traj(self):
         out = Output()
+        dyn = Dynamics()
         out.open_log(mode="w")
         out.to_log("../" + sys.argv[1])
         out.write_border()
@@ -95,9 +65,7 @@ class Trajectory:
 
         self.write_headers()
         t0 = time.time()
-        self.dyn.steps_elapsed(-1)
-        self.dyn.prepare_traj(self.mol)
-        self.dyn.update_quantum(self.mols, self.dt)
+        dyn.prepare_dynamics(self.mols, self.timestep.dt)
         out.write_log(f"Total time:     {time.time() - t0} s")
         out.write_border()
         out.write_log()
@@ -107,19 +75,18 @@ class Trajectory:
 
     # TODO: find a better way of timing things
     def run_step(self):
+        dyn = Dynamics()
         out = Output()
         out.open_log()
         out.write_border()
-        out.write_log(f"Step:           {self.curr_step}")
-        out.write_log(f"Time:           {convert(self.curr_time, 'au', 'fs'):.6f} fs")
-        # out.write_log(f"Time:           {convert(self.curr_time, 'au', 'fs')} fs")
-        out.write_log(f"Stepsize:       {convert(self._timestep.dt, 'au', 'fs'):.6f} fs")
+        out.write_log(f"Step:           {self.timestep.step}")
+        out.write_log(f"Time:           {convert(self.timestep.time, 'au', 'fs'):.6f} fs")
+        out.write_log(f"Stepsize:       {convert(self.timestep.dt, 'au', 'fs'):.6f} fs")
         out.write_log()
 
-        self.dyn.steps_elapsed(self._timestep.step)
+        dyn.steps_elapsed(self.timestep.step)
 
         t0 = time.time()
-        # if self._backup:
         t3 = time.time()
         out.write_log(f"Saving")
         self.save_step()
@@ -128,11 +95,18 @@ class Trajectory:
 
         t1 = time.time()
         out.write_log(f"Nuclear + EST")
-        self.dyn.update_nuclear(self.mols, self._timestep.dt)
-        temp = CompositeIntegrator().active.out.out
-        valid = self._timestep.validate(self.energy_diff(temp, self.mols))
+        dyn.update_nuclear(self.mols, self.timestep.dt)
+
+        nupd = CompositeIntegrator()
+        if not nupd.success:
+            nupd.to_init()
+            ESTProgram().recover_wf()
+            return
+
+        temp = nupd.active.out.out
+        valid = self.timestep.validate(dyn.energy_diff(temp, self.mol))
         if not valid:
-            self._timestep.fail()
+            self.timestep.fail()
             ESTProgram().recover_wf()
             return
         self.add_molecule(temp)
@@ -141,13 +115,9 @@ class Trajectory:
         out.write_log(f"Wall time:      {time.time() - t1} s")
         out.write_log()
 
-        # print()
-        # print(f"TOTAL: {self.dyn.total_energy(self.mol)}")
-        # print()
-
         t2 = time.time()
         out.write_log(f"Adjust")
-        self.dyn.adjust_nuclear(self.mols, self._timestep.dt)
+        dyn.adjust_nuclear(self.mols, self.timestep.dt)
         out.write_log(f"Wall time:      {time.time() - t2} s")
         out.write_log()
 
@@ -157,62 +127,25 @@ class Trajectory:
         out.close_log()
 
         self.next_step()
-        self._timestep.success()
-        self._timestep.save_nupd()
+        self.timestep.success()
+        self.timestep.save_nupd()
         self.write_outputs()
 
         if self.is_finished:
             self.save_step()
 
-    def bind_components(self, *, dynamics: dict, electronic: dict, nuclear: dict, quantum: dict, output: dict, **kwargs):
-        self.bind_est(**electronic)
-        self.bind_nuclear_integrator(nuclear["nuc_upd"])
-        mol = self.get_molecule(**nuclear)
-        self.dyn.read_coeff(mol, quantum.get("input", None))
-        self.add_molecule(mol)
-        self.bind_tdc_updater(**quantum)
-        self.bind_coeff_updater(**quantum)
-        self.bind_io(**output)
-        self.bind_molecules(**nuclear)
-        self.bind_timestep(**dynamics)
-
-    def get_molecule(self, **nuclear):
+    def get_molecule(self, **config):
         est = ESTProgram()
-        return MoleculeFactory.create_molecule(n_states=est.n_states, **nuclear)
+        return MoleculeFactory.create_molecule(n_states=est.n_states, **config)
 
-    def bind_molecules(self, **nuclear):
+    def set_molecules(self, **nuclear):
         nupd = CompositeIntegrator()
         for _ in range(max(nupd.steps, CoeffUpdater().steps, nuclear.get("keep", 0))):
             self.add_molecule(self.mol.copy_all())
 
-    def bind_timestep(self, **dynamics):
-        self._timestep: Timestep = Timestep[dynamics.get("timestep", "const")](
+    def set_timestep(self, **dynamics):
+        self.timestep: Timestep = Timestep[dynamics.get("timestep", "const")](
             steps = len(self.mols), **dynamics)
-
-
-    # TODO: rework
-    def bind_est(self, **electronic):
-        ESTProgram.reset()
-        ESTProgram[electronic["program"]](**electronic)
-
-    def bind_nuclear_integrator(self, type: str):
-        CompositeIntegrator.reset()
-        CompositeIntegrator(nuc_upd = type)
-
-    def bind_tdc_updater(self, **quantum):
-        TDCUpdater.reset()
-        TDCUpdater[quantum["tdc_upd"]](**quantum)
-
-    def bind_coeff_updater(self, **quantum):
-        CoeffUpdater.reset()
-        CoeffUpdater[quantum["coeff_upd"]](**quantum)
-
-    def bind_io(self, **output):
-        Output(**output)
-
-    def energy_diff(self, mol: Molecule, mols: list[Molecule]):
-        print(np.abs(self.dyn.total_energy(mol) - self.dyn.total_energy(mols[-1])))
-        return np.abs(self.dyn.total_energy(mol) - self.dyn.total_energy(mols[-1]))
 
     def save_step(self):
         est = ESTProgram()
@@ -240,14 +173,9 @@ class Trajectory:
         out.write_log()
         return traj
 
-    def restart_components(self, *, dynamics: dict, electronic: dict, nuclear: dict, quantum: dict, output: dict, **kwargs):
+    def restart_components(self, *, dynamics: dict, **kwargs):
         self._backup = dynamics.get("backup", True)
-        self.bind_est(**electronic)
-        self.bind_nuclear_integrator(nuclear["nuc_upd"])
-        self.bind_tdc_updater(**quantum)
-        self.bind_coeff_updater(**quantum)
-        # self.bind_io(**output)
-        self._timestep.adjust(**dynamics)
+        self.timestep.adjust(**dynamics)
 
     def write_headers(self):
         out = Output()
@@ -287,16 +215,16 @@ class Trajectory:
         dic["momy"] = Printer.write("Y-Momentum [au]", "s")
         dic["momz"] = Printer.write("Z-Momentum [au]", "s")
 
-        dic |= self.dyn.dat_header()
+        dic |= Dynamics().dat_header(self.mol)
         return dic
 
     def dat_dict(self):
         nst = self.mol.n_states
         mol = self.mol
-        dyn = self.dyn
+        dyn = Dynamics()
 
         dic = {}
-        dic["time"] = Printer.write(convert(self.curr_time, "au", "fs"), "f")
+        dic["time"] = Printer.write(convert(self.timestep.time, "au", "fs"), "f")
 
         dic["pop"] = "".join([Printer.write(dyn.population(self.mol, i), "f") for i in range(nst)])
         dic["pes"] = "".join([Printer.write(convert(mol.ham_eig_ss[i,i], "au", "ev"), "f") for i in range(nst)])
@@ -313,7 +241,7 @@ class Trajectory:
         dic["momy"] = Printer.write(mol.mom_ad[0,1], "f")
         dic["momz"] = Printer.write(mol.mom_ad[0,2], "f")
 
-        dic |= dyn.dat_dict()
+        dic |= dyn.dat_dict(self.mol)
         return dic
 
     def dist_string(self):
@@ -339,10 +267,11 @@ class Trajectory:
 
     def h5_dict(self):
         mol = self.mol
-        to_write = self.dyn.h5_dict()
+        dyn = Dynamics()
+        to_write = dyn.h5_dict()
         to_write.update({
-            "step": self.curr_step,
-            "time": self.curr_time,
+            "step": self.timestep.step,
+            "time": self.timestep.time,
             "pos": mol.pos_ad,
             "vel": mol.vel_ad,
             "acc": mol.acc_ad,

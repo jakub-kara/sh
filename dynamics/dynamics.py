@@ -1,6 +1,6 @@
 import numpy as np
 from copy import deepcopy
-from classes.meta import Factory
+from classes.meta import SingletonFactory
 from classes.molecule import Molecule
 from classes.out import Output
 from updaters.composite import CompositeIntegrator
@@ -8,11 +8,11 @@ from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
 from electronic.electronic import ESTProgram
 
-class Dynamics(metaclass = Factory):
+class Dynamics(metaclass = SingletonFactory):
     mode = ""
 
     def __init__(self, *, dynamics: dict, **config: dict):
-        self.split = None
+        pass
 
     def calculate_acceleration(self, mol: Molecule):
         raise NotImplementedError
@@ -23,12 +23,13 @@ class Dynamics(metaclass = Factory):
     def total_energy(self, mol: Molecule):
         return self.potential_energy(mol) + mol.kinetic_energy
 
+    def energy_diff(self, mol: Molecule, ref: Molecule):
+        return np.abs(self.total_energy(mol) - self.total_energy(ref))
+
     def population(self, mol: Molecule, s: int):
         return np.abs(mol.coeff_s[s])**2
 
     def read_coeff(self, mol: Molecule, file = None):
-        if file is None:
-            return
         data = np.genfromtxt(file)
         if data.ndim == 1:
             data = data[None, :]
@@ -37,15 +38,20 @@ class Dynamics(metaclass = Factory):
         mol.coeff_s[:] = data[:,0]
         mol.coeff_s += 1j*data[:,1]
 
-    def prepare_traj(self, mol: Molecule):
+    def prepare_dynamics(self, mols: list[Molecule], dt: float):
+        mol = mols[-1]
         out = Output()
         out.open_log()
+
+        self.steps_elapsed(-1)
         est = ESTProgram()
-        self.setup_est(mode = self.get_mode())
+        self.setup_est(mol, mode = self.get_mode())
         est.run(mol)
         est.read(mol, mol)
         self.calculate_acceleration(mol)
         est.reset_calc()
+
+        self.update_quantum(mols, dt)
 
     # might have a better name
     def adjust_nuclear(self, mol: Molecule, dt: float):
@@ -54,7 +60,7 @@ class Dynamics(metaclass = Factory):
     def get_mode(self):
         return self.mode + TDCUpdater().mode + CoeffUpdater().mode
 
-    def setup_est(self, mode: str = ""):
+    def setup_est(self, mol: Molecule, mode: str = "",):
         pass
 
     def steps_elapsed(self, steps: int):
@@ -104,10 +110,10 @@ class Dynamics(metaclass = Factory):
         out2.coeff_s /= np.sqrt(np.sum(np.abs(out2.coeff_s)**2))
         return out1, out2
 
-    def dat_header(self):
+    def dat_header(self, mol: Molecule):
         return {}
 
-    def dat_dict(self):
+    def dat_dict(self, mol: Molecule):
         return {}
 
     def h5_dict(self):

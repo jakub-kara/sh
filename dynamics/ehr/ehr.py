@@ -16,8 +16,6 @@ class SimpleEhrenfest(Dynamics):
             "eff": self._eff_nac,
         }
 
-        inistate = dynamics["initstate"]
-        self._state = inistate
         nactype = dynamics.get("force", "nac")
         if nactype == "nac":
             self.mode += "n"
@@ -26,13 +24,19 @@ class SimpleEhrenfest(Dynamics):
     def _nac(self, mol: Molecule):
         return mol.nacdr_ssad
 
+    def read_coeff(self, mol, file = None):
+        if file is None:
+            mol.coeff_s[mol._state] = 1.
+            return
+        super().read_coeff(mol, file)
+
     def potential_energy(self, mol: Molecule):
         poten = 0
         for s in range(mol.n_states):
             poten += np.abs(mol.coeff_s[s])**2 * mol.ham_eig_ss[s,s]
         return poten
 
-    def setup_est(self, mode: str):
+    def setup_est(self, mol: Molecule, mode: str):
         est = ESTProgram()
         if "g" in mode:
             est.all_grads()
@@ -52,20 +56,3 @@ class SimpleEhrenfest(Dynamics):
                     continue
                 force += 2 * np.real(mol.nacdt_ss[i,j] * mol.coeff_s[j].conj() * mol.coeff_s[i] * nac[i,j] / (np.sum(nac[i,j] * mol.vel_ad))) * mol.ham_eig_ss[i,i]
         mol.acc_ad = force / mol.mass_a[:,None]
-
-    def _get_projector(self, mol: Molecule):
-        proj = np.zeros((mol.n_atoms, mol.n_atoms, 3, 3))
-        inv_iner = np.linalg.inv(mol.inertia)
-
-    def adjust_nuclear(self, mols: list[Molecule], dt: float):
-        # mol = mols[-1]
-        # print(f"Final pops: {np.abs(mol.coeff_s)**2}")
-        # print(f"Check sum:  {np.sum(np.abs(mol.coeff_s)**2)}")
-        pass
-
-    def prepare_traj(self, mol: Molecule):
-        out = Output()
-        out.write_log(f"Initial state:      {self._state}")
-        mol.coeff_s[self._state] = 1
-        out.write_log("\n")
-        super().prepare_traj(mol)

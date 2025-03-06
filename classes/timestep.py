@@ -40,10 +40,10 @@ class Timestep(metaclass = Factory):
 
     def adjust(self, *, tmax, **kwargs):
         self._end = convert(tmax, "au")
-        CompositeIntegrator().adjust(**self._nupd)
+        CompositeIntegrator().set_state(**self._nupd)
 
     def save_nupd(self):
-        self._nupd = CompositeIntegrator().save()
+        self._nupd = CompositeIntegrator().get_state()
 
 class Constant(Timestep):
     key = "const"
@@ -56,19 +56,19 @@ class Half(Timestep):
         self.maxdt = self.dt
         self.maxit = config.get("max_depth", 10)
         self._enthresh = convert(config.get("enthresh", 1000), "au")
-        self.it = 0
+        self._it = 0
 
     def validate(self, val: float):
         return val < self._enthresh
 
     def success(self):
         if self.dt < self.maxdt:
-            self.it -= 1
+            self._it -= 1
             self.dt *= 2
 
     def fail(self):
-        if self.it >= self.maxit:
+        if self._it >= self.maxit:
             raise RuntimeError("Maximum timestep halving depth exceeded. Terminating.")
         self.dt /= 2
-        self.it += 1
+        self._it += 1
 

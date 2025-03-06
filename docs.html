@@ -162,7 +162,17 @@ function create_table(el) {
         ></span>
 
         <h4>seed</h4>
-        Numpy seed for random number generation
+        Numpy seed for random number generation <br>
+        Only if method == "fssh", "csdm", "bcmf"
+        <span class="tab"
+        data-type="uint"
+        data-default=""
+        data-options='{
+            "any": "Numpy seed for random number generation; if no value is provided, a random seed is chosen"
+        }'
+        ></span>
+
+
 
         <h4>decoherence</h4>
         Decoherence correction
@@ -263,7 +273,7 @@ function create_table(el) {
         Path to geometry input file in xyz format with velocities, number of dimensions is arbitrary
         <span class="tab"
         data-type="str"
-        data-default=""
+        data-default="geom.xyz"
         data-options='{
             "any": "Any valid absolute or relative path to a file of the specified format"
         }'
@@ -309,14 +319,14 @@ function create_table(el) {
         }'
         ></span>
 
-        If wavefunction coefficients are used (e.g. in fssh or ehr), specify the real (r) and complex (c) part for each state (number of lines == number of states)
+        If wavefunction coefficients are used (e.g. method == "fssh" or "ehr"), specify the real (r) and complex (c) part for each state (number of lines == number of states)
         <pre>
             r1 c1
             r2 c2
             :  :
         </pre>
 
-        If Bloch spheres are used (e.g. in mash), specify the Sx, Sy, and Sz components for each pairwise Bloch spheres (number of lines == number of states - 1)
+        If Bloch spheres are used (e.g. method == "mash"), specify the Sx, Sy, and Sz components for all pairwise Bloch spheres (number of lines == number of states - 1)
 
         <pre>
             Sx1 Sy1 Sz1
@@ -440,10 +450,10 @@ function create_table(el) {
 
             <h4>active</h4>
             <span class="tab"
-            data-type="str"
+            data-type="uint"
             data-default=""
             data-options='{
-                "any": "Number of active orbitals (including the closed ones)"
+                "any": "Number of active orbitals (including the closed ones)"p
             }'
             ></span>
 
@@ -563,7 +573,7 @@ function create_table(el) {
         ></span>
 
         <h4>h5</h4>
-        Contains all the dynamical data in a h5-encrypted binary file
+        Contains all the dynamical data in a h5-compressed binary file
         <span class="tab"
         data-type="bool"
         data-default="true"
@@ -574,7 +584,7 @@ function create_table(el) {
         ></span>
 
         <h4>xyz</h4>
-        Contains all the geometries in the extended xyz format inclusing velocities
+        Contains all the geometries in the extended xyz format including velocities
         <span class="tab"
         data-type="bool"
         data-default="true"

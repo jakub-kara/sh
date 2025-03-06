@@ -13,11 +13,9 @@ class CSDM(SimpleEhrenfest):
         super().__init__(dynamics=dynamics, **config)
         HoppingUpdater[dynamics["prob"]](**config["quantum"])
 
-        self._pointer = self._state
-        self._coeff_co = None
-
-    def prepare_traj(self, mol: Molecule):
-        super().prepare_traj(mol)
+    def prepare_dynamics(self, mols: list[Molecule], dt: float):
+        mol = mols[-1]
+        super().prepare_dynamics(mols, dt)
         mol.coeff_co_s[:] = mol.coeff_s
 
     def dec_vec(self, mol: Molecule):

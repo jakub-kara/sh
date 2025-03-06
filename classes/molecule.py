@@ -73,8 +73,6 @@ class Molecule:
     def force_ad(self):
         return self.mass_a[:, None] * self.acc_ad
 
-
-
     @property
     def nac_norm_ss(self):
         return np.sqrt(np.sum(self.nacdr_ssad**2, axis=(2,3)))
@@ -289,6 +287,39 @@ class Molecule:
 class MoleculeMixin(metaclass = Factory):
     pass
 
+class SHMixin(MoleculeMixin):
+    key = "sh"
+
+    def __init__(self, *, initstate: int, **kwargs):
+        super().__init__(**kwargs)
+        self.active = initstate
+        self.target = initstate
+
+    def hop_ready(self):
+        return self.active != self.target
+
+    def hop(self):
+        self.active = self.target
+
+    def nohop(self):
+        self.target = self.active
+
+class EhrMixin(MoleculeMixin):
+    key = "ehr"
+
+    def __init__(self, *, initstate: int, **kwargs):
+        super().__init__(**kwargs)
+        self.state = initstate
+
+class MCEMixin(EhrMixin):
+    key = "mce"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.nspawn = 0
+        self.phase = 0
+        self.split = None
+
 class BlochMixin(MoleculeMixin):
     key = "bloch"
 
@@ -299,8 +330,9 @@ class BlochMixin(MoleculeMixin):
 class MMSTMixin(MoleculeMixin):
     key = "mmst"
 
-    def __init__(self, *, n_states, **nuclear):
+    def __init__(self, *, initstate, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
+        self.state = initstate
         self.x_s = np.zeros(n_states)
         self.p_s = np.zeros(n_states)
         self.dxdt_s = np.zeros(n_states)
@@ -315,7 +347,10 @@ class MMSTMixin(MoleculeMixin):
 class CSDMMixin(MoleculeMixin):
     key = "csdm"
 
-    def __init__(self, *, n_states, **nuclear):
+    def __init__(self, *, initstate: int, n_states: int, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
+        self.pointer = initstate
         self.coeff_co_s = np.zeros(n_states, dtype=np.complex128)
+
+
 

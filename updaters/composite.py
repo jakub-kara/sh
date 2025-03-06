@@ -1,12 +1,16 @@
 import numpy as np
 from .updaters import Updater
 from .nuclear import NuclearUpdater
+from classes.constants import convert
 from classes.meta import Singleton
+from classes.molecule import Molecule
 
 class CompositeIntegrator(Updater, metaclass = Singleton):
-    def __init__(self, *, nuc_upd):
-        self._state = 0
+    def __init__(self, *, nuc_upd, **kwargs):
+        self._iactive = 0
         self._count = 0
+        self._success = False
+        self._thresh = convert(kwargs.get("thresh", 1e10), "au")
         self._upds: dict[int, NuclearUpdater] = {}
 
         base = NuclearUpdater[nuc_upd]()
@@ -21,29 +25,36 @@ class CompositeIntegrator(Updater, metaclass = Singleton):
         return max(upd.steps for upd in self._upds.values())
 
     @property
+    def success(self):
+        return self._success
+
+    @property
     def active(self):
-        return self._upds[self._state]
+        return self._upds[self._iactive]
 
-    def to_init(self):
-        self._count = 0
-        self._state = min(self._upds.keys())
-
-    def _set_state(self):
-        if self._state == -1:
-            if self._count >= self._upds[0].steps:
-                self._state = 0
-
-    def run(self, *args, **kwargs):
-        self._set_state()
-        self._count += 1
-        self.active.run(*args, **kwargs)
-
-    def save(self):
-        return {"state": self._state,
+    def get_state(self):
+        return {"iact": self._iactive,
                 "count": self._count,
                 "upds": self._upds}
 
-    def adjust(self, *, state, count, upds):
-        self._state = state
+    def set_state(self, *, iact, count, upds):
+        self._iactive = iact
         self._count = count
         self._upds = upds
+
+    def to_init(self):
+        self._count = 0
+        self._iactive = min(self._upds.keys())
+
+    def _set_active(self):
+        if self._iactive == -1:
+            if self._count >= self._upds[0].steps:
+                self._iactive = 0
+
+    def run(self, mols: list[Molecule], dt: float, dyn):
+        self._set_active()
+        self._count += 1
+        self.active.run(mols, dt, dyn)
+
+        temp = self.active.out.out
+        self._success = np.abs(dyn.total_energy(temp) - dyn.total_energy(mols[-1])) < self._thresh

@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from classes.molecule import Molecule
-from electronic.electronic import ESTProgram
+from electronic.electronic import ESTProgram, est_method
 
 class Model(ESTProgram):
     key = "model"
@@ -16,19 +16,6 @@ class Model(ESTProgram):
         self._gradham = None
         self._trans = None
 
-    def _select_method(self, key):
-        methods = {
-            "sub_1": self.sub_1,
-            "tully_2": self.tully_2,
-            "tully_3": self.tully_3,
-            "sub_x": self.sub_x,
-            "sub_s": self.sub_s,
-            "ho": self.ho,
-            "ho2": self.ho2,
-            "ho3": self.ho3,
-        }
-        return methods[key]
-
     def write(self, mol: Molecule):
         self._geo = mol.pos_ad
         if self._hamdia is None:
@@ -39,7 +26,7 @@ class Model(ESTProgram):
             self._grad = np.zeros_like(mol.grad_sad)
             self._gradham = np.zeros_like(mol.nacdr_ssad)
             self._nacdr = np.zeros_like(mol.nacdr_ssad)
-        self._method()
+        self._method(self)
 
     def execute(self):
         self._diagonalise()
@@ -82,6 +69,7 @@ class Model(ESTProgram):
 
         return ovl
 
+    @est_method
     def sub_1(self):
         a = 0.01
         b = 0.6
@@ -99,6 +87,7 @@ class Model(ESTProgram):
         self._gradham[0,1,0,0] = -2 * c * d * x * np.exp(-d * x**2)
         self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
 
+    @est_method
     def tully_2(self):
         a = 0.1
         b = 0.28
@@ -116,6 +105,7 @@ class Model(ESTProgram):
         self._gradham[0,1,0,0] = -2 * c * d * x * np.exp(-d * x**2)
         self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
 
+    @est_method
     def tully_3(self):
         a = 6e-4
         b = 0.1
@@ -136,6 +126,7 @@ class Model(ESTProgram):
             self._gradham[0,1,0,0] = b * c * np.exp(-c * x)
         self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
 
+    @est_method
     def sub_x(self):
         a = 0.03
         b = 1.6
@@ -164,6 +155,7 @@ class Model(ESTProgram):
         self._hamdia[2,1] = self._hamdia[1,2]
         self._gradham[2,1,0,0] = self._gradham[1,2,0,0]
 
+    @est_method
     def sub_s(self):
         a = 0.015
         b = 1.0
@@ -194,11 +186,13 @@ class Model(ESTProgram):
         self._hamdia[2,1] = self._hamdia[1,2]
         self._gradham[2,1,0,0] = self._gradham[1,2,0,0]
 
+    @est_method
     def ho(self):
         x = self._geo[0,0]
         self._hamdia[0,0] = x**2 / 2
         self._gradham[0,0,0,0] = x
 
+    @est_method
     def ho2(self):
         a = 0.005
         b = 4
@@ -226,33 +220,7 @@ class Model(ESTProgram):
         self._gradham[0,1,0,0] = 0
         self._gradham[1,0,0,0] = 0
 
-    def ho2(self):
-        a = 0.005
-        b = 4
-        c = 3
-        d = 0
-
-        # a = 0.005
-        # b = 2
-        # c = 2
-        # d = 10
-        x = self._geo[0,0]
-
-        self._hamdia[0,0] = a * ((x - b)**2 - d)
-        self._gradham[0,0,0,0] = 2 * a * (x - b)
-        self._hamdia[1,1] = a * (x + b)**2
-        self._gradham[1,1,0,0] = 2 * a * (x + b)
-
-        # self._hamdia[0,1] = c * np.exp(-d * x**2)
-        # self._hamdia[1,0] = self._hamdia[0,1]
-        # self._gradham[0,1,0,0] = - 2 * c * d * x * np.exp(-d * x**2)
-        # self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
-
-        self._hamdia[0,1] = a*c
-        self._hamdia[1,0] = a*c
-        self._gradham[0,1,0,0] = 0
-        self._gradham[1,0,0,0] = 0
-
+    @est_method
     def ho3(self):
         a = 0.005
         b = 4
@@ -287,31 +255,26 @@ class Model(ESTProgram):
         self._gradham[0,2,0,0] = 0
         self._gradham[2,0,0,0] = 0
 
-# class Model2D(Model1D, key = "model_2d"):
-#     def _select_method(self, key):
-#         methods = {
-#             "ho2_2": self.ho2_2,
-#         }
-#         return methods[key]
+    @est_method
+    def hh(self):
+        a = 0.005
+        b = -2
+        d = 1
+        k = 0.2
+        x = self._geo[0,0]
+        y = self._geo[0,1]
 
-#     def execute(self):
-#         pass
+        f = lambda x, y: a * (1/2 * (x**2 + y**2) + k * (x*y**2 - 1/3*x**3) + 1/16 * k**2 * (x**2 + y**2)**2)
+        self._hamdia[0,0] = f(x - b, y)
+        self._hamdia[1,1] = f(-x - b, y)
+        self._hamdia[0,1] = a*d*y
+        self._hamdia[1,0] = a*d*y
 
-#     def ho2_2(self):
-#         a = 0.005
-#         b = 4
-#         c = 3
-#         d = 0
-
-#         # a = 0.005
-#         # b = 2
-#         # c = 2
-#         # d = 10
-#         r = self._geo[0]
-#         rn = np.linalg.norm(r)
-#         ru = r / rn
-
-#         self._hamdia[0,0] = a * (rn - b)**2
-#         self._hamdia[1,1] = a * (rn + b)**2
-#         self._grad[0,0] = 2 * a * (rn - b) * ru
-#         self._grad[1,0] = 2 * a * (rn + b) * ru
+        dfdx = lambda x, y: a * (x + k * (y**2 - x**2) + 1/4 * k**2 * (x**3 + x*y**2))
+        dfdy = lambda x, y: a * (y + 2*k*x*y + 1/4 * k**2 * (x**2*y + y**3))
+        self._gradham[0,0,0,0] = dfdx(x - b, y)
+        self._gradham[0,0,0,1] = dfdy(x - b, y)
+        self._gradham[1,1,0,0] = -dfdx(-x - b, y)
+        self._gradham[1,1,0,1] = dfdy(-x - b, y)
+        self._gradham[0,1,0,1] = a*d
+        self._gradham[1,0,0,1] = a*d

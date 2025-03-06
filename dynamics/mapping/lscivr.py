@@ -19,9 +19,6 @@ class LSCIVR(Dynamics):
         config["nuclear"]["mixins"].append("mmst")
         super().__init__(dynamics=dynamics, **config)
 
-        inistate = dynamics["initstate"]
-        self._state = inistate
-
         self.PE: PopulationEstimator = PopulationEstimator[dynamics.get("pop_est", "wigner")]()
 
     def population(self, mol: Molecule, s: int):
@@ -52,7 +49,7 @@ class LSCIVR(Dynamics):
                 V += (r2[i] - r2[j]) * (mol.ham_eig_ss[i,i]-mol.ham_eig_ss[j,j])
         return V_bar + V * 1/mol.n_states * 1/4
 
-    def setup_est(self, mode: str):
+    def setup_est(self, mol: Molecule, mode: str):
         est = ESTProgram()
         if "g" in mode:
             est.all_grads()
@@ -141,13 +138,10 @@ class LSCIVR(Dynamics):
 
         mol.acc_ad[:,:] = force / mol.mass_a[:,None]
 
-    def prepare_traj(self, mol: Molecule):
-        out = Output()
-        out.write_log(f"Initial state:      {self._state}")
-        out.write_log("\n")
-        super().prepare_traj(mol)
+    def prepare_dynamics(self, mols: list[Molecule], dt: float):
+        super().prepare_dynamics(mols, dt)
         #current hack to generate correct initial distributinos if no file given
-        self.setup_x_p(mol,self._state)
+        self.setup_x_p(mols[-1], mols[-1].state)
 
 class PopulationEstimator(metaclass = Factory):
     def population(mol: Molecule, s: int):

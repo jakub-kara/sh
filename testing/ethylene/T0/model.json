@@ -20,7 +20,7 @@
         "n_substeps": 50
     },
     "electronic": {
-        "program": "model_1d",
+        "program": "model",
         "path": "",
         "type": "sub_1",
         "states": [2,0,0],

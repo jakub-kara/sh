@@ -3,7 +3,7 @@ import os, sys
 import struct
 import math
 
-from .electronic import ESTProgram
+from .electronic import ESTProgram, est_method
 from classes.constants import multiplets, convert
 
 def str2float(string):
@@ -27,7 +27,7 @@ class Turbomole(ESTProgram):
     def _clean_dir(self):
         os.system('rm control exstates')
 
-
+    @est_method
     def adc2(self):
         self._clean_dir()
         os.system('cp mos old_mos')

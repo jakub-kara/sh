@@ -1,6 +1,8 @@
 from classes.meta import Singleton, Factory, SingletonFactory
+import pickle
 
 class Parent(metaclass = Factory):
+    a = 1
     def __init__(self, x):
         self.x = x
 

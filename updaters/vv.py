@@ -16,7 +16,7 @@ class VelocityVerlet(NuclearUpdater):
 
         # calculate est
         est = ESTProgram()
-        dyn.setup_est(mode = dyn.get_mode())
+        dyn.setup_est(out, mode = dyn.get_mode())
         est.run(out)
         est.read(out, ref = mol)
         est.reset_calc()
