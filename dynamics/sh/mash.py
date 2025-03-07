@@ -47,10 +47,10 @@ class MASH(SurfaceHopping):
                 CompositeIntegrator().to_init()
                 mol.hop()
 
-                self.setup_est(mol, mode = "a")
                 est = ESTProgram()
+                est.request(self.mode(mol))
                 est.run(mol)
-                est.read(mol)
+                est.read(mol, ref = mols[-2])
                 self.calculate_acceleration(mol)
                 est.reset_calc()
             else:

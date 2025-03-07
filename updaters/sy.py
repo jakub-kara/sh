@@ -60,7 +60,9 @@ class SYAMBase(NuclearUpdater):
     sy: SYBase = None
     am: AMBase = None
 
-    def update(self, mols: list[Molecule], dt: float, dyn: Dynamics):
+    def update(self, mols: list[Molecule], dt: float):
+        dyn = Dynamics()
+        est = ESTProgram()
         out = mols[-1].copy_all()
         temp = mols[-self.steps:]
         # find new position as a weighted sum of previous positions and accelerations
@@ -68,8 +70,7 @@ class SYAMBase(NuclearUpdater):
         out.pos_ad /= self.sy.a[-1]
 
         # calculate new acceleration
-        est = ESTProgram()
-        dyn.setup_est(mode = dyn.get_mode())
+        est.request(dyn.mode(out))
         est.run(out)
         est.read(out, ref = mols[-1])
         est.reset_calc()

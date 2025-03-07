@@ -1,4 +1,5 @@
 import numpy as np
+from abc import abstractmethod
 from copy import deepcopy
 from classes.meta import SingletonFactory
 from classes.molecule import Molecule
@@ -9,16 +10,16 @@ from updaters.coeff import CoeffUpdater
 from electronic.electronic import ESTProgram
 
 class Dynamics(metaclass = SingletonFactory):
-    mode = ""
-
     def __init__(self, *, dynamics: dict, **config: dict):
         pass
 
+    @abstractmethod
     def calculate_acceleration(self, mol: Molecule):
-        raise NotImplementedError
+        pass
 
+    @abstractmethod
     def potential_energy(self, mol: Molecule):
-        raise NotImplementedError
+        pass
 
     def total_energy(self, mol: Molecule):
         return self.potential_energy(mol) + mol.kinetic_energy
@@ -45,7 +46,7 @@ class Dynamics(metaclass = SingletonFactory):
 
         self.steps_elapsed(-1)
         est = ESTProgram()
-        self.setup_est(mol, mode = self.get_mode())
+        est.request(*self.mode(mol))
         est.run(mol)
         est.read(mol, mol)
         self.calculate_acceleration(mol)
@@ -53,24 +54,30 @@ class Dynamics(metaclass = SingletonFactory):
 
         self.update_quantum(mols, dt)
 
-    # might have a better name
+    @abstractmethod
+    def mode(self, mol: Molecule):
+        pass
+
+    @abstractmethod
     def adjust_nuclear(self, mol: Molecule, dt: float):
-        raise NotImplementedError
-
-    def get_mode(self):
-        return self.mode + TDCUpdater().mode + CoeffUpdater().mode
-
-    def setup_est(self, mol: Molecule, mode: str = "",):
         pass
 
     def steps_elapsed(self, steps: int):
         TDCUpdater().elapsed(steps + 1)
         CoeffUpdater().elapsed(steps + 1)
 
+    def run_est(self, mol: Molecule, ref = None):
+        est = ESTProgram()
+        est.request(*self.mode(mol))
+        est.run(mol)
+        est.read(mol, ref)
+        est.reset_calc()
+
     def update_nuclear(self, mols: list[Molecule], dt: float):
         nupd = CompositeIntegrator()
-        return nupd.run(mols, dt, self)
-        # return nupd.update(mols, dt, self)
+        nupd.run(mols, dt)
+        temp = nupd.active.out.out
+        nupd.validate(self.energy_diff(temp, mols[-1]))
 
     def update_quantum(self, mols: list[Molecule], dt: float):
         self.update_tdc(mols, dt)

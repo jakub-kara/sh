@@ -11,11 +11,13 @@ class RKNBase(NuclearUpdater):
     c = np.empty(1)
     d = np.empty(1)
 
-    def update(self, mols: list[Molecule], dt: float, dyn: Dynamics):
+    def update(self, mols: list[Molecule], dt: float):
         # helper function for triangular numbers
         def tri(x):
             return x * (x + 1) // 2
 
+        dyn = Dynamics()
+        est = ESTProgram()
         mol = mols[-1]
         out = self.out
         out.inter[0] = mol
@@ -26,8 +28,7 @@ class RKNBase(NuclearUpdater):
             out.inter[i] = mol.copy_all()
             out.inter[i].pos_ad += dt * self.c[i] * mol.vel_ad + dt**2 * np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], [m.acc_ad for m in out.inter[:i]])
 
-            est = ESTProgram()
-            dyn.setup_est(mode = dyn.get_mode())
+            est.request(dyn.mode(out))
             est.run(out.inter[i])
             est.read(out.inter[i], ref = mol)
             est.reset_calc()
@@ -42,8 +43,7 @@ class RKNBase(NuclearUpdater):
         temp.vel_ad += dt * np.einsum("j,j...->...", self.d, [m.acc_ad for m in out.inter])
 
         # calculate new acceleration
-        est = ESTProgram()
-        dyn.setup_est(mode = dyn.get_mode())
+        est.request(dyn.mode(temp))
         est.run(temp)
         est.read(temp, ref = mol)
         est.reset_calc()

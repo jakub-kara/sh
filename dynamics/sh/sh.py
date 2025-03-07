@@ -3,14 +3,13 @@ from .checker import HoppingUpdater
 from dynamics.dynamics import Dynamics
 from classes.molecule import Molecule, SHMixin
 from classes.out import Printer, Output
-from classes.timestep import Timestep
 from electronic.electronic import ESTProgram
 from updaters.composite import CompositeIntegrator
+from updaters.coeff import CoeffUpdater
+from updaters.tdc import TDCUpdater
 
 
 class SurfaceHopping(Dynamics):
-    mode = "a"
-
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
         config["nuclear"]["mixins"].append("sh")
@@ -23,26 +22,14 @@ class SurfaceHopping(Dynamics):
         self._reverse = dynamics.get("reverse", False)
         self._decoherence = dectypes[dynamics.get("decoherence", "none")]
 
+    def mode(self, mol: Molecule):
+        return [f"g{mol.active}", CoeffUpdater().mode, TDCUpdater().mode]
+
     def calculate_acceleration(self, mol: Molecule):
         mol.acc_ad = -mol.grad_sad[mol.active] / mol.mass_a[:,None]
 
     def potential_energy(self, mol: Molecule):
         return mol.ham_eig_ss[mol.active, mol.active]
-
-    @property
-    def mode(self):
-        return "a" + super().mode
-
-    def setup_est(self, mol: Molecule, mode: str):
-        est = ESTProgram()
-        if "a" in mode:
-            est.add_grads(mol.active)
-        if "g" in mode:
-            est.all_grads()
-        if "o" in mode:
-            est.add_ovlp()
-        if "n" in mode:
-            est.all_nacs()
 
     # move the switch elsewhere
     def _get_delta(self, mol: Molecule):
@@ -52,9 +39,9 @@ class SurfaceHopping(Dynamics):
 
         if self._rescale == "nac":
             # rescale along nacdr
-            if "n" not in self.mode:
+            if "n" not in self.mode(mol):
                 est = ESTProgram()
-                est.add_nacs((mol.active, mol.target))
+                est.request(f"n{mol.active}{mol.target}")
                 est.run(mol)
                 est.read(mol, mol)
                 est.reset_calc()
@@ -167,3 +154,5 @@ class SurfaceHopping(Dynamics):
         dic = super().dat_dict(mol)
         dic["act"] = Printer.write(mol.active, "i")
         return dic
+
+

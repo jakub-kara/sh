@@ -2,7 +2,6 @@ import numpy as np
 import sys, pickle
 import time
 from copy import deepcopy
-from .meta import Singleton
 from .molecule import Molecule, MoleculeFactory
 from .out import Printer, Output
 from .constants import convert
@@ -135,8 +134,7 @@ class Trajectory:
             self.save_step()
 
     def get_molecule(self, **config):
-        est = ESTProgram()
-        return MoleculeFactory.create_molecule(n_states=est.n_states, **config)
+        return MoleculeFactory.create_molecule(n_states=ESTProgram().n_states, **config)
 
     def set_molecules(self, **nuclear):
         nupd = CompositeIntegrator()

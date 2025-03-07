@@ -34,8 +34,10 @@ class MoleculeFactory:
             setattr(cls, key, cls._get_molecule(key, val))
 
 class Molecule:
-    def __init__(self, *, n_states: int, input="geom.xyz", **config):
+    def __init__(self, *, n_states: int = 1, input = "geom.xyz", com = False, **config):
         self.from_vxyz(input)
+        if com:
+            self.set_com()
 
         self.ham_eig_ss = np.zeros((n_states, n_states))
         self.ham_dia_ss = np.zeros((n_states, n_states), dtype=np.complex128)
@@ -48,6 +50,8 @@ class Molecule:
         self.nacflp_ss = np.zeros((n_states, n_states))
         self.phase_s = np.ones(n_states)
         self.coeff_s = np.zeros(n_states, dtype=np.complex128)
+
+        breakpoint()
 
     @property
     def n_atoms(self):
@@ -194,19 +198,24 @@ class Molecule:
         total_mass = np.sum(self.mass_a)
 
         # com position
-        com_pos = np.sum(self.pos_ad * self.mass_a[:,None], axis=0) / total_mass
+        com_pos = np.sum(self.pos_ad * self.mass_a[:, None], axis=0) / total_mass
         self.pos_ad -= com_pos
 
         # com velocity
-        com_vel = np.sum(self.vel_ad * self.mass_a[:,None], axis=0) / total_mass
+        com_vel = np.sum(self.vel_ad * self.mass_a[:, None], axis=0) / total_mass
         self.vel_ad -= com_vel
 
         # com rotation
-        mom = np.sum(self.vel_ad * self.mass_a, axis=0)
-        ang_mom = np.cross(self.pos_ad, mom)
-        ang_vel = np.linalg.inv(self.inertia) @ ang_mom
-        vel = np.cross(ang_vel, self.pos_ad)
-        self.vel_ad -= vel
+        tot = np.zeros(3)
+        for a in range(self.n_atoms):
+            mom = self.vel_ad[a] * self.mass_a[a]
+            ang = np.cross(mom, self.pos_ad[a])
+            tot -= ang
+
+        ang_vel = np.linalg.inv(self.inertia) @ tot
+        for a in range(self.n_atoms):
+            v_rot = np.cross(ang_vel, self.pos_ad[a])
+            self.vel_ad[a] -= v_rot
 
     @property
     def kinetic_energy(self):

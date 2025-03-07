@@ -12,7 +12,8 @@
     },
     "nuclear": {
         "input": "model.xyz",
-        "nuc_upd": "vv"
+        "nuc_upd": "vv",
+	"com": true
     },
     "quantum": {
         "tdc_upd": "nacme",

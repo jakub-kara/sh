@@ -5,7 +5,6 @@ from electronic.electronic import ESTProgram
 
 class GSE(SimpleEhrenfest):
     key = "gse"
-    mode = "g"
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         mol = mols[-1]

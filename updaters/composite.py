@@ -51,10 +51,10 @@ class CompositeIntegrator(Updater, metaclass = Singleton):
             if self._count >= self._upds[0].steps:
                 self._iactive = 0
 
-    def run(self, mols: list[Molecule], dt: float, dyn):
+    def run(self, mols: list[Molecule], dt: float):
         self._set_active()
         self._count += 1
-        self.active.run(mols, dt, dyn)
+        self.active.run(mols, dt)
 
-        temp = self.active.out.out
-        self._success = np.abs(dyn.total_energy(temp) - dyn.total_energy(mols[-1])) < self._thresh
+    def validate(self, val: float):
+        self._success = val < self._thresh

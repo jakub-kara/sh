@@ -39,12 +39,11 @@ class MISH(SurfaceHopping):
                 self._adjust_velocity(mol, delta)
                 mol.hop()
                 out.write_log(f"New state: {mol.active}")
-                hop = HoppingUpdater()
 
-                self.setup_est(mol, mode = "a")
                 est = ESTProgram()
+                est.request(self.mode(mol))
                 est.run(mol)
-                est.read(mol)
+                est.read(mol, ref = mols[-2])
                 self.calculate_acceleration(mol)
             else:
                 out.write_log("Hop failed")
@@ -53,15 +52,11 @@ class MISH(SurfaceHopping):
                     self._reverse_velocity(mol, delta)
                 mol.nohop()
 
-
-
     def population(self, mol: Molecule, s: int):
         N = mol.n_states
         H_N = np.sum(1/(np.arange(N)+1))
         a_N = (N-1)/(H_N-1)
         return 1/N + a_N*(np.abs(mol.coeff_s[s])**2-1/N)
-
-
 
     def prepare_dynamics(self, mols: list[Molecule], dt: float):
         ''' UPDATE '''
@@ -91,9 +86,9 @@ class MISH(SurfaceHopping):
         def normalise(a):
             return a / np.linalg.norm(a)
 
-        if "n" not in self.mode:
-            self.setup_est(mol, mode = "n")
+        if "n" not in self.mode():
             est = ESTProgram()
+            est.request(self.mode(mol))
             est.run(mol)
             est.read(mol, mol)
             est.reset_calc()

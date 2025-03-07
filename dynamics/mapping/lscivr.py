@@ -1,11 +1,12 @@
 import numpy as np
+from scipy.optimize import fsolve
 from classes.meta import Factory
 from classes.molecule import Molecule
 from classes.out import Output
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
-from scipy.optimize import fsolve
-
+from updaters.coeff import CoeffUpdater
+from updaters.tdc import TDCUpdater
 
 class LSCIVR(Dynamics):
     #Implements the linear semi-classical initial value representations
@@ -13,13 +14,15 @@ class LSCIVR(Dynamics):
     #The key difference is in the propatation of the electronic degrees of freedom, which is performed in a single-excitation basis
     #We store the classical phase space variables of the electron in this basis in the coeff_s variable as z = x + ip
     key = "lscivr"
-    mode = "gn"
 
     def __init__(self, *, dynamics: dict, **config):
         config["nuclear"]["mixins"].append("mmst")
         super().__init__(dynamics=dynamics, **config)
 
         self.PE: PopulationEstimator = PopulationEstimator[dynamics.get("pop_est", "wigner")]()
+
+    def mode(self, mol: Molecule):
+        return ["g", "n", CoeffUpdater().mode, TDCUpdater().mode]
 
     def population(self, mol: Molecule, s: int):
         return self.PE.population(mol, s)
@@ -48,15 +51,6 @@ class LSCIVR(Dynamics):
                 if i==j: continue
                 V += (r2[i] - r2[j]) * (mol.ham_eig_ss[i,i]-mol.ham_eig_ss[j,j])
         return V_bar + V * 1/mol.n_states * 1/4
-
-    def setup_est(self, mol: Molecule, mode: str):
-        est = ESTProgram()
-        if "g" in mode:
-            est.all_grads()
-        if "o" in mode:
-            est.add_ovlp()
-        if "n" in mode:
-            est.all_nacs()
 
     def calc_dPkindt(self, mol: Molecule):
         force = np.zeros_like(mol.acc_ad)

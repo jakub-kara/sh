@@ -3,10 +3,11 @@ from classes.molecule import Molecule
 from classes.out import Output
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
+from updaters.coeff import CoeffUpdater
+from updaters.tdc import TDCUpdater
 
 class SimpleEhrenfest(Dynamics):
     key = "ehr"
-    mode = "g"
 
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
@@ -16,10 +17,14 @@ class SimpleEhrenfest(Dynamics):
             "eff": self._eff_nac,
         }
 
-        nactype = dynamics.get("force", "nac")
-        if nactype == "nac":
-            self.mode += "n"
-        self._force_tensor = nactypes[nactype]
+        self._nactype = dynamics.get("force", "nac")
+        self._force_tensor = nactypes[self._nactype]
+
+    def mode(self, mol):
+        temp = ["g", CoeffUpdater().mode, TDCUpdater().mode]
+        if self._nactype == "nac":
+            temp.append("n")
+        return temp
 
     def _nac(self, mol: Molecule):
         return mol.nacdr_ssad
@@ -35,15 +40,6 @@ class SimpleEhrenfest(Dynamics):
         for s in range(mol.n_states):
             poten += np.abs(mol.coeff_s[s])**2 * mol.ham_eig_ss[s,s]
         return poten
-
-    def setup_est(self, mol: Molecule, mode: str):
-        est = ESTProgram()
-        if "g" in mode:
-            est.all_grads()
-        if "o" in mode:
-            est.add_ovlp()
-        if "n" in mode:
-            est.all_nacs()
 
     def calculate_acceleration(self, mol: Molecule):
         force = np.zeros_like(mol.acc_ad)

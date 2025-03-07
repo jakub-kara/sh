@@ -8,7 +8,6 @@ from updaters.composite import CompositeIntegrator
 
 class FSSH(SurfaceHopping):
     key = "fssh"
-    mode = "a"
 
     def __init__(self, *, dynamics, **config):
         super().__init__(dynamics=dynamics, **config)
@@ -38,10 +37,10 @@ class FSSH(SurfaceHopping):
                 CompositeIntegrator().to_init()
                 out.write_log(f"New state: {mol.active}")
 
-                self.setup_est(mol, mode = "a")
                 est = ESTProgram()
+                est.request(*self.mode(mol))
                 est.run(mol)
-                est.read(mol)
+                est.read(mol, ref = mols[-2])
                 self.calculate_acceleration(mol)
             else:
                 out.write_log("Hop failed")

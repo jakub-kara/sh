@@ -1,5 +1,7 @@
-from classes.meta import Singleton, Factory, SingletonFactory
 import pickle
+from classes.meta import Singleton, Factory, SingletonFactory
+from dynamics.dynamics import Dynamics
+from electronic.electronic import ESTProgram
 
 class Parent(metaclass = Factory):
     a = 1

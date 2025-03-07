@@ -1,7 +1,6 @@
 from abc import ABCMeta
 
-# class Factory(ABCMeta):
-class Factory(type):
+class Factory(ABCMeta):
     def __init__(cls, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for sup in cls.mro():
