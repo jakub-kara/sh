@@ -51,8 +51,6 @@ class Molecule:
         self.phase_s = np.ones(n_states)
         self.coeff_s = np.zeros(n_states, dtype=np.complex128)
 
-        breakpoint()
-
     @property
     def n_atoms(self):
         return self.pos_ad.shape[0]
