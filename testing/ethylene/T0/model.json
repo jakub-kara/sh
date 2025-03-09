@@ -8,12 +8,12 @@
         "method": "fssh",
         "prob": "tdc",
         "decoherence": "edc",
-        "initstate": 0
+        "initstate": 0,
+	"backup": true
     },
     "nuclear": {
         "input": "model.xyz",
-        "nuc_upd": "vv",
-	"com": true
+        "nuc_upd": "vv"
     },
     "quantum": {
         "tdc_upd": "nacme",

@@ -4,6 +4,8 @@ import time
 from classes.meta import Singleton
 
 class Output(metaclass = Singleton):
+    border = "="*40
+
     def __init__(self, *, file: int, record: list, **config):
         self._record = record
         self._file = file
@@ -42,13 +44,15 @@ class Output(metaclass = Singleton):
         self._logfile = None
 
     def write_border(self):
-        self.write_log("="*40)
+        self.write_log(self.border)
 
     def write_log(self, msg = ""):
-        print(msg)
+        if msg is None:
+            return
         if not self._log:
             return
-        self._logfile.write(msg + "\n")
+        print(msg)
+        self._logfile.write(f"{msg}\n")
 
     def write_dat(self, data: dict, mode="a"):
         if not self._dat:
@@ -87,14 +91,32 @@ class Output(metaclass = Singleton):
                 else:
                     grp.create_dataset(key, data=val)
 
-def record_time(fun, out: Output, msg: str = ""):
-    def inner(*args, **kwargs):
-        t1 = time.time()
-        res = fun(*args, **kwargs)
-        t2 = time.time()
-        out.write_log(f"{msg} {t2-t1}\n")
-        return res
-    return inner
+class Timer:
+    _timers = []
+
+    def __init__(self, id, head = None, msg = "Wall time", foot = None):
+        self._id = id
+        self._head = head
+        self._msg = msg
+        self._foot = foot
+
+    def __call__(self, func):
+        def inner(*args, **kwargs):
+            if self._id in self._timers:
+                return func(*args, **kwargs)
+            else:
+                out = Output()
+                self._timers.append(self._id)
+                t0 = time.time()
+                out.write_log(self._head)
+                res = func(*args, **kwargs)
+                out.write_log(f"{self._msg}: {time.time() - t0 :.4f}")
+                out.write_log(self._foot)
+                out.write_log()
+                self._timers.remove(self._id)
+                return res
+        inner.timer = self
+        return inner
 
 class Printer:
     field_length = 20

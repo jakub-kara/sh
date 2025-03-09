@@ -10,6 +10,10 @@ class Factory(ABCMeta):
             cls._keys = {}
         cls.__init_subclass__ = classmethod(Factory._initsub)
 
+    @property
+    def par(cls):
+        return [x for x in cls.mro() if type(x) == type(cls)][-1]
+
     def __getitem__(cls, key):
         if key not in cls._keys:
             raise ValueError(f"{key} option not found among the descendents of {cls}.")
@@ -18,6 +22,11 @@ class Factory(ABCMeta):
     def _initsub(cls):
         if hasattr(cls, "key"):
             cls._keys[cls.key] = cls
+
+        if cls != cls.par:
+            for key, val in cls.par.__dict__.items():
+                if hasattr(val, "timer"):
+                    setattr(cls, key, val.timer(getattr(cls, key)))
 
 class Singleton(type):
     _instances: dict = {}
@@ -54,10 +63,6 @@ class SingletonFactory(Singleton, Factory):
             obj = super().__call__(*args, **kwargs)
             cls._instances[par] = obj
             return obj
-
-    @property
-    def par(cls):
-        return [x for x in cls.mro() if type(x) == type(cls)][-1]
 
     def reset(cls):
         cls._instances.pop(cls.par, None)

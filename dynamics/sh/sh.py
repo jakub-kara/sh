@@ -3,6 +3,7 @@ from .checker import HoppingUpdater
 from dynamics.dynamics import Dynamics
 from classes.molecule import Molecule, SHMixin
 from classes.out import Printer, Output
+from classes.trajectory import Trajectory
 from electronic.electronic import ESTProgram
 from updaters.composite import CompositeIntegrator
 from updaters.coeff import CoeffUpdater
@@ -145,14 +146,14 @@ class SurfaceHopping(Dynamics):
         mols[-1].target = hop.hop.out
 
     # TODO: move to molecule
-    def dat_header(self, mol: Molecule):
-        dic = super().dat_header(mol)
+    def dat_header(self, traj: Trajectory):
+        dic = super().dat_header(traj)
         dic["act"] = Printer.write("Active State", "s")
         return dic
 
-    def dat_dict(self, mol: Molecule):
-        dic = super().dat_dict(mol)
-        dic["act"] = Printer.write(mol.active, "i")
+    def dat_dict(self, traj: Trajectory):
+        dic = super().dat_dict(traj)
+        dic["act"] = Printer.write(traj.mol.active, "i")
         return dic
 
 

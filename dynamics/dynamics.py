@@ -1,9 +1,12 @@
 import numpy as np
+
 from abc import abstractmethod
 from copy import deepcopy
+from classes.constants import convert
 from classes.meta import SingletonFactory
 from classes.molecule import Molecule
-from classes.out import Output
+from classes.out import Output, Printer, Timer
+from classes.trajectory import Trajectory
 from updaters.composite import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
@@ -39,26 +42,63 @@ class Dynamics(metaclass = SingletonFactory):
         mol.coeff_s[:] = data[:,0]
         mol.coeff_s += 1j*data[:,1]
 
-    def prepare_dynamics(self, mols: list[Molecule], dt: float):
-        mol = mols[-1]
-        out = Output()
-        out.open_log()
+    @Timer(id = "init",
+           head = "Trajectory Initialisation",
+           msg = "Total time")
+    def prepare_traj(self, traj: Trajectory):
+        mol = traj.mols[-1]
+        self.write_headers(traj)
 
         self.steps_elapsed(-1)
-        est = ESTProgram()
-        est.request(*self.mode(mol))
-        est.run(mol)
-        est.read(mol, mol)
+        self.run_est(mol, mol)
         self.calculate_acceleration(mol)
-        est.reset_calc()
 
-        self.update_quantum(mols, dt)
+        self.update_quantum(traj.mols, traj.timestep.dt)
+
+        self.write_outputs(traj)
+
+    @Timer(id = "tot",
+           msg = "Total time",
+           foot = Output.border)
+    def run_step(self, traj: Trajectory):
+        self.steps_elapsed(traj.timestep.step)
+        traj.step_header()
+        traj.save_step()
+
+        self.update_nuclear(traj.mols, traj.timestep.dt)
+
+        nupd = CompositeIntegrator()
+        if not nupd.success:
+            nupd.to_init()
+            ESTProgram().recover_wf()
+            return
+
+        temp = nupd.active.out.out
+        valid = traj.timestep.validate(self.energy_diff(temp, traj.mol))
+        if not valid:
+            traj.timestep.fail()
+            ESTProgram().recover_wf()
+            return
+        traj.add_molecule(temp)
+        traj.pop_molecule(0)
+
+        self.adjust_nuclear(traj.mols, traj.timestep.dt)
+
+        traj.next_step()
+        traj.timestep.success()
+        traj.timestep.save_nupd()
+        self.write_outputs(traj)
+
+        if traj.is_finished:
+            traj.save_step()
 
     @abstractmethod
     def mode(self, mol: Molecule):
         pass
 
     @abstractmethod
+    @Timer(id = "nuc",
+           head = "Nuclear Adjustment")
     def adjust_nuclear(self, mol: Molecule, dt: float):
         pass
 
@@ -66,6 +106,8 @@ class Dynamics(metaclass = SingletonFactory):
         TDCUpdater().elapsed(steps + 1)
         CoeffUpdater().elapsed(steps + 1)
 
+    @Timer(id = "est",
+           head = "Electronic Calculation")
     def run_est(self, mol: Molecule, ref = None):
         est = ESTProgram()
         est.request(*self.mode(mol))
@@ -79,6 +121,8 @@ class Dynamics(metaclass = SingletonFactory):
         temp = nupd.active.out.out
         nupd.validate(self.energy_diff(temp, mols[-1]))
 
+    @Timer(id = "qua",
+           head = "Quantum Propagation")
     def update_quantum(self, mols: list[Molecule], dt: float):
         self.update_tdc(mols, dt)
         self.update_coeff(mols, dt)
@@ -117,11 +161,98 @@ class Dynamics(metaclass = SingletonFactory):
         out2.coeff_s /= np.sqrt(np.sum(np.abs(out2.coeff_s)**2))
         return out1, out2
 
-    def dat_header(self, mol: Molecule):
-        return {}
+    def write_headers(self, traj: Trajectory):
+        out = Output()
+        out.write_dat(self.dat_header(traj), "w")
+        out.write_h5(self.h5_info(traj), "w")
+        out.write_xyz("", "w")
+        out.write_dist("", "w")
 
-    def dat_dict(self, mol: Molecule):
-        return {}
+    @Timer(id = "out",
+           head = "Outputs")
+    def write_outputs(self, traj: Trajectory):
+        out = Output()
+        out.write_dat(self.dat_dict(traj))
+        out.write_h5(self.h5_dict(traj))
+        out.write_xyz(self.vxyz_string(traj))
+        out.write_dist(self.dist_string(traj))
 
-    def h5_dict(self):
-        return {}
+    def dat_header(self, traj: Trajectory):
+        nst = traj.mol.n_states
+
+        dic = {}
+        dic["time"] = "#" + Printer.write("Time [fs]", "s")
+
+        dic["pop"] = "".join([Printer.write(f"Population {i}", "s") for i in range(nst)])
+        dic["pes"] = "".join([Printer.write(f"Pot En {i} [eV]", "s") for i in range(nst)])
+        dic["ken"] = Printer.write("Total Kin En [eV]", "s")
+        dic["pen"] = Printer.write("Total Pot En [eV]", "s")
+        dic["ten"] = Printer.write("Total En [eV]", "s")
+        dic["nacdr"] = "".join([Printer.write(f"NACdr {j}-{i} [au]", "s") for i in range(nst) for j in range(i)])
+        dic["nacdt"] = "".join([Printer.write(f"NACdt {j}-{i} [au]", "s") for i in range(nst) for j in range(i)])
+        dic["coeff"] = "".join([Printer.write(f"Coeff {i}", f" <{Printer.field_length*2+1}") for i in range(nst)])
+        dic["posx"] = Printer.write("X-Position [au]", "s")
+        dic["posy"] = Printer.write("Y-Position [au]", "s")
+        dic["posz"] = Printer.write("Z-Position [au]", "s")
+        dic["momx"] = Printer.write("X-Momentum [au]", "s")
+        dic["momy"] = Printer.write("Y-Momentum [au]", "s")
+        dic["momz"] = Printer.write("Z-Momentum [au]", "s")
+        return dic
+
+    def dat_dict(self, traj: Trajectory):
+        mol = traj.mol
+        nst = mol.n_states
+
+        dic = {}
+        dic["time"] = Printer.write(convert(traj.timestep.time, "au", "fs"), "f")
+
+        dic["pop"] = "".join([Printer.write(self.population(mol, i), "f") for i in range(nst)])
+        dic["pes"] = "".join([Printer.write(convert(mol.ham_eig_ss[i,i], "au", "ev"), "f") for i in range(nst)])
+        dic["ken"] = Printer.write(convert(mol.kinetic_energy, "au", "ev"), "f")
+        dic["pen"] = Printer.write(convert(self.potential_energy(mol), "au", "ev"), "f")
+        dic["ten"] = Printer.write(convert(self.total_energy(mol), "au", "ev"), "f")
+        dic["nacdr"] = "".join([Printer.write(mol.nac_norm_ss[i,j], "f") for i in range(nst) for j in range(i)])
+        dic["nacdt"] = "".join([Printer.write(mol.nacdt_ss[i,j], "f") for i in range(nst) for j in range(i)])
+        dic["coeff"] = "".join([Printer.write(mol.coeff_s[i], "z") for i in range(nst)])
+        dic["posx"] = Printer.write(mol.pos_ad[0,0], "f")
+        dic["posy"] = Printer.write(mol.pos_ad[0,1], "f")
+        dic["posz"] = Printer.write(mol.pos_ad[0,2], "f")
+        dic["momx"] = Printer.write(mol.mom_ad[0,0], "f")
+        dic["momy"] = Printer.write(mol.mom_ad[0,1], "f")
+        dic["momz"] = Printer.write(mol.mom_ad[0,2], "f")
+        return dic
+
+    def dist_string(self, traj: Trajectory):
+        return traj.mol.to_dist()
+
+    def xyz_string(self, traj: Trajectory):
+        return traj.mol.to_xyz()
+
+    def vxyz_string(self, traj: Trajectory):
+        return traj.mol.to_vxyz()
+
+    def h5_info(self, traj: Trajectory):
+        mol = traj.mol
+        dic = {}
+        dic["step"] = "info",
+        dic["nst"] = mol.n_states,
+        dic["nat"] = mol.n_atoms,
+        dic["ats"] = mol.name_a,
+        dic["mass"] = mol.mass_a,
+        return dic
+
+    def h5_dict(self, traj: Trajectory):
+        mol = traj.mol
+        dic = {}
+        dic["step"] = traj.timestep.step,
+        dic["time"] = traj.timestep.time,
+        dic["pos"] = mol.pos_ad,
+        dic["vel"] = mol.vel_ad,
+        dic["acc"] = mol.acc_ad,
+        dic["trans"] = mol.trans_ss,
+        dic["hdiag"] = mol.ham_eig_ss,
+        dic["grad"] = mol.grad_sad,
+        dic["nacdr"] = mol.nacdr_ssad,
+        dic["nacdt"] = mol.nacdt_ss,
+        dic["coeff"] = mol.coeff_s
+        return dic

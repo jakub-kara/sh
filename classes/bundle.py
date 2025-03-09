@@ -1,5 +1,5 @@
 import numpy as np
-import os, shutil
+import os, sys, shutil
 import pickle
 from copy import deepcopy
 from .meta import Singleton
@@ -11,7 +11,6 @@ from electronic.electronic import ESTProgram
 from updaters.composite import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
-
 
 class Bundle:
     def __init__(self):
@@ -65,7 +64,13 @@ class Bundle:
         self.set_dynamics(dynamics, **config)
         self.set_components(**config)
 
+        # TODO: refactor
         traj = Trajectory(dynamics=dynamics, **config)
+        mol = traj.get_molecule(**config["nuclear"], **dynamics)
+        Dynamics().read_coeff(mol, config["quantum"].get("input", None))
+        traj.add_molecule(mol)
+        traj.set_molecules(**config["nuclear"])
+        traj.set_timestep(**dynamics)
         self.save_setup()
         self.add_trajectory(traj)
 
@@ -105,9 +110,12 @@ class Bundle:
         Output(**output)
 
     def prepare_trajs(self):
+        out = Output()
         for traj in self._trajs:
             os.chdir(f"{traj.index}")
-            traj.prepare_traj()
+            out.open_log(mode="w")
+            out.to_log("../" + sys.argv[1])
+            Dynamics().prepare_traj(traj)
             os.chdir("..")
 
     def run_step(self):
@@ -117,7 +125,7 @@ class Bundle:
             print(self._iactive, self.n_traj)
 
         os.chdir(f"{self._iactive}")
-        self._active.run_step()
+        Dynamics().run_step(self._active)
         os.chdir("..")
 
         mol = self._active.mol
