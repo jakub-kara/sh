@@ -16,6 +16,7 @@ class Molcas(ESTProgram, key = "molcas"):
         err = os.system(f"pymolcas -f -b1 {self._file}.input")
         if err:
             raise InterruptedError(f"Error in MOLCAS, exit code {err}")
+        self.clean_dir()
 
 
     def backup_wf(self):
@@ -283,3 +284,13 @@ class Molcas(ESTProgram, key = "molcas"):
             ovlp = U@Vt
     
         return ovlp
+
+    def clean_dir(self):
+
+        to_keep=['JOB001','JOB002','JOBOLD',f'{self._file}.JobIph',f'{self._file}.JobMix',f'{self._file}.log',f'{self._file}.wf']
+
+        for file in os.listdir(os.getcwd()):
+            if file not in to_keep:
+                os.remove(file)
+
+
