@@ -1,17 +1,17 @@
 import numpy as np
-from copy import deepcopy
 from .ehr import SimpleEhrenfest
 from classes.molecule import Molecule
+from classes.out import Printer
 
-class MultiEhrenfest(SimpleEhrenfest, key = "mce"):
+class MultiEhrenfest(SimpleEhrenfest):
+    key = "mce"
+
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
 
         self._dclone = dynamics.get("dclone", 5e-6)
         self._dnac = dynamics.get("dnac", 2e-3)
         self._maxspawn = dynamics.get("maxspawn", 3)
-        self._nspawn = 0
-        self._phase = 0
 
     # TODO: symmetrise breaking force
     def _calculate_breaking(self, mol: Molecule):
@@ -24,9 +24,10 @@ class MultiEhrenfest(SimpleEhrenfest, key = "mce"):
         return accbr
 
     def update_nuclear(self, mols: list[Molecule], dt: float):
-        self._phase += 0.5 * mols[-1].kinetic_energy * dt
+        mol = mols[-1]
+        mol.phase += 0.5 * mol.kinetic_energy * dt
         temp = super().update_nuclear(mols, dt)
-        self._phase += 0.5 * mols[-1].kinetic_energy * dt
+        mol.phase += 0.5 * mol.kinetic_energy * dt
         return temp
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
@@ -36,10 +37,21 @@ class MultiEhrenfest(SimpleEhrenfest, key = "mce"):
         for s in range(mol.n_states):
             nac = np.sqrt(np.sum(mol.nacdt_ss[s]**2))
             print(f"{s} {accbr[s]} {nac}")
-            if accbr[s] > self._dclone and nac < self._dnac and self._nspawn < self._maxspawn:
-                self.split = [s]
-                self._nspawn += 1
+            if accbr[s] > self._dclone and nac < self._dnac and mol.nspawn < self._maxspawn:
+                mol.split = [s]
+                mol.nspawn += 1
                 break
 
-    def h5_dict(self):
-        return {"phase": self._phase}
+    #TODO: move to molecule
+    def dat_header(self, mol: Molecule):
+        dic = super().dat_header()
+        dic["phs"] = Printer.write("Phase", "s")
+        return dic
+
+    def dat_dict(self, mol: Molecule):
+        dic = super().dat_dict()
+        dic["phs"] = Printer.write(mol.phase, "f")
+        return dic
+
+    def h5_dict(self, mol: Molecule):
+        return {"phase": mol.phase}

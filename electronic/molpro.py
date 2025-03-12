@@ -1,22 +1,18 @@
 import numpy as np
 import os, sys
 
-from .electronic import ESTProgram
+from .electronic import ESTProgram, est_method
 from classes.constants import multiplets, convert
 
-class Molpro(ESTProgram, key = "molpro"):
+class Molpro(ESTProgram):
+    key = "molpro"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self._options.setdefault("sa", self.n_states)
         self._options.setdefault("df", False)
         self._options.setdefault("dfbasis", False)
-
-    def _select_method(self, key):
-        methods = {
-            "cas": self.cas,
-        }
-        return methods[key]
 
     def execute(self):
         err = os.system(f"molpro -W . -I . -d ./tmp_molpro -s {self._file}.inp")
@@ -32,6 +28,7 @@ class Molpro(ESTProgram, key = "molpro"):
     def recover_wf(self):
         os.system(f"cp backup/{self._file}.wf est/")
 
+    @est_method
     def cas(self):
         """
         Writes an input file for a molpro calculation for nonadiabatic molecular dynamics.

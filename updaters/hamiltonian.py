@@ -38,7 +38,8 @@ class HAM_base(NuclearUpdater):
 
 
 
-class RK4_ham(HAM_base, key='rk4_ham'):
+class RK4_ham(HAM_base):
+    key = "rk4_ham"
     substeps = 4
     b = np.array([1/6,1/3,1/3,1/6])
     c = np.array([0,1/2,1/2,1.])
@@ -53,7 +54,7 @@ class RK4_ham(HAM_base, key='rk4_ham'):
         grad = self.grad(out.inter[0], dyn)
         k = np.zeros((self.substeps,len(y)))
         k[0] = 1*grad
-        
+
         for i in range(1,self.substeps):
             out.inter[i] = mol.copy_all()
             self.y_to_mol(out.inter[i],y+dt*k[i-1]*self.c[i])
@@ -65,7 +66,7 @@ class RK4_ham(HAM_base, key='rk4_ham'):
             grad = self.grad(out.inter[i],dyn)
             k[i] = 1*grad
 
-        
+
         temp = mol.copy_all()
         self.y_to_mol(temp,y + np.sum(self.b[:,None] * k,axis=0))
 

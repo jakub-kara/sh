@@ -28,14 +28,16 @@ class MoleculeFactory:
         return cls._products.copy()
 
     @classmethod
-    def restore(cls, dic: dict):
+    def restart(cls, dic: dict):
         cls._products = dic
         for key, val in cls._products.items():
             setattr(cls, key, cls._get_molecule(key, val))
 
 class Molecule:
-    def __init__(self, *, n_states: int, input="geom.xyz", **config):
+    def __init__(self, *, n_states: int = 1, input = "geom.xyz", com = False, **config):
         self.from_vxyz(input)
+        if com:
+            self.set_com()
 
         self.ham_eig_ss = np.zeros((n_states, n_states))
         self.ham_dia_ss = np.zeros((n_states, n_states), dtype=np.complex128)
@@ -72,6 +74,10 @@ class Molecule:
     @property
     def force_ad(self):
         return self.mass_a[:, None] * self.acc_ad
+
+    @property
+    def nac_norm_ss(self):
+        return np.sqrt(np.sum(self.nacdr_ssad**2, axis=(2,3)))
 
     def copy_empty(self):
         pass
@@ -190,19 +196,24 @@ class Molecule:
         total_mass = np.sum(self.mass_a)
 
         # com position
-        com_pos = np.sum(self.pos_ad * self.mass_a[:,None], axis=0) / total_mass
+        com_pos = np.sum(self.pos_ad * self.mass_a[:, None], axis=0) / total_mass
         self.pos_ad -= com_pos
 
         # com velocity
-        com_vel = np.sum(self.vel_ad * self.mass_a[:,None], axis=0) / total_mass
+        com_vel = np.sum(self.vel_ad * self.mass_a[:, None], axis=0) / total_mass
         self.vel_ad -= com_vel
 
         # com rotation
-        mom = np.sum(self.vel_ad * self.mass_a, axis=0)
-        ang_mom = np.cross(self.pos_ad, mom)
-        ang_vel = np.linalg.inv(self.inertia) @ ang_mom
-        vel = np.cross(ang_vel, self.pos_ad)
-        self.vel_ad -= vel
+        tot = np.zeros(3)
+        for a in range(self.n_atoms):
+            mom = self.vel_ad[a] * self.mass_a[a]
+            ang = np.cross(mom, self.pos_ad[a])
+            tot -= ang
+
+        ang_vel = np.linalg.inv(self.inertia) @ tot
+        for a in range(self.n_atoms):
+            v_rot = np.cross(ang_vel, self.pos_ad[a])
+            self.vel_ad[a] -= v_rot
 
     @property
     def kinetic_energy(self):
@@ -277,17 +288,58 @@ class Molecule:
     def __reduce__(self):
         return (DynamicClassProxy(), (MoleculeFactory, self.__class__.__name__), self.__dict__.copy())
 
+    def to_dict(self):
+        pass
+
 class MoleculeMixin(metaclass = Factory):
     pass
 
-class BlochMixin(MoleculeMixin, key = "bloch"):
+class SHMixin(MoleculeMixin):
+    key = "sh"
+
+    def __init__(self, *, initstate: int, **kwargs):
+        super().__init__(**kwargs)
+        self.active = initstate
+        self.target = initstate
+
+    def hop_ready(self):
+        return self.active != self.target
+
+    def hop(self):
+        self.active = self.target
+
+    def nohop(self):
+        self.target = self.active
+
+class EhrMixin(MoleculeMixin):
+    key = "ehr"
+
+    def __init__(self, *, initstate: int, **kwargs):
+        super().__init__(**kwargs)
+        self.state = initstate
+
+class MCEMixin(EhrMixin):
+    key = "mce"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.nspawn = 0
+        self.phase = 0
+        self.split = None
+
+class BlochMixin(MoleculeMixin):
+    key = "bloch"
+
     def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
         self.bloch_n3 = np.zeros((n_states, 3))
 
-class MMSTMixin(MoleculeMixin, key = "mmst"):
-    def __init__(self, *, n_states, **nuclear):
+class MMSTMixin(MoleculeMixin):
+    key = "mmst"
+
+    def __init__(self, *, initstate, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
+        self.state = initstate
         self.x_s = np.zeros(n_states)
         self.p_s = np.zeros(n_states)
         self.dxdt_s = np.zeros(n_states)
@@ -299,8 +351,13 @@ class MMSTMixin(MoleculeMixin, key = "mmst"):
     def r2(self):
         return self.x_s**2 + self.p_s**2
 
-class CSDMMixin(MoleculeMixin, key = "csdm"):
-    def __init__(self, *, n_states, **nuclear):
+class CSDMMixin(MoleculeMixin):
+    key = "csdm"
+
+    def __init__(self, *, initstate: int, n_states: int, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
+        self.pointer = initstate
         self.coeff_co_s = np.zeros(n_states, dtype=np.complex128)
+
+
 

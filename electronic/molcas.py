@@ -1,16 +1,11 @@
 import numpy as np
 import os, sys
 
-from .electronic import ESTProgram
+from .electronic import ESTProgram, est_method
 from classes.constants import Constants
 
-class Molcas(ESTProgram, key = "molcas"):
-    def _select_method(self, key):
-        methods = {
-            "cas": self.cas,
-            "pt2": self.pt2,
-        }
-        return methods[key]
+class Molcas(ESTProgram):
+    key = "molcas"
 
     def execute(self):
         err = os.system(f"pymolcas -f -b1 {self._file}.input")
@@ -25,6 +20,7 @@ class Molcas(ESTProgram, key = "molcas"):
     def recover_wf(self):
         os.system(f"cp backup/{self._file}.wf est/")
 
+    @est_method
     def cas(self):
         self._create_input_stem()
 
@@ -39,6 +35,7 @@ class Molcas(ESTProgram, key = "molcas"):
 
         self._add_input_rassi(False)
 
+    @est_method
     def pt2(self):
         self._create_input_stem()
 
@@ -116,7 +113,7 @@ class Molcas(ESTProgram, key = "molcas"):
         with open(f"{self._file}.input", "a") as file:
             file.write(f"&CASPT2\n")
             file.write(f"GRDT\n")
-    
+
             file.write(f"imag={self._options['imag']}\n")
             file.write(f"shift={self._options['shift']}\n")
             file.write(f"ipea={self._options['ipea']}\n")
@@ -275,14 +272,14 @@ class Molcas(ESTProgram, key = "molcas"):
                         data = file.readline().split()
                         for j in range(i//5):
                             data += file.readline().split()
-    
+
                         ovlp[i,:len(data)] = [float(q) for q in data]
-    
+
             ovlp =ovlp[self._options['sa']:,:self._options['sa']]
             ovlp =ovlp[:self._nstates,:self._nstates]
             U,_,Vt = np.linalg.svd(ovlp)
             ovlp = U@Vt
-    
+
         return ovlp
 
     def clean_dir(self):

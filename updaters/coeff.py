@@ -21,12 +21,15 @@ class CoeffUpdater(Updater, metaclass = SingletonFactory):
         self.coeff.fill()
         self.prop.fill()
 
-class BlankCoeffUpdater(CoeffUpdater, key = "none"):
+class BlankCoeffUpdater(CoeffUpdater):
+    key = "none"
+
     def update(self, mols, dt):
         self.no_update(mols, dt)
 
-class CoeffTDCUpdater(Multistage, CoeffUpdater, key = "tdc"):
-    steps = 2
+class CoeffTDCUpdater(Multistage, CoeffUpdater):
+    key = "tdc"
+    steps = 1
     mode = ""
 
     def update(self, mols: list[Molecule], dt: float):
@@ -42,8 +45,9 @@ class CoeffTDCUpdater(Multistage, CoeffUpdater, key = "tdc"):
             self.prop.inter[i] = prop
             self.coeff.inter[i] = prop @ coeff
 
-class CoeffLDUpdater(Multistage, CoeffUpdater, key = "ld"):
-    steps = 2
+class CoeffLDUpdater(Multistage, CoeffUpdater):
+    key = "ld"
+    steps = 1
     mode = "o"
 
     def update(self, mols: list[Molecule], dt: float):
@@ -59,7 +63,7 @@ class CoeffLDUpdater(Multistage, CoeffUpdater, key = "ld"):
             self.coeff.inter[i] = prop @ coeff
 
 class BlochUpdater(Multistage, Updater, metaclass = Singleton):
-    steps = 2
+    steps = 1
     mode = ""
 
     def __init__(self, **kwargs):

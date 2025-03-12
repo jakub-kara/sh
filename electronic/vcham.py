@@ -6,10 +6,10 @@ import pickle
 import scipy
 import classes.constants
 from classes.molecule import Molecule
-from electronic.electronic import ESTProgram
+from electronic.electronic import ESTProgram, est_method
 
 
-class VC(ESTProgram, key = "vcham"):
+class VC(ESTProgram):
     r'''
     Collects and calculates energies, gradients, NACs and Hessians according to a Heidelburgian/Fitzrovian vibronic coupling hamiltonian
 
@@ -51,6 +51,8 @@ Be careful here, especially with the bi-linear terms. We use a factor of 1/2 in 
 Finally, we note that we can make use of "inactive modes" physically. These amount to removing one of the normal mode displacements. To do this, set the inactive_mode[i] variable to True for the index you want to be inactive. This can be done in the options section of the input file
 
     '''
+    key = "vcham"
+
     def __init__(self, **config):
         super().__init__(**config)
         self.file = self._path
@@ -138,8 +140,6 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         self.nacdr *= np.sqrt(self.omega)[None,None,:]
         if self.hess_b:
             self.hess *= np.sqrt(self.omega[None,None,:,None] * self.omega[None,None,None,:])
-
-
 
     def execute(self):
         pass

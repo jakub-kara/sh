@@ -3,8 +3,8 @@ from .ehr import SimpleEhrenfest
 from classes.molecule import Molecule
 from electronic.electronic import ESTProgram
 
-class GSE(SimpleEhrenfest, key = "gse"):
-    mode = "g"
+class GSE(SimpleEhrenfest):
+    key = "gse"
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         mol = mols[-1]
@@ -22,11 +22,6 @@ class GSE(SimpleEhrenfest, key = "gse"):
                 nac_eff_pre[j,i] = -nac_eff_pre[i,j]
         return nac_eff_pre
 
-    def _get_projector(self, mol: Molecule):
-        proj = np.zeros((mol.n_atoms, mol.n_atoms, 3, 3))
-        inv_iner = np.linalg.inv(mol.inertia)
-
-
     def calculate_acceleration(self, mol: Molecule):
         force = np.zeros_like(mol.acc_ad)
         nac_eff_pre = self._get_eff_nac(mol)
@@ -39,12 +34,3 @@ class GSE(SimpleEhrenfest, key = "gse"):
                 force += 2 * np.real(mol.nacdt_ss[i,j] * mol.coeff_s[j].conj() * mol.coeff_s[i] * nac_eff_pre[i,j] / (np.sum(nac_eff_pre[i,j] * mol.vel_ad))) * mol.ham_eig_ss[i,i]
 
         mol.acc_ad = force / mol.mass_a[:,None]
-
-    def prepare_traj(self, mol: Molecule):
-        mol.coeff_s[self._state] = 1
-        est = ESTProgram()
-        self.setup_est(mode = self.mode)
-        est.run(mol)
-        est.read(mol, mol)
-        self.calculate_acceleration(mol)
-        est.reset_calc()

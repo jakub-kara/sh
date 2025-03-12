@@ -1,10 +1,11 @@
 import numpy as np
 from copy import deepcopy
+from abc import abstractmethod
 from classes.molecule import Molecule
 
 class Updater:
     name = ""
-    steps = 1
+    steps = 0
     substeps = 1
 
     def __init__(self, **kwargs):
@@ -27,12 +28,15 @@ class Updater:
         else:
             self.no_update(mols, dt, *args, **kwargs)
 
+    @abstractmethod
     def new_result(self, mol: Molecule):
         raise NotImplementedError
 
+    @abstractmethod
     def update(self, mols: list[Molecule], dt: float, *args, **kwargs):
         raise NotImplementedError
 
+    @abstractmethod
     def no_update(self, mols: list[Molecule], dt: float, *args, **kwargs):
         raise NotImplementedError
 

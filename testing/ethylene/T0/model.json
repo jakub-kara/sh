@@ -8,7 +8,8 @@
         "method": "fssh",
         "prob": "tdc",
         "decoherence": "edc",
-        "initstate": 0
+        "initstate": 0,
+	"backup": true
     },
     "nuclear": {
         "input": "model.xyz",
@@ -20,7 +21,7 @@
         "n_substeps": 50
     },
     "electronic": {
-        "program": "model_1d",
+        "program": "model",
         "path": "",
         "type": "sub_1",
         "states": [2,0,0],

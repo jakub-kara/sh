@@ -1,27 +1,28 @@
 import numpy as np
+from scipy.optimize import fsolve
 from classes.meta import Factory
 from classes.molecule import Molecule
 from classes.out import Output
 from dynamics.dynamics import Dynamics
 from electronic.electronic import ESTProgram
-from scipy.optimize import fsolve
+from updaters.coeff import CoeffUpdater
+from updaters.tdc import TDCUpdater
 
-
-class LSCIVR(Dynamics, key = "lscivr"):
+class LSCIVR(Dynamics):
     #Implements the linear semi-classical initial value representations
 
     #The key difference is in the propatation of the electronic degrees of freedom, which is performed in a single-excitation basis
     #We store the classical phase space variables of the electron in this basis in the coeff_s variable as z = x + ip
-    mode = "gn"
+    key = "lscivr"
 
     def __init__(self, *, dynamics: dict, **config):
         config["nuclear"]["mixins"].append("mmst")
         super().__init__(dynamics=dynamics, **config)
 
-        inistate = dynamics["initstate"]
-        self._state = inistate
-
         self.PE: PopulationEstimator = PopulationEstimator[dynamics.get("pop_est", "wigner")]()
+
+    def mode(self, mol: Molecule):
+        return ["g", "n", CoeffUpdater().mode, TDCUpdater().mode]
 
     def population(self, mol: Molecule, s: int):
         return self.PE.population(mol, s)
@@ -50,15 +51,6 @@ class LSCIVR(Dynamics, key = "lscivr"):
                 if i==j: continue
                 V += (r2[i] - r2[j]) * (mol.ham_eig_ss[i,i]-mol.ham_eig_ss[j,j])
         return V_bar + V * 1/mol.n_states * 1/4
-
-    def setup_est(self, mode: str):
-        est = ESTProgram()
-        if "g" in mode:
-            est.all_grads()
-        if "o" in mode:
-            est.add_ovlp()
-        if "n" in mode:
-            est.all_nacs()
 
     def calc_dPkindt(self, mol: Molecule):
         force = np.zeros_like(mol.acc_ad)
@@ -140,13 +132,10 @@ class LSCIVR(Dynamics, key = "lscivr"):
 
         mol.acc_ad[:,:] = force / mol.mass_a[:,None]
 
-    def prepare_traj(self, mol: Molecule):
-        out = Output()
-        out.write_log(f"Initial state:      {self._state}")
-        out.write_log("\n")
-        super().prepare_traj(mol)
+    def prepare_dynamics(self, mols: list[Molecule], dt: float):
+        super().prepare_dynamics(mols, dt)
         #current hack to generate correct initial distributinos if no file given
-        self.setup_x_p(mol,self._state)
+        self.setup_x_p(mols[-1], mols[-1].state)
 
 class PopulationEstimator(metaclass = Factory):
     def population(mol: Molecule, s: int):
@@ -169,7 +158,9 @@ class PopulationEstimator(metaclass = Factory):
                 mol.x_s[i] *= np.sqrt(sr2[1])
                 mol.p_s[i] *= np.sqrt(sr2[1])
 
-class WignerPE(PopulationEstimator, key = "wigner"):
+class WignerPE(PopulationEstimator):
+    key = "wigner"
+
     def sr2(mol: Molecule):
         def f(r):
             return 2**(mol.n_states+1)*(r**2-0.5)*np.exp(-r**2) * np.exp(-(mol.n_states-1)*0.5)-1
@@ -182,7 +173,9 @@ class WignerPE(PopulationEstimator, key = "wigner"):
         a = 2**(mol.n_states+1) * np.exp(-np.sum(mol.r2))
         return a * (mol.r2[s] - 0.5)
 
-class SemiclassicalPE(PopulationEstimator, key = "semiclassical"):
+class SemiclassicalPE(PopulationEstimator):
+    key = "semiclassical"
+
     def sr2(mol: Molecule):
         return (3,1)
 
@@ -191,7 +184,9 @@ class SemiclassicalPE(PopulationEstimator, key = "semiclassical"):
         return 0.5 * mol.r2[s] - 0.5
 
 
-class SpinMappingPE(PopulationEstimator, key = "spinmap"):
+class SpinMappingPE(PopulationEstimator):
+    key = "spinmap"
+
     def sr2(mol:Molecule):
         return (8/3,2/3)
     def population(mol: Molecule, s: int):

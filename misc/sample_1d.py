@@ -8,6 +8,9 @@ def make_dirs(root):
     for i in range(nsamp):
         os.mkdir(f"T{i}")
 
+def get_dirs(loc=".", cond=lambda x : True):
+    return [d for d in os.listdir(loc) if (os.path.isdir(d) and not d.startswith(".") and cond(d))]
+
 def sample_nuclear():
     gamma = 0.5
     q0 = np.array([-2,0])
@@ -27,7 +30,7 @@ def sample_nuclear():
         os.chdir("..")
 
 def sample_quantum():
-    nst = 2
+    nst = 3
     theta = np.arccos(np.random.uniform(0, 1, (nsamp, nst - 1)))
     phi = np.random.uniform(0, 2*np.pi, (nsamp, nst - 1))
 
@@ -35,14 +38,14 @@ def sample_quantum():
     sy = np.sin(theta) * np.sin(phi)
     sz = np.cos(theta)
 
-    for i in range(nsamp):
-        os.chdir(f"T{i}")
+    for i, d in enumerate(get_dirs(".", lambda x: x.startswith("T"))):
+        os.chdir(d)
         with open("bloch.dat", "w") as f:
             for j in range(nst - 1):
                 f.write(f"{sx[i,j]} {sy[i,j]} {sz[i,j]}\n")
         os.chdir("..")
 
-nsamp = 1500
-make_dirs(".")
-sample_nuclear()
+nsamp = 1000
+# make_dirs(".")
+# sample_nuclear()
 sample_quantum()

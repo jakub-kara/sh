@@ -1,59 +1,67 @@
 import numpy as np
 from scipy.linalg import expm
 
-def s(t):
-    res = np.eye(2)
-    res[0,1] = np.exp(-2*(1-t)**2 - 1/2)
-    res[1,0] = res[0,1]
-    return res
+nt = 2
+alpha = 4.7
+pos = lambda t: np.array([-np.cos(t), np.cos(t)])
+mom = lambda t: np.array([np.sin(t), -np.sin(t)])
+acc = lambda x: -x
+pot = lambda x: 1/2*x**2
+grd = lambda x: x
+kin = lambda p: 1/2*p**2
 
-def h(t):
-    res = np.eye(2)
-    res[0,1] = (2*(1-t)**2 - 1/2) * np.exp(-2*(1-t)**2 - 1/2)
-    res[1,0] = res[0,1]
-    return res
+d = lambda x1, x2: x2 - x1
+m = lambda x1, x2: (x1 + x2) / 2
 
-def k(t):
-    res = np.zeros((2,2), dtype=np.complex128)
-    res[0,0] = -1j/2
-    res[1,1] = -1j/2
-    res[0,1] = (2*(1-t) + 1j/2) * np.exp(-2*(1-t)**2 - 1/2)
-    res[1,0] = res[0,1]
-    return res
+cg_ovl = lambda x1, x2, p1, p2: np.exp(-alpha/2*d(x1,x2)**2 - 1/8/alpha*d(p1,p2)**2 + 1j*(x1*p1 - x2*p2 + m(x1,x2)*d(p1,p2)))
+cg_x   = lambda x1, x2, p1, p2: (1j/4/alpha*d(p1,p2) + m(x1,x2)) * cg_ovl(x1, x2, p1, p2)
+cg_nab = lambda x1, x2, p1, p2: (1j*m(p1,p2) + alpha*d(x1,x2)) * cg_ovl(x1, x2, p1, p2)
+cg_lap = lambda x1, x2, p1, p2: (2j*alpha*d(x1,x2)*m(p1,p2) - alpha + alpha**2*d(x1,x2)**2 - m(p1,p2)**2) * cg_ovl(x1, x2, p1, p2)
+cg_dx2 = lambda x1, x2, p1, p2: (-1j*m(p1,p2) - alpha*d(x1,x2)) * cg_ovl(x1, x2, p1, p2)
+cg_dp2 = lambda x1, x2, p1, p2: (-1/4/alpha*d(p1,p2) - 1j/2*d(x1,x2)) * cg_ovl(x1, x2, p1, p2)
 
-def f(y, s, h, k):
-    return -np.linalg.inv(s) @ (1j*h + k) @ y
+def cg_pot(x1, x2, p1, p2):
+    temp = cg_ovl(x1, x2, p1, p2) * (pot(x1) + pot(x2))/2
+    temp += grd(x1) * (cg_x(x1, x2, p1, p2) - x1*cg_ovl(x1, x2, p1, p2)) / 2
+    temp += grd(x2) * (cg_x(x1, x2, p1, p2) - x2*cg_ovl(x1, x2, p1, p2)) / 2
+    return temp
 
-w0 = np.sqrt(1/(2 * (1 + s(0)[0,1])))
-c = np.array([w0, w0], dtype=np.complex128)
-dt = 0.01
+tbf_ovl = lambda x1, x2, p1, p2: cg_ovl(x1, x2, p1, p2)
+
+def tbf_ham(x1, x2, p1, p2):
+    return -1/2*cg_lap(x1, x2, p1, p2) + cg_pot(x1, x2, p1, p2)
+
+def tbf_dt(x1, x2, p1, p2):
+    if x1 != x2 or p1 != p2:
+        return 0
+    temp = p2*cg_dx2(x1, x2, p1, p2) + acc(x2)*cg_dp2(x1, x2, p1, p2) + 1j/2*p2**2*cg_ovl(x1, x2, p1, p2)
+    temp += cg_ovl(x1, x2, p1, p2) * (-1j*pot(x2))
+    return temp
+
+def set_vars(t):
+    return *pos(t), *mom(t)
+
+def to_mat(fn, x1, x2, p1, p2):
+    return np.array([
+        [fn(x1,x1,p1,p1), fn(x1,x2,p1,p2)],
+        [fn(x2,x1,p2,p1), fn(x2,x2,p2,p2)]
+    ])
+
+x1, x2, p1, p2 = set_vars(0)
+ovl = to_mat(tbf_ovl, x1, x2, p1, p2)
+coeff = np.ones(2, dtype=np.complex128)
+coeff /= np.sqrt(np.einsum("a, ab, b ->", coeff.conj(), ovl, coeff))
 t = 0
-print(k(0))
-print(h(0))
-print(s(0))
-breakpoint()
-
-while t < 1.1:
-    print(t)
-    print(c)
-    print(np.einsum("i,ij,j->", c.conj(), s(t), c))
-    print()
-    sini = s(t)
-    sfin = s(t+dt)
-    hini = h(t)
-    hfin = h(t+dt)
-    kini = k(t)
-    kfin = k(t+dt)
-
-    k1 = f(c, sini, hini, kini)
-    k2 = f(c + dt*k1/2, (sini+sfin)/2, (hini+hfin)/2, (kini+kfin)/2)
-    k3 = f(c + dt*k2/2, (sini+sfin)/2, (hini+hfin)/2, (kini+kfin)/2)
-    k4 = f(c + dt*k3, sfin, hfin, kfin)
-
-    # k1 = f(t, c)
-    # k2 = f(t + dt/2, c + dt*k1/2)
-    # k3 = f(t + dt/2, c + dt*k2/2)
-    # k4 = f(t + dt, c + dt*k3)
-    c += dt*(k1+2*k2+2*k3+k4)/6
-    
+dt = 1e-3
+tmax = 1e-2
+while t <= tmax:
+    x1, x2, p1, p2 = set_vars(t)
+    ham = to_mat(tbf_ham, x1, x2, p1, p2)
+    ddt = to_mat(tbf_dt, x1, x2, p1, p2)
+    ovl = to_mat(tbf_ovl, x1, x2, p1, p2)
+    coeff = expm(-np.linalg.inv(ovl) @ (1j*ham+ddt) * dt) @ coeff
+    print(coeff)
+    print(np.real(np.einsum("a, ab, b ->", coeff.conj(), ovl, coeff)))
     t += dt
+
+breakpoint()

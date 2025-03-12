@@ -3,13 +3,15 @@ import os, sys
 import struct
 import math
 
-from .electronic import ESTProgram
+from .electronic import ESTProgram, est_method
 from classes.constants import multiplets, convert
 
 def str2float(string):
     return float(string.replace('-.','-0.').replace('D','E'))
 
-class Turbomole(ESTProgram, key = "turbomole"):
+class Turbomole(ESTProgram):
+    key = "turbomole"
+
     def _select_method(self, key):
         methods = {
             "adc2": self.adc2
@@ -25,11 +27,11 @@ class Turbomole(ESTProgram, key = "turbomole"):
     def _clean_dir(self):
         os.system('rm control exstates')
 
-
+    @est_method
     def adc2(self):
         self._clean_dir()
         os.system('cp mos old_mos')
-        
+
         for i in range(self._nstates):
             if self._calc_grad[i]:
                 grad_state = i
@@ -39,40 +41,40 @@ class Turbomole(ESTProgram, key = "turbomole"):
 
         os.system('cp old_mos mos')
 
- 
-   
+
+
     def get_ao_ovlp(self,config, atoms, geom1, geom2):
         self.run_ao_ovlp(config, atoms, geom1, geom2)
         self.read_ao_ovlp()
 
 
     def make_control_script(self, config, model, grad_state):
-        
-    
+
+
         os.system('x2t turbomole.xyz > coord')
-    
-    
+
+
         with open('sim', 'w') as f:
             f.write('\n\n\n')
             f.write('a coord\nsy c1\n*\nno\n')
             f.write(f"{config['basis']}"+"\n*\n")
             f.write("eht\n\n\n\n")
-    
+
         #riadc2
             f.write('cc\nfreeze\n*\ncbas\n*\n')
             f.write(f'ricc2\nmodel {model}\n*\nexci\n'+f'irrep=a nexc={config["sa"]-1}'+'\n*\n')
             f.write('spectrum states=all operators=diplen,qudlen\n*')
             f.write('\n*\n*\n')
-    
-    
+
+
         os.system('define < sim > define.out')
-    
+
         if grad_state >= 1:
             self._add_option('control', 'excitations', f'xgrad states=(a {grad_state} 1)')
         else:
             self._add_section('control', '$response')
             self._add_option('control', 'response', 'gradient')
-    
+
         self._change_option('control', 'scfiterlimit', '$scfiterlimit   100')
 
 
@@ -87,23 +89,23 @@ class Turbomole(ESTProgram, key = "turbomole"):
             for i in range(len(atoms)):
                 f.write(f'{geom2[i,0]}   {geom2[i,1]}  {geom2[i,2]}   {atoms[i]}'+'\n')
             f.write('$end')
-    
+
         with open('sim', 'w') as f:
             f.write('\n\n\n')
             f.write('a dcoord\nsy c1\n*\nno\n')
             f.write(f"{config['basis']}"+"\n*\n")
             f.write("*\nq\n")
-    
-        os.system('define < sim > define.out') 
-    
+
+        os.system('define < sim > define.out')
+
         self._add_section('control', '$intsdebug 1 sao')
-    
+
         self._change_option('control', 'scfiterlimit', '$scfiterlimit   0')
-    
+
         os.system('dscf > odscf.out')
 
 
-    
+
     def _move_old_files(self):
         """shifts files from previous calculation to new calculation"""
         os.system('mv dets_a dets_a.old')
@@ -115,8 +117,8 @@ class Turbomole(ESTProgram, key = "turbomole"):
         for i in range(1,no_states):
             civ.get_state_dets(i+1)
         civ.write_det_file(no_states)
-    
-    
+
+
     def read_wf_overlap(self,out_file):
         """
         reads output of the wfoverlap run
@@ -131,10 +133,10 @@ class Turbomole(ESTProgram, key = "turbomole"):
                         S_mat[i+1,1:] = [float(j) for j in f.readline().split()[2:]]
 
         S_mat[0,0] = 1.
-    
+
         U, _, Vh = np.linalg.svd(S_mat)
-    
-    
+
+
         S_mat = U@Vh
         return S_mat
 
@@ -164,12 +166,12 @@ class Turbomole(ESTProgram, key = "turbomole"):
 
         ens = np.zeros(self._options['sa'], dtype=np.complex128)
         try:
-            f = open('exstates', 'r') 
+            f = open('exstates', 'r')
             for line in f:
                 if '$excitation_energies_ADC(2)' in line:
                     for i in range(self._options['sa']-1):
                         ens[i+1] = str2float(f.readline().split()[-1])
-    
+
                 #  if 'gradient' in line:
                     #  gradient_found = True
                     #  for i in range(natoms):
@@ -177,7 +179,7 @@ class Turbomole(ESTProgram, key = "turbomole"):
                         #  gradient[i,:] = [str2float(q) for q in data]
         except:
             FileNotFoundError
-    
+
         with open('ricc2.out','r') as f:
             for line in f:
                 if 'Final MP2 energy' in line:
@@ -207,21 +209,21 @@ class Turbomole(ESTProgram, key = "turbomole"):
                     f.readline()
                     for i in range(3):
                         grad.append([str2float(q) for q in f.readline().split()[1:]])
-                        
+
                     for p in range(self._natoms//5):
                         f.readline()
                         f.readline()
                         for i in range(3):
                             grad[i] += [str2float(q) for q in f.readline().split()[1:]]
-        
+
             gradient = np.array(grad).T
-        
+
             grad = np.zeros((self._options['sa'],self._natoms,3))
-    
+
             for i in range(self._nstates):
                 if self._calc_grad[i]:
                     grad[i] = gradient
-    
+
         return grad
 
     def read_ovlp(self,atoms,geom1,geom2):
@@ -245,8 +247,8 @@ class Turbomole(ESTProgram, key = "turbomole"):
         with open('wf.inp','w') as f:
             f.write(wf_file)
         os.system('$SHARC/wfoverlap.x -f wf.inp > wf.out')
-        
-    
+
+
         S_mat = self.read_wf_overlap('wf.out')
 
         return S_mat
@@ -255,36 +257,36 @@ class Turbomole(ESTProgram, key = "turbomole"):
         f = open(control, 'r')
         q = f.readlines()
         q[-1] = section+'\n'+q[-1]
-    
+
         f.close()
         f = open(control, 'w')
         for l in q:
             f.write(l)
         return ''
-    
+
     def _change_option(self, control, option, replace):
         tmp = []
         f = open(control, 'r')
         for l in f:
             if f'{option}' in l:
                 l = replace+'\n'
-    
+
             tmp.append(l)
         f.close()
-    
+
         f = open(control, 'w')
         for l in tmp:
             f.write(l)
-    
+
     def _add_option(self, control, section, option):
         tmp = []
         f = open(control, 'r')
         for l in f:
             if f'${section}' in l:
                 l += '    '+option+'\n'
-    
+
             tmp.append(l)
-    
+
         f.close()
         f = open(control, 'w')
         for l in tmp:

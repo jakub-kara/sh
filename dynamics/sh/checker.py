@@ -27,16 +27,16 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
             self._cum_prob = None
 
 
-    def new_result(self, mol: Molecule, active: int):
-        self.hop = UpdateResult(active, self.substeps)
+    def new_result(self, mol: Molecule):
+        self.hop = UpdateResult(mol.active, self.substeps)
         self.prob = UpdateResult(np.zeros(mol.n_states), self.substeps)
 
-    def no_update(self, mols: list[Molecule], dt: float, active: int):
+    def no_update(self, mols: list[Molecule], dt: float):
         self.hop.fill()
 
     def _check_hop_c(self, prob: np.ndarray, active : int, dt: float):
         if self._r is None:
-            self._r= self._rng.random()
+            self._r = self._rng.random()
             self._cum_prob = 0.
 
         self._cum_prob += (1-self._cum_prob) * (1-np.exp(-dt*np.sum(prob)))
@@ -51,7 +51,6 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
             return s
         return active
 
-
     def _check_hop_i(self, prob: np.ndarray, active: int, dt: float):
         r = self._rng.random()
         cum_prob = 0
@@ -61,21 +60,23 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
                 return s
         return active
 
-class NoHoppingUpdater(HoppingUpdater, key = "none"):
-    steps = 1
+class NoHoppingUpdater(HoppingUpdater):
+    key = "none"
 
     def update(self, mols, dt, *args, **kwargs):
         self.hop.fill()
 
-class TDCHoppingChecker(Multistage, HoppingUpdater, key = "tdc"):
+class TDCHoppingChecker(Multistage, HoppingUpdater):
     ''' CLASSIC TULLY '''
+    key = "tdc"
     steps = 1
 
-    def update(self, mols: list[Molecule], dt: float, active: int):
+    def update(self, mols: list[Molecule], dt: float):
         cupd = CoeffUpdater()
         tdcupd = TDCUpdater()
-        nst = mols[-1].n_states
 
+        nst = mols[-1].n_states
+        active = mols[-1].active
         prob = self.prob.inp
         target = self.hop.inp
 
@@ -94,7 +95,6 @@ class TDCHoppingChecker(Multistage, HoppingUpdater, key = "tdc"):
                     prob[s] = 0
                 # standard Tully-based hopping probability
                 else:
-                    # TODO: check timestep changes with variable timestep
                     temp = np.real(tdc[s, active] * np.conj(coeff[active]) * coeff[s])
                     temp *= -2 * (dt/self.substeps) /  np.abs(coeff[active])**2
                     prob[s] = max(0, temp)
@@ -102,13 +102,15 @@ class TDCHoppingChecker(Multistage, HoppingUpdater, key = "tdc"):
             self.hop.inter[i] = self._check_hop(prob, active, dt/self.substeps)
             target = self.hop.inter[i]
 
-class PropHoppingChecker(HoppingUpdater, key = "prop"):
-    steps = 2
+class PropHoppingChecker(HoppingUpdater):
+    key = "prop"
+    steps = 1
 
-    def update(self, mols: list[Molecule], dt: float, active: int):
+    def update(self, mols: list[Molecule], dt: float):
         cupd = CoeffUpdater()
-        nst = mols[-1].n_states
 
+        nst = mols[-1].n_states
+        active = mols[-1].active
         prob = self.prob.inp
 
         for s in range(nst):
@@ -123,12 +125,15 @@ class PropHoppingChecker(HoppingUpdater, key = "prop"):
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active, dt)
 
-class GFHoppingChecker(HoppingUpdater, key = "gf"):
-    steps = 2
+class GFHoppingChecker(HoppingUpdater):
+    key = "gf"
+    steps = 1
 
-    def update(self, mols: list[Molecule], dt: float, active: int):
+    def update(self, mols: list[Molecule], dt: float):
         cupd = CoeffUpdater()
+
         nst = mols[-1].n_states
+        active = mols[-1].active
         prob = self.prob.inp
 
         fact = (1 - np.abs(cupd.coeff.out[active])**2 / np.abs(cupd.coeff.inp[active])**2)
@@ -143,9 +148,12 @@ class GFHoppingChecker(HoppingUpdater, key = "gf"):
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active, dt)
 
-class MASHChecker(HoppingUpdater, key = "mash"):
-    def update(self, mols: list[Molecule], dt: float, active: int):
+class MASHChecker(HoppingUpdater):
+    key = "mash"
+
+    def update(self, mols: list[Molecule], dt: float):
         nst = mols[-1].n_states
+        active = mols[-1].active
         prob = self.prob.inp
         for s in range(nst):
             if s == active:
@@ -155,19 +163,23 @@ class MASHChecker(HoppingUpdater, key = "mash"):
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active, dt)
 
-class MISHChecker(HoppingUpdater, key = "mish"):
-    def update(self, mols: list[Molecule], dt: float, active: int):
+class MISHChecker(HoppingUpdater):
+    key = "mish"
+
+    def update(self, mols: list[Molecule], dt: float):
         prob = self.prob.inp
         prob[:] = 0
         target = np.argmax(np.abs(mols[-1].coeff_s)**2)
         prob[target] = 1.
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, active, dt)
+        self.hop.out = self._check_hop(prob, mols[-1].active, dt)
 
-# class FSSHCChecker(HoppingUpdater, key = "fssh-c"):
+# class FSSHCChecker(HoppingUpdater, ):
+#     key = "fssh-c"
+#
 #     def __init__(self, *, seed = None, **config):
 #         super().__init__(**config)
 #         self.r = 0.
 #     def _check_hop(self, prob: np.ndarray, active: int):
-#         return 
+#         return
 #

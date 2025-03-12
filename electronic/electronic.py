@@ -5,8 +5,16 @@ from classes.meta import SingletonFactory
 from classes.molecule import Molecule
 from classes.constants import convert
 
+def est_method(func):
+    func._estmethod = True
+    return func
+
 class ESTProgram(metaclass = SingletonFactory):
+    _methods = {}
+
     def __init__(self, *, states: list, program: str, type: str, path: str = "", options: dict = None, refen = 0, **config):
+        self._register_methods()
+
         self._path = path
         if isinstance(states, int):
             self._states = np.array([states])
@@ -32,9 +40,14 @@ class ESTProgram(metaclass = SingletonFactory):
     def n_states(self):
         return self._nstates
 
-    @abstractmethod
+    def _register_methods(self):
+        cls = self.__class__
+        for key, val in cls.__dict__.items():
+            if hasattr(val, "_estmethod"):
+                cls._methods[key] = val
+
     def _select_method(self, key: str):
-        pass
+        return self._methods[key]
 
     def reset_calc(self):
         self._calc_grad = np.zeros(self._nstates)
@@ -42,53 +55,30 @@ class ESTProgram(metaclass = SingletonFactory):
         self._calc_ovlp = False
         return self
 
-    def all_grads(self):
-        self._calc_grad[:] = 1
-        return self
+    def request(self, *args: str):
+        def to_idx(inp: str):
+            if inp == "x":
+                return None
+            elif inp.isdigit():
+                return int(inp)
 
-    def add_grads(self, *args):
         for arg in args:
-            self._calc_grad[arg] = 1
-        return self
-
-    def remove_grads(self, *args):
-        for arg in args:
-            self._calc_grad[arg] = 0
-        return self
+            arg += (3 - len(arg)) * "x"
+            if arg[0] == "o":
+                self._calc_ovlp = True
+            elif arg[0] == "g":
+                idx = to_idx(arg[1])
+                self._calc_grad[idx] = True
+            elif arg[0] == "n":
+                idx = to_idx(arg[1]), to_idx(arg[2])
+                self._calc_nac[idx] = True
+                self._calc_nac[idx[::-1]] = True
 
     def any_grads(self):
         return np.any(self._calc_grad)
 
-    def all_nacs(self):
-        self._calc_nac[:] = 1
-        return self
-
-    def add_nacs(self, *args):
-        for arg in args:
-            if len(arg) != 2:
-                continue
-            self._calc_nac[arg] = 1
-            self._calc_nac[arg[::-1]] = 1
-        return self
-
-    def remove_nacs(self, *args):
-        for arg in args:
-            if len(arg) != 1:
-                continue
-            self._calc_nac[arg] = 0
-            self._calc_nac[arg[::-1]] = 0
-        return self
-
     def any_nacs(self):
         return np.any(self._calc_nac)
-
-    def add_ovlp(self):
-        self._calc_ovlp = True
-        return self
-
-    def remove_ovlp(self):
-        self._calc_ovlp = False
-        return self
 
     def any_ovlp(self):
         return self._calc_ovlp
@@ -107,7 +97,7 @@ class ESTProgram(metaclass = SingletonFactory):
 
         if self.any_nacs():
             if ref is None:
-                raise ValueError("Cannot read nacmes without reference Molecule.")
+                raise RuntimeError("Cannot read nacmes without a reference Molecule.")
             mol.nacdr_ssad = self.read_nac()
             mol.adjust_nacs(ref)
 
@@ -116,7 +106,7 @@ class ESTProgram(metaclass = SingletonFactory):
 
         if self.any_ovlp():
             if ref is None:
-                raise ValueError("Cannot read overlaps without reference Molecule.")
+                raise RuntimeError("Cannot read overlaps without a reference Molecule.")
             mol.ovlp_ss = self.read_ovlp(mol.name_a.astype("<U2"), mol.pos_ad, ref.pos_ad)
             mol.adjust_ovlp()
 
@@ -127,7 +117,7 @@ class ESTProgram(metaclass = SingletonFactory):
         self._natoms = mol.n_atoms
         with open(f"{self._file}.xyz", "w") as file:
             file.write(mol.to_xyz())
-        self._method()
+        self._method(self)
 
     def backup_wf(self):
         pass

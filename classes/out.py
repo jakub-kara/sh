@@ -3,12 +3,13 @@ import pickle, h5py
 import time
 from classes.meta import Singleton
 
-
 class Output(metaclass = Singleton):
+    border = "="*40
+
     def __init__(self, *, file: int, record: list, **config):
-        self.record = record
+        self._record = record
         self._file = file
-        self._dist = config.get('dist',False)
+        self._dist = config.get("dist",False)
         self._options = {
             "compression": config.get("compression", "gzip"),
             "compression_opts": config.get("compression_opts", 9),
@@ -16,7 +17,6 @@ class Output(metaclass = Singleton):
 
         self._log = config.get("log", True)
         self._logfile = None
-        self._logmode = "w"
 
         self._xyz = config.get("xyz", True)
         self._dist = config.get("dist", False)
@@ -24,33 +24,42 @@ class Output(metaclass = Singleton):
         self._dat = config.get("dat", True)
 
     def __del__(self):
-        self.write_log("TERMINATED")
+        self.write_log()
+        self.write_border()
+        self.write_log("Program terminated.")
+        self.write_log("Exiting.")
+        self.write_border()
         self.close_log()
 
     def to_log(self, filename):
         with open(filename, "r") as f:
             self.write_log(f.read())
 
-    def open_log(self):
-        self._logfile = open(f"data/{self._file}.log", self._logmode)
-        self._logmode = "a"
+    def open_log(self, mode = "a"):
+        self._logfile = open(f"data/{self._file}.log", mode = mode)
 
     def close_log(self):
-        self._logfile.close()
+        if self._logfile:
+            self._logfile.close()
         self._logfile = None
 
+    def write_border(self):
+        self.write_log(self.border)
+
     def write_log(self, msg = ""):
-        print(msg)
+        if msg is None:
+            return
         if not self._log:
             return
-        self._logfile.write(msg + "\n")
+        print(msg)
+        self._logfile.write(f"{msg}\n")
 
     def write_dat(self, data: dict, mode="a"):
         if not self._dat:
             return
         with open(f"data/{self._file}.dat", mode) as file:
             file.write(data["time"])
-            for rec in self.record:
+            for rec in self._record:
                 if rec in data.keys():
                     file.write(data[rec])
             file.write("\n")
@@ -74,8 +83,6 @@ class Output(metaclass = Singleton):
             if to_write is None:
                 return
             key = str(to_write["step"])
-            if key in file.keys():
-                del file[key]
             grp = file.create_group(key)
             to_write.pop("step")
             for key, val in to_write.items():
@@ -84,14 +91,32 @@ class Output(metaclass = Singleton):
                 else:
                     grp.create_dataset(key, data=val)
 
-def record_time(fun, out: Output, msg: str = ""):
-    def inner(*args, **kwargs):
-        t1 = time.time()
-        res = fun(*args, **kwargs)
-        t2 = time.time()
-        out.write_log(f"{msg} {t2-t1}\n")
-        return res
-    return inner
+class Timer:
+    _timers = []
+
+    def __init__(self, id, head = None, msg = "Wall time", foot = None):
+        self._id = id
+        self._head = head
+        self._msg = msg
+        self._foot = foot
+
+    def __call__(self, func):
+        def inner(*args, **kwargs):
+            if self._id in self._timers:
+                return func(*args, **kwargs)
+            else:
+                out = Output()
+                self._timers.append(self._id)
+                t0 = time.time()
+                out.write_log(self._head)
+                res = func(*args, **kwargs)
+                out.write_log(f"{self._msg}: {time.time() - t0 :.4f}")
+                out.write_log(self._foot)
+                out.write_log()
+                self._timers.remove(self._id)
+                return res
+        inner.timer = self
+        return inner
 
 class Printer:
     field_length = 20
