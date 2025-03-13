@@ -25,6 +25,7 @@ class ESTProgram(metaclass = SingletonFactory):
         self._spinsum = np.cumsum(self._states) - self._states
         self._refen = convert(refen, "au")
 
+        self._method_name = method
         self._method = self._select_method(method)
         if options is None:
             options = {}
