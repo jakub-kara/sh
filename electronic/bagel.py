@@ -4,7 +4,7 @@ import json
 
 from classes.molecule import Molecule
 
-from .electronic import ESTProgram, est_method
+from .base import ESTProgram, est_method
 from classes.constants import Constants
 
 from .molpro import Molpro
@@ -317,7 +317,7 @@ class Bagel(ESTProgram):
 
     def _get_trans(self):
         self._trans = np.eye(self._options['sa'])
-        # if self._type == 'caspt2':
+        # if self._method_name == 'caspt2':
         #
         #     NM = self._options['ms_type'] != 'M'
         #
@@ -328,7 +328,7 @@ class Bagel(ESTProgram):
         #                     self._trans[i,:] = [float(q) for q in f.readline().split()]
         #                 break
         #
-        if self._type == 'dsrgmrpt2':
+        if self._method_name == 'dsrgmrpt2':
             if not self._options['fci_relax']:
                 with open(f"{self._file}.out",'r') as f:
                     for line in f:
@@ -339,7 +339,7 @@ class Bagel(ESTProgram):
                                 self._trans[i,:] = [float(q) for q in f.readline().split()[1:]]
             # print(self._trans)
 
-        elif self._type == 'mcqdpt2':
+        elif self._method_name == 'mcqdpt2':
             if self._options['xmc']:
                 string = '++ Rotation Matrix from CASSCF States (XMC) ++'
             else:
@@ -434,7 +434,7 @@ class Bagel(ESTProgram):
                 ci.append({})
                 for line in f:
                     if f"ci vector, state {i:3g}" in line:
-                        # if self._type == 'mcqdpt2' and counter == 0:
+                        # if self._method_name == 'mcqdpt2' and counter == 0:
                         #     counter +=1
                         #     continue
                         ci[-1] = {}
@@ -443,7 +443,7 @@ class Bagel(ESTProgram):
                             ci[i][self._form_key(l[0])] = float(l[1])
 
 
-                        if (self._type != 'dsrgmrpt2' and not self._options.get('fci_relax',False)) or self._type == 'caspt2':
+                        if (self._method_name != 'dsrgmrpt2' and not self._options.get('fci_relax',False)) or self._method_name == 'caspt2':
                             f.seek(0)
                             break
                 f.seek(0)
