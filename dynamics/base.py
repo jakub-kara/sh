@@ -10,7 +10,7 @@ from classes.trajectory import Trajectory
 from updaters.composite import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
-from electronic.electronic import ESTProgram
+from electronic.base import ESTProgram
 
 class Dynamics(metaclass = SingletonFactory):
     def __init__(self, *, dynamics: dict, **config: dict):
@@ -33,17 +33,8 @@ class Dynamics(metaclass = SingletonFactory):
     def population(self, mol: Molecule, s: int):
         return np.abs(mol.coeff_s[s])**2
 
-    def read_coeff(self, mol: Molecule, file = None):
-        data = np.genfromtxt(file)
-        if data.ndim == 1:
-            data = data[None, :]
-        if data.shape != (mol.n_states, 2):
-            raise ValueError(f"Invalid coeff input format in {file}")
-        mol.coeff_s[:] = data[:,0]
-        mol.coeff_s += 1j*data[:,1]
-
     @Timer(id = "init",
-           head = "Trajectory Initialisation",
+           head = f"{Output.border}\nTrajectory Initialisation",
            msg = "Total time")
     def prepare_traj(self, traj: Trajectory):
         mol = traj.mols[-1]
@@ -82,6 +73,11 @@ class Dynamics(metaclass = SingletonFactory):
         traj.add_molecule(temp)
         traj.pop_molecule(0)
 
+        out = Output()
+        out.write_log(f"Total energy:   {convert(self.total_energy(traj.mol), 'au', 'ev'):.6f} eV")
+        out.write_log(f"Energy drift:   {convert(self.energy_diff(traj.mol, traj.mols[-2]), 'au', 'ev'):.6f} eV")
+        out.write_log()
+
         self.adjust_nuclear(traj.mols, traj.timestep.dt)
 
         traj.next_step()
@@ -94,11 +90,11 @@ class Dynamics(metaclass = SingletonFactory):
 
     @abstractmethod
     def mode(self, mol: Molecule):
-        pass
+        return [TDCUpdater().mode, CoeffUpdater().mode]
 
-    @abstractmethod
     @Timer(id = "nuc",
            head = "Nuclear Adjustment")
+    @abstractmethod
     def adjust_nuclear(self, mol: Molecule, dt: float):
         pass
 
@@ -191,12 +187,6 @@ class Dynamics(metaclass = SingletonFactory):
         dic["nacdr"] = "".join([Printer.write(f"NACdr {j}-{i} [au]", "s") for i in range(nst) for j in range(i)])
         dic["nacdt"] = "".join([Printer.write(f"NACdt {j}-{i} [au]", "s") for i in range(nst) for j in range(i)])
         dic["coeff"] = "".join([Printer.write(f"Coeff {i}", f" <{Printer.field_length*2+1}") for i in range(nst)])
-        dic["posx"] = Printer.write("X-Position [au]", "s")
-        dic["posy"] = Printer.write("Y-Position [au]", "s")
-        dic["posz"] = Printer.write("Z-Position [au]", "s")
-        dic["momx"] = Printer.write("X-Momentum [au]", "s")
-        dic["momy"] = Printer.write("Y-Momentum [au]", "s")
-        dic["momz"] = Printer.write("Z-Momentum [au]", "s")
         return dic
 
     def dat_dict(self, traj: Trajectory):
@@ -214,12 +204,6 @@ class Dynamics(metaclass = SingletonFactory):
         dic["nacdr"] = "".join([Printer.write(mol.nac_norm_ss[i,j], "f") for i in range(nst) for j in range(i)])
         dic["nacdt"] = "".join([Printer.write(mol.nacdt_ss[i,j], "f") for i in range(nst) for j in range(i)])
         dic["coeff"] = "".join([Printer.write(mol.coeff_s[i], "z") for i in range(nst)])
-        dic["posx"] = Printer.write(mol.pos_ad[0,0], "f")
-        dic["posy"] = Printer.write(mol.pos_ad[0,1], "f")
-        dic["posz"] = Printer.write(mol.pos_ad[0,2], "f")
-        dic["momx"] = Printer.write(mol.mom_ad[0,0], "f")
-        dic["momy"] = Printer.write(mol.mom_ad[0,1], "f")
-        dic["momz"] = Printer.write(mol.mom_ad[0,2], "f")
         return dic
 
     def dist_string(self, traj: Trajectory):
@@ -234,25 +218,25 @@ class Dynamics(metaclass = SingletonFactory):
     def h5_info(self, traj: Trajectory):
         mol = traj.mol
         dic = {}
-        dic["step"] = "info",
-        dic["nst"] = mol.n_states,
-        dic["nat"] = mol.n_atoms,
-        dic["ats"] = mol.name_a,
-        dic["mass"] = mol.mass_a,
+        dic["step"] = "info"
+        dic["nst"] = mol.n_states
+        dic["nat"] = mol.n_atoms
+        dic["ats"] = mol.name_a
+        dic["mass"] = mol.mass_a
         return dic
 
     def h5_dict(self, traj: Trajectory):
         mol = traj.mol
         dic = {}
-        dic["step"] = traj.timestep.step,
-        dic["time"] = traj.timestep.time,
-        dic["pos"] = mol.pos_ad,
-        dic["vel"] = mol.vel_ad,
-        dic["acc"] = mol.acc_ad,
-        dic["trans"] = mol.trans_ss,
-        dic["hdiag"] = mol.ham_eig_ss,
-        dic["grad"] = mol.grad_sad,
-        dic["nacdr"] = mol.nacdr_ssad,
-        dic["nacdt"] = mol.nacdt_ss,
+        dic["step"] = traj.timestep.step
+        dic["time"] = traj.timestep.time
+        dic["pos"] = mol.pos_ad
+        dic["vel"] = mol.vel_ad
+        dic["acc"] = mol.acc_ad
+        dic["trans"] = mol.trans_ss
+        dic["hdiag"] = mol.ham_eig_ss
+        dic["grad"] = mol.grad_sad
+        dic["nacdr"] = mol.nacdr_ssad
+        dic["nacdt"] = mol.nacdt_ss
         dic["coeff"] = mol.coeff_s
         return dic

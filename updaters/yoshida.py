@@ -1,8 +1,8 @@
 import numpy as np
 from .nuclear import NuclearUpdater
 from classes.molecule import Molecule
-from dynamics.dynamics import Dynamics
-from electronic.electronic import ESTProgram
+from dynamics.base import Dynamics
+from electronic.base import ESTProgram
 
 class Yoshida4(NuclearUpdater):
     key = "y4"

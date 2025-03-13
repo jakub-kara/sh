@@ -26,9 +26,9 @@ def get_temp(ehmodes, U_vib):
     U_vib *= evtocm
     modes = ehtoev * evtocm * ehmodes
     print(f"Target Energy = {U_vib:7.4f} cm^-1")
-    
+
     k_b = 0.695034800  # in (cm K)^-1
-    
+
     def diff(F, x):
         # simple finite difference gradient calculation
         h = 0.001
@@ -48,39 +48,39 @@ def get_temp(ehmodes, U_vib):
     def get_e(T):
         # total energy = k_b T^2 (dln(q)/d(T))_V
         return k_b * t2qlnqdt(T)  # T**2 * diff(lp, T)
-    
+
     def get_t(T):
         # Function that returns difference between wanted energy and energy at current T
         U_test = get_e(T[0])
         print(
             f"Curr. Energy = {U_test:7.4f} err {U_test-U_vib:7.4f} cm^-1, Curr. Temp. = {T[0]:7.4f} K")
         return U_test-U_vib
-    
+
     def get_e2(T):
         return np.sum([mode/(np.exp(mode/(k_b*T)) - 1) for mode in modes])
-    
+
     def get_t2(T):
         U_test = get_e2(T[0])
         return U_test-U_vib
-    
+
     print('Mode  Wavenumbers (cm^-1)  Vib. Temp. (K)')
     for i, mode in enumerate(modes):
         print(f"{i:3g}      {mode:>7.4f}     {mode/k_b:>7.4f}")
-    
+
     T_classical= get_classical_temp(U_vib, modes)
     print(f"Init. guess of classical temperature {T_classical:7.4f} K")
-    
+
     T= spo.fsolve(get_t, T_classical, xtol=1e-10)[0]
     #second solve
     #  T2= spo.fsolve(get_t2, T_classical, xtol=1e-10)[0]
 
     print(f"Final Energy = {get_e(T):7.4f} cm^-1, Final Temp. = {T:7.4f} K")
     #  print(f"Final Energy = {get_e2(T2):7.4f} cm^-1, Final Temp. = {T2:7.4f} K")
-    
+
     print(f"Classical temperature = {T_classical:7.4f} K")
     print(f"Quantum temperature   = {T:7.4f} K")
     #  print(f"Quantum temperature 2 = {T2:7.4f} K")
-    
+
     # generate excitation lists
 
     return T
@@ -136,7 +136,6 @@ def get_modes(filename, no_atoms):
     with open(filename, 'r') as f:
         for line in f:
             if '[FR-NORM-COORD]' in line:
-                print(line)
                 for i in range(no_modes):
                     f.readline()
                     for j in range(no_atoms):
@@ -145,7 +144,7 @@ def get_modes(filename, no_atoms):
                 break
     #  print(np.array(freqs)/(ehtoev*evtocm))
 
-    f_bool = np.array(freqs) > 10 #cm 
+    f_bool = np.array(freqs) > 10 #cm
     return np.array(freqs)[f_bool]/(ehtoev*evtocm), np.array(modes)[f_bool,:,:]
 
 def get_overlap(a, b):
@@ -311,7 +310,7 @@ def sample(sampling_type, n_samples, coord, temperature, ns, cart_modes, mode_fr
     return geoms, velocs
 
 def plot_functions(q,p,sampling_type, temperature, omega, n, d3, cmap):
-    print(n)
+    # print(n)
     Q, P = np.meshgrid(q, p)
 
     H = 0.5 * (P**2+Q**2)
@@ -394,7 +393,7 @@ def main():
     group.add_argument('-E', help='Internal energy in eV - Program will calculate temperature and use. Mutually exclusive with -T and -v', type=float, default=0.)
     group.add_argument('-v', help='Number of quanta in each vibrational mode. A single number will be all modes in that state. More than one number will assign to each mode. Mutually exclusive with -T and -E. Note, this has to be the last argument (after filename)', nargs='+', type=int, default=[0])
     parser.add_argument('-i', help='!MUST BE AT THE END! Ignores these modes, leaving them at their equilibrium geometry. List of 3N-6 modes, 1 ignores the mode, 0 does not.', nargs='+', type=int, default=[0])
-    
+
     args = parser.parse_args()
 
     filename = args.filename
@@ -443,21 +442,21 @@ def main():
         cart_modes = init_modes
 
     r_m = get_mass(mw_modes, mass)
-    print('r_m', r_m)
+    # print('r_m', r_m)
 
     # Begin sampling
     geoms, velocs = sample(sampling_type, n_samples, coord, temperature, v_quanta, cart_modes, mode_freqs, analyse, ignore)
-    
+
     if args.A:
         write_xyz('wigner_AA.xyz', atoms, geoms*cm2bohr*1e8, velocs, False)
 
     write_xyz('wigner_au.xyz', atoms, geoms,velocs, True)
 
-    print(args.P)
+    # print(args.P)
     cmap = args.cmap
     if args.jet:
         cmap = 'jet'
-    plot  = args.P 
+    plot  = args.P
     if plot != 0:
         d3 = plot < 0
         plot = np.abs(plot)
@@ -465,5 +464,5 @@ def main():
         p = np.linspace(-4,4,2001)
         plot_functions(q, p, sampling_type, temperature, mode_freqs[plot], v_quanta[plot],d3,cmap)
 
-if __name__ == '_main_':
+if __name__ == '__main__':
     main()

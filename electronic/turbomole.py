@@ -3,7 +3,7 @@ import os, sys
 import struct
 import math
 
-from .electronic import ESTProgram, est_method
+from .base import ESTProgram, est_method
 from classes.constants import multiplets, convert
 
 def str2float(string):

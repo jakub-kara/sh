@@ -3,7 +3,7 @@ from .sh import SurfaceHopping
 from .checker import HoppingUpdater
 from classes.molecule import Molecule
 from classes.out import Output
-from electronic.electronic import ESTProgram
+from electronic.base import ESTProgram
 from updaters.composite import CompositeIntegrator
 
 class FSSH(SurfaceHopping):
@@ -11,13 +11,7 @@ class FSSH(SurfaceHopping):
 
     def __init__(self, *, dynamics, **config):
         super().__init__(dynamics=dynamics, **config)
-        HoppingUpdater[dynamics["prob"]](**dynamics, **config["quantum"])
-
-    def read_coeff(self, mol: Molecule, file = None):
-        if file is None:
-            mol.coeff_s[mol.active] = 1.
-            return
-        super().read_coeff(mol, file)
+        HoppingUpdater[dynamics.get("prob", "tdc")](**dynamics, **config["quantum"])
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         out = Output()

@@ -1,36 +1,56 @@
 import __init__
-import sys, json
+import os, json
 import time
 import argparse
 
+from sampling.icond import icond
 from classes.bundle import Bundle
 
 
-parser = argparse.ArgumentParser(
-    prog = "SHREC",
-    description = "Main script to run SHREC",
-    epilog = ""
-)
-parser.add_argument("infile", help="path to input file")
-parser.add_argument("-r", "--restart", action="store_true")
-args = parser.parse_args()
 
-t_ini = time.time()
-input = args.infile
-with open(input, "r") as file:
-    config = json.load(file)
+def main():
+    parser = argparse.ArgumentParser(
+        prog = "SHREC",
+        description = "Main script to run SHREC",
+        epilog = ""
+    )
+    parser.add_argument("infile", help="path to input file")
+    parser.add_argument("-r", "--restart", action="store_true")
+    parser.add_argument("-i", "--icond", action="store_true")
+    args = parser.parse_args()
 
-bundle: Bundle
-if args.restart:
-    bundle = Bundle.restart(**config)
-else:
-    bundle = Bundle().setup(**config)
+    t_ini = time.time()
 
-while not bundle.is_finished:
-    bundle.run_step()
+    with open(args.infile, "r") as file:
+        config = json.load(file)
+    if "quantum" not in config.keys():
+        config["quantum"] = {}
+    if "nuclear" not in config.keys():
+        config["nuclear"] = {}
 
-t_fin = time.time()
-print()
-print("=======================================")
-print(f"Total time: {t_fin - t_ini}")
-print("=======================================")
+    if args.icond:
+        run_icond(args, config)
+    else:
+        run_dynamics(args, config)
+
+    t_fin = time.time()
+    print()
+    print("=======================================")
+    print(f"Total time: {t_fin - t_ini}")
+    print("=======================================")
+
+def run_icond(args, config):
+    icond(**config)
+
+def run_dynamics(args, config: dict):
+    bundle: Bundle
+    if args.restart:
+        bundle = Bundle.restart(**config)
+    else:
+        bundle = Bundle().setup(**config)
+
+    while not bundle.is_finished:
+        bundle.run_step()
+
+if __name__ == "__main__":
+    main()

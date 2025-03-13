@@ -1,10 +1,6 @@
 import numpy as np
 from classes.molecule import Molecule
-from classes.out import Output
-from dynamics.dynamics import Dynamics
-from electronic.electronic import ESTProgram
-from updaters.coeff import CoeffUpdater
-from updaters.tdc import TDCUpdater
+from dynamics.base import Dynamics
 
 class SimpleEhrenfest(Dynamics):
     key = "ehr"
@@ -21,19 +17,14 @@ class SimpleEhrenfest(Dynamics):
         self._force_tensor = nactypes[self._nactype]
 
     def mode(self, mol):
-        temp = ["g", CoeffUpdater().mode, TDCUpdater().mode]
+        temp = super().mode(mol)
+        temp.append("g")
         if self._nactype == "nac":
             temp.append("n")
         return temp
 
     def _nac(self, mol: Molecule):
         return mol.nacdr_ssad
-
-    def read_coeff(self, mol, file = None):
-        if file is None:
-            mol.coeff_s[mol._state] = 1.
-            return
-        super().read_coeff(mol, file)
 
     def potential_energy(self, mol: Molecule):
         poten = 0

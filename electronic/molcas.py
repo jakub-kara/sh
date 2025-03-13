@@ -1,7 +1,7 @@
 import numpy as np
 import os, sys
 
-from .electronic import ESTProgram, est_method
+from .base import ESTProgram, est_method
 from classes.constants import Constants
 
 class Molcas(ESTProgram):

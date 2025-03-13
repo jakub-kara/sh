@@ -1,10 +1,10 @@
 import numpy as np
 from .checker import HoppingUpdater
-from dynamics.dynamics import Dynamics
+from dynamics.base import Dynamics
 from classes.molecule import Molecule, SHMixin
 from classes.out import Printer, Output
 from classes.trajectory import Trajectory
-from electronic.electronic import ESTProgram
+from electronic.base import ESTProgram
 from updaters.composite import CompositeIntegrator
 from updaters.coeff import CoeffUpdater
 from updaters.tdc import TDCUpdater
@@ -154,6 +154,11 @@ class SurfaceHopping(Dynamics):
     def dat_dict(self, traj: Trajectory):
         dic = super().dat_dict(traj)
         dic["act"] = Printer.write(traj.mol.active, "i")
+        return dic
+
+    def h5_dict(self, traj: Trajectory):
+        dic = super().h5_dict(traj)
+        dic["act"] = traj.mol.active
         return dic
 
 

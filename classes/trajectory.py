@@ -6,7 +6,7 @@ from .molecule import Molecule, MoleculeFactory
 from .out import Output, Timer
 from .constants import convert
 from .timestep import Timestep
-from electronic.electronic import ESTProgram
+from electronic.base import ESTProgram
 from updaters.composite import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater

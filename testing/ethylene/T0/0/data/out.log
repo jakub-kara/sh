@@ -43,584 +43,362 @@
     }
 }
 
-Trajectory Initialisation
-Electronic Calculation
-Wall time: 0.0104
-
-Quantum Propagation
-Wall time: 0.0001
-
-Outputs
-Wall time: 0.0154
-
-Total time: 0.0417
-
 ========================================
 Step:           0
 Time:           0.000000 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0109
-
-Electronic Calculation
-Wall time: 0.0023
-
-Quantum Propagation
-Wall time: 0.0247
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0002
-
-Outputs
-Wall time: 0.0154
-
-Total time: 0.0559
-========================================
-
 ========================================
 Step:           1
 Time:           0.001209 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0083
-
-Electronic Calculation
-Wall time: 0.0020
-
-Quantum Propagation
-Wall time: 0.0047
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0010
-
-Outputs
-Wall time: 0.0158
-
-Total time: 0.0341
-========================================
-
 ========================================
 Step:           2
 Time:           0.002419 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0116
-
-Electronic Calculation
-Wall time: 0.0021
-
-Quantum Propagation
-Wall time: 0.0050
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0010
-
-Outputs
-Wall time: 0.0162
-
-Total time: 0.0380
-========================================
-
 ========================================
 Step:           3
 Time:           0.003628 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0098
-
-Electronic Calculation
-Wall time: 0.0020
-
-Quantum Propagation
-Wall time: 0.0055
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0012
-
-Outputs
-Wall time: 0.0141
-
-Total time: 0.0355
-========================================
-
 ========================================
 Step:           4
 Time:           0.004838 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0075
-
-Electronic Calculation
-Wall time: 0.0016
-
-Quantum Propagation
-Wall time: 0.0045
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0010
-
-Outputs
-Wall time: 0.0146
-
-Total time: 0.0317
-========================================
-
 ========================================
 Step:           5
 Time:           0.006047 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0093
-
-Electronic Calculation
-Wall time: 0.0017
-
-Quantum Propagation
-Wall time: 0.0049
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0010
-
-Outputs
-Wall time: 0.0146
-
-Total time: 0.0335
-========================================
-
 ========================================
 Step:           6
 Time:           0.007257 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0087
-
-Electronic Calculation
-Wall time: 0.0015
-
-Quantum Propagation
-Wall time: 0.0055
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0014
-
-Outputs
-Wall time: 0.0173
-
-Total time: 0.0368
-========================================
-
 ========================================
 Step:           7
 Time:           0.008466 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0103
-
-Electronic Calculation
-Wall time: 0.0025
-
-Quantum Propagation
-Wall time: 0.0048
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0012
-
-Outputs
-Wall time: 0.0168
-
-Total time: 0.0384
-========================================
-
 ========================================
 Step:           8
 Time:           0.009676 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0083
-
-Electronic Calculation
-Wall time: 0.0013
-
-Quantum Propagation
-Wall time: 0.0047
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0013
-
-Outputs
-Wall time: 0.0149
-
-Total time: 0.0326
-========================================
-
 ========================================
 Step:           9
 Time:           0.010885 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0105
-
-Electronic Calculation
-Wall time: 0.0015
-
-Quantum Propagation
-Wall time: 0.0048
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0013
-
-Outputs
-Wall time: 0.0136
-
-Total time: 0.0342
-========================================
-
 ========================================
 Step:           10
 Time:           0.012094 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0120
-
-Electronic Calculation
-Wall time: 0.0021
-
-Quantum Propagation
-Wall time: 0.0046
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0009
-
-Outputs
-Wall time: 0.0164
-
-Total time: 0.0384
-========================================
-
 ========================================
 Step:           11
 Time:           0.013304 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0092
-
-Electronic Calculation
-Wall time: 0.0014
-
-Quantum Propagation
-Wall time: 0.0049
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0011
-
-Outputs
-Wall time: 0.0164
-
-Total time: 0.0350
-========================================
-
 ========================================
 Step:           12
 Time:           0.014513 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0083
-
-Electronic Calculation
-Wall time: 0.0014
-
-Quantum Propagation
-Wall time: 0.0064
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0020
-
-Outputs
-Wall time: 0.0191
-
-Total time: 0.0397
-========================================
-
 ========================================
 Step:           13
 Time:           0.015723 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0094
-
-Electronic Calculation
-Wall time: 0.0020
-
-Quantum Propagation
-Wall time: 0.0052
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0019
-
-Outputs
-Wall time: 0.0171
-
-Total time: 0.0382
-========================================
-
 ========================================
 Step:           14
 Time:           0.016932 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0084
-
-Electronic Calculation
-Wall time: 0.0014
-
-Quantum Propagation
-Wall time: 0.0048
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0010
-
-Outputs
-Wall time: 0.0161
-
-Total time: 0.0337
-========================================
-
 ========================================
 Step:           15
 Time:           0.018142 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0096
-
-Electronic Calculation
-Wall time: 0.0019
-
-Quantum Propagation
-Wall time: 0.0046
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0011
-
-Outputs
-Wall time: 0.0163
-
-Total time: 0.0356
-========================================
-
 ========================================
 Step:           16
 Time:           0.019351 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0130
-
-Electronic Calculation
-Wall time: 0.0023
-
-Quantum Propagation
-Wall time: 0.0056
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0012
-
-Outputs
-Wall time: 0.0216
-
-Total time: 0.0463
-========================================
-
 ========================================
 Step:           17
 Time:           0.020561 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0119
-
-Electronic Calculation
-Wall time: 0.0020
-
-Quantum Propagation
-Wall time: 0.0062
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0020
-
-Outputs
-Wall time: 0.0165
-
-Total time: 0.0411
-========================================
-
 ========================================
 Step:           18
 Time:           0.021770 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0083
-
-Electronic Calculation
-Wall time: 0.0015
-
-Quantum Propagation
-Wall time: 0.0059
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0016
-
-Outputs
-Wall time: 0.0149
-
-Total time: 0.0347
-========================================
-
 ========================================
 Step:           19
 Time:           0.022979 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0095
-
-Electronic Calculation
-Wall time: 0.0015
-
-Quantum Propagation
-Wall time: 0.0047
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0012
-
-Outputs
-Wall time: 0.0119
-
-Total time: 0.0311
-========================================
-
 ========================================
 Step:           20
 Time:           0.024189 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0087
-
-Electronic Calculation
-Wall time: 0.0013
-
-Quantum Propagation
-Wall time: 0.0047
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0015
-
-Outputs
-Wall time: 0.0111
-
-Total time: 0.0294
-========================================
-
 ========================================
 Step:           21
 Time:           0.025398 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0094
-
-Electronic Calculation
-Wall time: 0.0014
-
-Quantum Propagation
-Wall time: 0.0058
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0017
-
-Outputs
-Wall time: 0.0158
-
-Total time: 0.0364
-========================================
-
 ========================================
 Step:           22
 Time:           0.026608 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0085
-
-Electronic Calculation
-Wall time: 0.0021
-
-Quantum Propagation
-Wall time: 0.0055
-
-Nuclear Adjustment
 target: 0 		active: 0
-Wall time: 0.0012
-
-Outputs
-Wall time: 0.0156
-
-Total time: 0.0350
-========================================
-
 ========================================
 Step:           23
 Time:           0.027817 fs
 Stepsize:       0.001209 fs
 
-Saving
-Wall time: 0.0109
-
-Electronic Calculation
-Wall time: 0.0024
-
-Quantum Propagation
-
+target: 0 		active: 0
 ========================================
-Program terminated.
-Exiting.
+Step:           24
+Time:           0.029027 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
 ========================================
+Step:           25
+Time:           0.030236 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           26
+Time:           0.031445 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           27
+Time:           0.032655 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           28
+Time:           0.033864 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           29
+Time:           0.035074 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           30
+Time:           0.036283 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           31
+Time:           0.037493 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           32
+Time:           0.038702 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           33
+Time:           0.039912 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           34
+Time:           0.041121 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           35
+Time:           0.042330 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           36
+Time:           0.043540 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           37
+Time:           0.044749 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           38
+Time:           0.045959 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           39
+Time:           0.047168 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           40
+Time:           0.048378 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           41
+Time:           0.049587 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           42
+Time:           0.050797 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           43
+Time:           0.052006 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           44
+Time:           0.053215 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           45
+Time:           0.054425 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           46
+Time:           0.055634 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           47
+Time:           0.056844 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           48
+Time:           0.058053 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           49
+Time:           0.059263 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           50
+Time:           0.060472 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           51
+Time:           0.061682 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           52
+Time:           0.062891 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           53
+Time:           0.064100 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           54
+Time:           0.065310 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           55
+Time:           0.066519 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           56
+Time:           0.067729 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           57
+Time:           0.068938 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           58
+Time:           0.070148 fs
+Stepsize:       0.001209 fs
+
+target: 0 		active: 0
+========================================
+Step:           59
+Time:           0.071357 fs
+Stepsize:       0.001209 fs
+

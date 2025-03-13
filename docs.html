@@ -96,8 +96,169 @@ function create_table(el) {
 
 <body onload="get_span()">
 
+<h4>Units</h4>
+Values with units attached to them can be entered as both numbers and strings. <br>
+To specify a unit, include the appropriate unit(s) after the numerical value in a string. <br>
+<table>
+    <tr>
+        <td colspan="2">Time</td>
+    </tr>
+    <tr>
+        <td>au</td>
+        <td>atomic time unit</td>
+    </tr>
+    <tr>
+        <td>ps</td>
+        <td>picosecond</td>
+    </tr>
+    <tr>
+        <td>fs</td>
+        <td>femtosecond</td>
+    </tr>
+    <tr>
+        <td>as</td>
+        <td>attosecond</td>
+    </tr>
+
+    <tr>
+        <td colspan="2">Length</td>
+    </tr>
+    <tr>
+        <td>au</td>
+        <td>bohr radius</td>
+    </tr>
+    <tr>
+        <td>aa</td>
+        <td>Angstrom</td>
+    </tr>
+
+    <tr>
+        <td colspan="2">Mass</td>
+    </tr>
+    <tr>
+        <td>au</td>
+        <td>mass of electron</td>
+    </tr>
+    <tr>
+        <td>amu</td>
+        <td>atomic mass unit, Dalton</td>
+    </tr>
+
+    <tr>
+        <td colspan="2">Energy</td>
+    </tr>
+    <tr>
+        <td>au</td>
+        <td>Hartree</td>
+    </tr>
+    <tr>
+        <td>ev</td>
+        <td>electronvolt</td>
+    </tr>
+    <tr>
+        <td>cm-1</td>
+        <td>wavenumbers</td>
+    </tr>
+</table>
+If no units are provided, atomic units (au) are assumed. <br>
+Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
+
 <h4>Keywords</h4>
 <div class="indent">
+
+    <h4>run</h4>
+    Path to a script to run commands called by the program. <br>
+    Acts as a proxy for e.g. submitting jobs to a cluster. <br>
+    Has to accept one argument corresponding to a string of the command to be executed. <br>
+    If no value is provided, everything is run locally.
+    <span class="tab"
+        data-type="str"
+        data-default="null"
+        data-options='{
+            "any": "Any valid absolute or relative path to a file"
+        }'
+    ></span>
+
+    <h4>sampling</h4>
+    <span class="tab"
+    data-type="dict"
+    data-default=""
+    ></span>
+
+    <div class="indent">
+        <h4>distr</h4>
+        Distribution type for sampling
+        <span class="tab"
+            data-type="str"
+            data-default="wigner"
+            data-options='{
+                "wigner": "Sample using Wigner function",
+                "husimi": "Sample using Husimi distribution",
+                "ho": "Sample from harmonic oscillator (no momenta)"
+            }'
+        ></span>
+
+        <h4>input</h4>
+        Frequency file
+        <span class="tab"
+            data-type="str"
+            data-default=""
+            data-options='{
+                "any": "Any valid absolute or relative path to a frequency file"
+            }'
+        ></span>
+
+        <h4>samples</h4>
+        Number of samples to be drawn from the distribution
+        <span class="tab"
+            data-type="uint"
+            data-default=""
+            data-options='{
+                "any": "Any positive integer"
+            }'
+        ></span>
+
+        <h4>emin</h4>
+        Lower bound of the excitation energy window
+        <span class="tab"
+            data-type="float | str"
+            data-default=""
+            data-options='{
+                "any": ""
+            }'
+        ></span>
+
+        <h4>emax</h4>
+        Upper bound of the excitation energy window
+        <span class="tab"
+            data-type="float | str"
+            data-default=""
+            data-options='{
+                "any": ""
+            }'
+        ></span>
+
+        <h4>from</h4>
+        State to excite from
+        <span class="tab"
+            data-type="uint"
+            data-default=""
+            data-options='{
+                "any": ""
+            }'
+        ></span>
+
+        <h4>to</h4>
+        State to excite into
+        <span class="tab"
+            data-type="uint"
+            data-default=""
+            data-options='{
+                "any": ""
+            }'
+        ></span>
+    </div>
+
     <h4>dynamics</h4>
     <span class="tab"
     data-type="dict"
@@ -407,7 +568,7 @@ function create_table(el) {
         }'
         ></span>
 
-        <h4>type</h4>
+        <h4>method</h4>
         Electronic structure method
 
         <h4>states</h4>
@@ -606,6 +767,18 @@ function create_table(el) {
         ></span>
     </div>
 </div>
+
+<h4>Commands</h4>
+To guarantee a successful execution of the programs, an environment variable should be set: <br>
+<pre>
+    export SH=&lt;path to installation&gt;
+</pre>
+<div class="indent">
+
+    <h4>Sampling</h4>
+
+
+
 
 <h4>Example</h4>
 

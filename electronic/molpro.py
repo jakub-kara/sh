@@ -1,7 +1,7 @@
 import numpy as np
 import os, sys
 
-from .electronic import ESTProgram, est_method
+from .base import ESTProgram, est_method
 from classes.constants import multiplets, convert
 
 class Molpro(ESTProgram):
@@ -404,18 +404,22 @@ class Molpro(ESTProgram):
                 if 'Expectation values' in line:
                     for d in range(3):
                         f.readline()
-                        for s1 in range(self._nstates):
-                            dipmom[s1,s1,d] = float(f.readline().split()[3])
+                        for s1 in range(self._options["sa"]):
+                            line = f.readline()
+                            if s1 < self._states:
+                                dipmom[s1,s1,d] = float(line.split()[3])
                     break
 
             for line in f:
                 if 'Transition values' in line:
                     for d in range(3):
                         f.readline()
-                        for s2 in range(self._nstates):
+                        for s2 in range(self._options["sa"]):
                             for s1 in range(s2):
-                                dipmom[s2,s1,d] = float(f.readline().split()[3])
-                                dipmom[s1,s2,d] = dipmom[s2,s1,d]
+                                line = f.readline()
+                                if s1 < self._states and s2 < self._states:
+                                    dipmom[s2,s1,d] = float(line.split()[3])
+                                    dipmom[s1,s2,d] = dipmom[s2,s1,d]
                     break
 
         return dipmom

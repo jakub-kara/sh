@@ -1,12 +1,10 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 
 class Factory(ABCMeta):
+# class Factory(type):
     def __init__(cls, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for sup in cls.mro():
-            if type(sup) == type(cls) and hasattr(sup, "_keys"):
-                break
-        else:
+        if cls == cls.par:
             cls._keys = {}
         cls.__init_subclass__ = classmethod(Factory._initsub)
 
@@ -25,8 +23,11 @@ class Factory(ABCMeta):
 
         if cls != cls.par:
             for key, val in cls.par.__dict__.items():
-                if hasattr(val, "timer"):
-                    setattr(cls, key, val.timer(getattr(cls, key)))
+                if key == "__abstractmethods__" or getattr(cls, key) is val:
+                    continue
+                if hasattr(val, "decors"):
+                    for decor in val.decors:
+                        setattr(cls, key, decor(getattr(cls, key)))
 
 class Singleton(type):
     _instances: dict = {}
@@ -73,3 +74,20 @@ class DynamicClassProxy:
         dyninst = DynamicClassProxy()
         dyninst.__class__ = dyncls
         return dyninst
+
+class Decorator:
+    def __init__(self):
+        pass
+
+    def __call__(self, func):
+        inner = lambda *args, **kwargs: self._inner(func, *args, **kwargs)
+        if not hasattr(func, "decors"):
+            inner.decors = []
+        else:
+            inner.decors = func.decors
+        inner.decors.append(self)
+        return inner
+
+    @abstractmethod
+    def _inner(self, func, *args, **kwargs):
+        pass

@@ -12,7 +12,7 @@ def est_method(func):
 class ESTProgram(metaclass = SingletonFactory):
     _methods = {}
 
-    def __init__(self, *, states: list, program: str, type: str, path: str = "", options: dict = None, refen = 0, **config):
+    def __init__(self, *, states: list, program: str, method, path: str = "", options: dict = None, refen = 0, **config):
         self._register_methods()
 
         self._path = path
@@ -25,9 +25,7 @@ class ESTProgram(metaclass = SingletonFactory):
         self._spinsum = np.cumsum(self._states) - self._states
         self._refen = convert(refen, "au")
 
-        self._type = type
-
-        self._method = self._select_method(type)
+        self._method = self._select_method(method)
         if options is None:
             options = {}
         self._options = options
@@ -35,6 +33,7 @@ class ESTProgram(metaclass = SingletonFactory):
         self._calc_grad = np.zeros(self._nstates)
         self._calc_nac = np.zeros((self._nstates, self._nstates))
         self._calc_ovlp = False
+        self._calc_dip = False
 
     @property
     def n_states(self):
@@ -73,6 +72,8 @@ class ESTProgram(metaclass = SingletonFactory):
                 idx = to_idx(arg[1]), to_idx(arg[2])
                 self._calc_nac[idx] = True
                 self._calc_nac[idx[::-1]] = True
+            elif arg[0] == "d":
+                self._calc_dip = True
 
     def any_grads(self):
         return np.any(self._calc_grad)
@@ -82,6 +83,9 @@ class ESTProgram(metaclass = SingletonFactory):
 
     def any_ovlp(self):
         return self._calc_ovlp
+
+    def any_dip(self):
+        return self._calc_dip
 
     def run(self, mol: Molecule):
         os.chdir("est")
@@ -109,6 +113,9 @@ class ESTProgram(metaclass = SingletonFactory):
                 raise RuntimeError("Cannot read overlaps without a reference Molecule.")
             mol.ovlp_ss = self.read_ovlp(mol.name_a.astype("<U2"), mol.pos_ad, ref.pos_ad)
             mol.adjust_ovlp()
+
+        if self.any_dip():
+            mol.dipmom_ssd = self.read_dipmom()
 
         mol.transform(False)
         os.chdir("..")
@@ -139,3 +146,6 @@ class ESTProgram(metaclass = SingletonFactory):
 
     @abstractmethod
     def read_ovlp(self): pass
+
+    @abstractmethod
+    def read_dipmom(self): pass

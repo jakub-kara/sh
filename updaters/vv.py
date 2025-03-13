@@ -2,8 +2,8 @@ import numpy as np
 from .nuclear import NuclearUpdater
 from .coeff import CoeffUpdater
 from classes.molecule import Molecule
-from dynamics.dynamics import Dynamics
-from electronic.electronic import ESTProgram
+from dynamics.base import Dynamics
+from electronic.base import ESTProgram
 
 class VelocityVerlet(NuclearUpdater):
     key = "vv"

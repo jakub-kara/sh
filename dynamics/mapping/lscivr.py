@@ -3,8 +3,8 @@ from scipy.optimize import fsolve
 from classes.meta import Factory
 from classes.molecule import Molecule
 from classes.out import Output
-from dynamics.dynamics import Dynamics
-from electronic.electronic import ESTProgram
+from dynamics.base import Dynamics
+from electronic.base import ESTProgram
 from updaters.coeff import CoeffUpdater
 from updaters.tdc import TDCUpdater
 
@@ -29,17 +29,6 @@ class LSCIVR(Dynamics):
 
     def setup_x_p(self, mol: Molecule, s: int):
         self.PE.initial_pop(mol, s, self.PE.sr2(mol))
-
-    def read_coeff(self, mol: Molecule, file = None):
-        if file is None:
-            return
-        data = np.genfromtxt(file)
-        if data.ndim == 1:
-            data = data[None, :]
-        if data.shape != (mol.n_states, 2):
-            raise ValueError(f"Invalid coeff input format in {file}")
-        mol.x_s[:] = data[:,0]
-        mol.p_s[:] = data[:,1]
 
     def potential_energy(self, mol: Molecule):
         # From Eq. 9 in https://doi.org/10.1063/5.0163371

@@ -6,8 +6,8 @@ from .meta import Singleton
 from .molecule import MoleculeFactory
 from .out import Output
 from classes.trajectory import Trajectory
-from dynamics.dynamics import Dynamics
-from electronic.electronic import ESTProgram
+from dynamics.base import Dynamics
+from electronic.base import ESTProgram
 from updaters.composite import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
@@ -66,8 +66,7 @@ class Bundle:
 
         # TODO: refactor
         traj = Trajectory(dynamics=dynamics, **config)
-        mol = traj.get_molecule(**config["nuclear"], **dynamics)
-        Dynamics().read_coeff(mol, config["quantum"].get("input", None))
+        mol = traj.get_molecule(coeff = config["quantum"].get("input", None), **config["nuclear"], **dynamics)
         traj.add_molecule(mol)
         traj.set_molecules(**config["nuclear"])
         traj.set_timestep(**dynamics)
@@ -96,15 +95,15 @@ class Bundle:
 
     def set_nuclear(self, **nuclear):
         CompositeIntegrator.reset()
-        CompositeIntegrator(nuc_upd = nuclear["nuc_upd"])
+        CompositeIntegrator(nuc_upd = nuclear.get("nuc_upd", "vv"))
 
     def set_tdc_updater(self, **quantum):
         TDCUpdater.reset()
-        TDCUpdater[quantum["tdc_upd"]](**quantum)
+        TDCUpdater[quantum.get("tdc_upd", "npi")](**quantum)
 
     def set_coeff_updater(self, **quantum):
         CoeffUpdater.reset()
-        CoeffUpdater[quantum["coeff_upd"]](**quantum)
+        CoeffUpdater[quantum.get("coeff_upd", "tdc")](**quantum)
 
     def set_io(self, **output):
         Output(**output)
@@ -115,6 +114,7 @@ class Bundle:
             os.chdir(f"{traj.index}")
             out.open_log(mode="w")
             out.to_log("../" + sys.argv[1])
+            out.write_log()
             Dynamics().prepare_traj(traj)
             os.chdir("..")
 

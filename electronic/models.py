@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from classes.molecule import Molecule
-from electronic.electronic import ESTProgram, est_method
+from electronic.base import ESTProgram, est_method
 
 class Model(ESTProgram):
     key = "model"
@@ -68,6 +68,9 @@ class Model(ESTProgram):
                 ovl[i,j] = np.sum(old[:,i] * new[:,j])
 
         return ovl
+
+    def read_dipmom(self):
+        raise NotImplementedError
 
     @est_method
     def sub_1(self):

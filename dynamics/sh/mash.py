@@ -3,7 +3,7 @@ from .sh import SurfaceHopping
 from .checker import HoppingUpdater
 from classes.molecule import Molecule
 from classes.timestep import Timestep
-from electronic.electronic import ESTProgram
+from electronic.base import ESTProgram
 from updaters.composite import CompositeIntegrator
 from updaters.coeff import BlochUpdater
 
@@ -19,19 +19,6 @@ class MASH(SurfaceHopping):
 
         self._rescale = "nac"
         self._reverse = True
-
-    def read_coeff(self, mol: Molecule, file=None):
-        if file is None:
-            mol.bloch_n3[:, 2] = 1
-            mol.bloch_n3[mol.active, :] = None
-            return
-        data = np.genfromtxt(file)
-        if data.ndim == 1:
-            data = data[None, :]
-        if data.shape != (mol.n_states - 1, 3):
-            raise ValueError(f"Invalid bloch input format in {file}")
-        mol.bloch_n3[:mol.active] = data[:mol.active]
-        mol.bloch_n3[mol.active + 1:] = data[mol.active:]
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         mol = mols[-1]

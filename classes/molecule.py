@@ -34,8 +34,12 @@ class MoleculeFactory:
             setattr(cls, key, cls._get_molecule(key, val))
 
 class Molecule:
-    def __init__(self, *, n_states: int = 1, input = "geom.xyz", com = False, **config):
-        self.from_vxyz(input)
+    def __init__(self, *, n_states: int = 1, input = "geom.xyz", com = False, vxyz = True, **config):
+        if vxyz:
+            self.from_vxyz(input)
+        else:
+            self.from_xyz(input)
+
         if com:
             self.set_com()
 
@@ -292,15 +296,34 @@ class Molecule:
         pass
 
 class MoleculeMixin(metaclass = Factory):
-    pass
+    def __init__(self, *, initstate: int, coeff = None, **kwargs):
+        super().__init__(**kwargs)
+        self._state = initstate
+
+        if coeff is None:
+            self.set_coeff()
+        else:
+            self.read_coeff(coeff)
+
+    def set_coeff(self):
+        self.coeff_s[self._state] = 1.
+
+    def read_coeff(self, file):
+        data = np.genfromtxt(file)
+        if data.ndim == 1:
+            data = data[None, :]
+        if data.shape != (self.n_states, 2):
+            raise ValueError(f"Invalid coeff input format in {file}")
+        self.coeff_s[:] = data[:,0]
+        self.coeff_s += 1j*data[:,1]
 
 class SHMixin(MoleculeMixin):
     key = "sh"
 
-    def __init__(self, *, initstate: int, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.active = initstate
-        self.target = initstate
+        self.active = self._state
+        self.target = self._state
 
     def hop_ready(self):
         return self.active != self.target
@@ -311,14 +334,7 @@ class SHMixin(MoleculeMixin):
     def nohop(self):
         self.target = self.active
 
-class EhrMixin(MoleculeMixin):
-    key = "ehr"
-
-    def __init__(self, *, initstate: int, **kwargs):
-        super().__init__(**kwargs)
-        self.state = initstate
-
-class MCEMixin(EhrMixin):
+class MCEMixin(MoleculeMixin):
     key = "mce"
 
     def __init__(self, **kwargs):
@@ -327,19 +343,31 @@ class MCEMixin(EhrMixin):
         self.phase = 0
         self.split = None
 
-class BlochMixin(MoleculeMixin):
+class BlochMixin(SHMixin):
     key = "bloch"
 
     def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
         self.bloch_n3 = np.zeros((n_states, 3))
 
+    def set_coeff(self):
+        self.bloch_n3[:, 2] = 1
+        self.bloch_n3[self.active, :] = None
+
+    def read_coeff(self, file):
+        data = np.genfromtxt(file)
+        if data.ndim == 1:
+            data = data[None, :]
+        if data.shape != (self.n_states - 1, 3):
+            raise ValueError(f"Invalid bloch input format in {file}")
+        self.bloch_n3[:self.active] = data[:self.active]
+        self.bloch_n3[self.active + 1:] = data[self.active:]
+
 class MMSTMixin(MoleculeMixin):
     key = "mmst"
 
-    def __init__(self, *, initstate, n_states, **nuclear):
+    def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
-        self.state = initstate
         self.x_s = np.zeros(n_states)
         self.p_s = np.zeros(n_states)
         self.dxdt_s = np.zeros(n_states)
@@ -351,12 +379,21 @@ class MMSTMixin(MoleculeMixin):
     def r2(self):
         return self.x_s**2 + self.p_s**2
 
+    def read_coeff(self, file = None):
+        data = np.genfromtxt(file)
+        if data.ndim == 1:
+            data = data[None, :]
+        if data.shape != (self.n_states, 2):
+            raise ValueError(f"Invalid coeff input format in {file}")
+        self.x_s[:] = data[:,0]
+        self.p_s[:] = data[:,1]
+
 class CSDMMixin(MoleculeMixin):
     key = "csdm"
 
-    def __init__(self, *, initstate: int, n_states: int, **nuclear):
+    def __init__(self, *, n_states: int, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
-        self.pointer = initstate
+        self.pointer = self._state
         self.coeff_co_s = np.zeros(n_states, dtype=np.complex128)
 
 

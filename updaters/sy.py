@@ -2,8 +2,8 @@ import numpy as np
 from typing import Callable
 from .nuclear import NuclearUpdater
 from .am import *
-from dynamics.dynamics import Dynamics
-from electronic.electronic import ESTProgram
+from dynamics.base import Dynamics
+from electronic.base import ESTProgram
 
 class SYBase(NuclearUpdater):
     substeps = 1

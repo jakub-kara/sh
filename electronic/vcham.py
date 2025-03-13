@@ -6,7 +6,7 @@ import pickle
 import scipy
 import classes.constants
 from classes.molecule import Molecule
-from electronic.electronic import ESTProgram, est_method
+from electronic.base import ESTProgram, est_method
 
 
 class VC(ESTProgram):

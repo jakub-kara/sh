@@ -1,15 +1,17 @@
 import numpy as np
 import pickle, h5py
 import time
-from classes.meta import Singleton
+from classes.meta import Singleton, Decorator
 
 class Output(metaclass = Singleton):
     border = "="*40
 
-    def __init__(self, *, file: int, record: list, **config):
+    def __init__(self, *, file: str = "out", record: list = "", **config):
+        if not isinstance(record, list):
+            record = record.split()
         self._record = record
         self._file = file
-        self._dist = config.get("dist",False)
+        self._dist = config.get("dist", False)
         self._options = {
             "compression": config.get("compression", "gzip"),
             "compression_opts": config.get("compression_opts", 9),
@@ -22,6 +24,8 @@ class Output(metaclass = Singleton):
         self._dist = config.get("dist", False)
         self._h5 = config.get("h5", True)
         self._dat = config.get("dat", True)
+        if self._record == []:
+            self._dat = False
 
     def __del__(self):
         self.write_log()
@@ -91,32 +95,31 @@ class Output(metaclass = Singleton):
                 else:
                     grp.create_dataset(key, data=val)
 
-class Timer:
+class Timer(Decorator):
     _timers = []
 
-    def __init__(self, id, head = None, msg = "Wall time", foot = None):
+    def __init__(self, id = None, head = None, msg = "Wall time", foot = None):
         self._id = id
         self._head = head
         self._msg = msg
         self._foot = foot
 
-    def __call__(self, func):
-        def inner(*args, **kwargs):
-            if self._id in self._timers:
-                return func(*args, **kwargs)
-            else:
-                out = Output()
-                self._timers.append(self._id)
-                t0 = time.time()
-                out.write_log(self._head)
-                res = func(*args, **kwargs)
-                out.write_log(f"{self._msg}: {time.time() - t0 :.4f}")
-                out.write_log(self._foot)
-                out.write_log()
-                self._timers.remove(self._id)
-                return res
-        inner.timer = self
-        return inner
+    def _inner(self, func, *args, **kwargs):
+        if self._id in self._timers:
+            return func(*args, **kwargs)
+
+        if self._id is not None:
+            self._timers.append(self._id)
+        out = Output()
+        t0 = time.time()
+        out.write_log(self._head)
+        res = func(*args, **kwargs)
+        out.write_log(f"{self._msg}: {time.time() - t0 :.4f} s")
+        out.write_log(self._foot)
+        out.write_log()
+        if self._id is not None:
+            self._timers.remove(self._id)
+        return res
 
 class Printer:
     field_length = 20

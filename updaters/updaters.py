@@ -42,7 +42,7 @@ class Updater:
 
 # Multistage mixin
 class Multistage:
-    def __init__(self, *, n_substeps, **kwargs):
+    def __init__(self, *, n_substeps = 50, **kwargs):
         super().__init__(**kwargs)
         self.substeps = n_substeps
 

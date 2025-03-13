@@ -2,8 +2,8 @@ import numpy as np
 from .nuclear import NuclearUpdater
 from .updaters import UpdateResult
 from classes.molecule import Molecule
-from dynamics.dynamics import Dynamics
-from electronic.electronic import ESTProgram
+from dynamics.base import Dynamics
+from electronic.base import ESTProgram
 
 class RKNBase(NuclearUpdater):
     a = np.empty((1,1))

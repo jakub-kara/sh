@@ -1,7 +1,7 @@
 import numpy as np
 from .ehr import SimpleEhrenfest
 from classes.molecule import Molecule
-from electronic.electronic import ESTProgram
+from electronic.base import ESTProgram
 
 class GSE(SimpleEhrenfest):
     key = "gse"
