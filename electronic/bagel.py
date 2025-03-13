@@ -84,8 +84,6 @@ class Bagel(ESTProgram):
     @est_method
     def mcqdpt2(self):
         #requires JW Park's bagel patch
-        if np.any(self._calc_nac):
-            print('NACs not implemented for mcqdpt2')
 
         geom = self._create_geom_sec()
 
@@ -99,6 +97,9 @@ class Bagel(ESTProgram):
         for i in range(self._nstates):
             if self._calc_grad[i]:
                 force.append(self._create_single_force_sec(qdpt2,i))
+            for j in range(i):
+                if self._calc_nac[i,j]:
+                    force.append(self._create_single_force_sec(qdpt2,i,target2=j))
 
         save_ref = self._create_save_sec()
 
@@ -114,8 +115,6 @@ class Bagel(ESTProgram):
     def dsrgmrpt2(self):
         #requires JW Park's bagel patch
         
-        if np.any(self._calc_nac):
-            print('NACs not implemented for dsrg')
 
         geom = self._create_geom_sec()
 
@@ -129,6 +128,9 @@ class Bagel(ESTProgram):
         for i in range(self._nstates):
             if self._calc_grad[i]:
                 force.append(self._create_single_force_sec(dsrg,i))
+            for j in range(i):
+                if self._calc_nac[i,j]:
+                    force.append(self._create_single_force_sec(dsrg,i,target2=j))
 
         save_ref = self._create_save_sec()
 
@@ -216,11 +218,18 @@ class Bagel(ESTProgram):
         force['method'] = [method]
         return force
 
-    def _create_single_force_sec(self, method, target):
-        force = {'title' : 'force'}
-        force['export'] = True
+    def _create_single_force_sec(self, method, target, target2=None):
+        if target2 is None:
+            force = {'title' : 'force'}
+        else:
+            force = {'title' : 'nacme'}
+            force['target2'] = target2
+            force['target2'] = self._options.get('nacmtype','full')
+
+
         force['target'] = target
         force['method'] = [method]
+        force['export'] = True
         return force
 
 

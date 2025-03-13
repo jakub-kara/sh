@@ -133,6 +133,8 @@ class ESTProgram(metaclass = SingletonFactory):
     def recover_wf(self):
         pass
 
+    def initiate(self): pass
+
     @abstractmethod
     def execute(self): pass
 
