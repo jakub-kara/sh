@@ -773,13 +773,57 @@ To guarantee a successful execution of the programs, an environment variable sho
 <pre>
     export SH=&lt;path to installation&gt;
 </pre>
+The input file described in the previous section will be referred to as input.json
 <div class="indent">
 
     <h4>Sampling</h4>
+    <table>
+        <tr>
+            <td>Procedure</td>
+            <td>Command</td>
+        </tr>
+        <tr>
+            <td>Phase-space sampling</td>
+            <td>python3 $SH/setup.py input.json -s</td>
+        </tr>
+        <tr>
+            <td>Electronic structure calculation</td>
+            <td>python3 $SH/setup.py input.json -i</td>
+        </tr>
+        <tr>
+            <td>Excitation / selection of initial conditions</td>
+            <td>python3 $SH/setup.py input.json -e</td>
+        </tr>
+        <tr>
+            <td>Directory setup for dynamics</td>
+            <td>python3 $SH/setup.py input.json -d</td>
+        </tr>
+    </table>
 
-
-
-
+    <h4>Dynamics</h4>
+    <table>
+        <tr>
+            <td>Procedure</td>
+            <td>Command</td>
+        </tr>
+        <tr>
+            <td>Single-point calculation</td>
+            <td>python3 $SH/main.py input.json -i</td>
+        </tr>
+        <tr>
+            <td>Run trajectory</td>
+            <td>python3 $SH/main.py input.json</td>
+        </tr>
+        <tr>
+            <td>Run ensemble</td>
+            <td>python3 $SH/setup.py input.json -r</td>
+        </tr>
+        <tr>
+            <td>Restart trajectory</td>
+            <td>python3 $SH/main.py input.json -r</td>
+        </tr>
+    </table>
+</div>
 <h4>Example</h4>
 
 </body>

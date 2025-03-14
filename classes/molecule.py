@@ -334,7 +334,10 @@ class SHMixin(MoleculeMixin):
     def nohop(self):
         self.target = self.active
 
-class MCEMixin(MoleculeMixin):
+class EhrMixin(MoleculeMixin):
+    key = "ehr"
+
+class MCEMixin(EhrMixin):
     key = "mce"
 
     def __init__(self, **kwargs):

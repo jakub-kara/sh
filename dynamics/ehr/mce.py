@@ -8,6 +8,8 @@ class MultiEhrenfest(SimpleEhrenfest):
 
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
+        config["nuclear"]["mixins"] = "mce"
+
 
         self._dclone = dynamics.get("dclone", 5e-6)
         self._dnac = dynamics.get("dnac", 2e-3)
