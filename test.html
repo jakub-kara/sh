@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Diagram</title>
+</head>
+<body>
+    <svg width="400" height="200" style="border:1px solid black;">
+        <!-- Define Arrow Marker -->
+        <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7"
+                    refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                <polygon points="0 0, 10 3.5, 0 7" fill="black"/>
+            </marker>
+        </defs>
+
+        <!-- Arrow Line -->
+        <line x1="50" y1="100" x2="300" y2="100" stroke="black" stroke-width="4"
+              marker-end="url(#arrowhead)"/>
+    </svg>
+
+
+</body>
+</html>

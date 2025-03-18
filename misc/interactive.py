@@ -21,7 +21,7 @@ def validate_input(expr):
         exit()
     except:
         return None
-    
+
 def set_value(expr, default=None, defmsg=None):
     if default is None:
         temp = None
@@ -140,8 +140,8 @@ def main():
         config["hopping"]["decoherence"] = set_value(lambda: input().lower(), "edc")
 
     with open("input.json", "w") as inp:
-        json.dump(config, inp, indent=4)    
+        json.dump(config, inp, indent=4)
 
 
-if _name_  == "_main_":
+if __name__  == "__main__":
     main()

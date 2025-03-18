@@ -5,7 +5,7 @@ import sys, os
 import pickle, json
 import time
 
-from constants import Constants
+from classes.constants import is_true
 
 FG = {
     -1: "\033[0m",
@@ -44,11 +44,11 @@ Available trajectory types
             "name": {
                 "text": "Name of molecule",
                 "default": "x",
-                "type": str                            
+                "type": str
             },
             "record": {
-                "text": "Quantities to record", 
-                "default": "pes", 
+                "text": "Quantities to record",
+                "default": "pes",
                 "type": str,
                 "list": True
             },
@@ -331,16 +331,16 @@ class Menu():
                 child.append_child(TextField(text=default, tp=val.get("type"), lst=val.get("list", False)))
             self.append_child(child)
         self.vis_children = self.children
-    
+
     def display(self):
         self.get_status()
 
         box.menu.clear()
         box.menu.addstr(0, 0, self.text, curses.A_UNDERLINE)
         box.menu.addstr(1, 0, "Navigation: arrow keys; Exit: Ctrl + C; Save: Ctrl + S.")
-        self.alter_visibility(adaptive["on"], adaptive["off"], self.get_child_by_tag("adapt").children[0].text in Constants.true)
+        self.alter_visibility(adaptive["on"], adaptive["off"], is_true(self.get_child_by_tag("adapt").children[0].text))
         self.alter_visibility(sh["on"], sh["off"], "sh" in self.get_child_by_tag("trajtype").children[0].text)
-        self.alter_visibility(df["on"], df["off"], self.get_child_by_tag("df").children[0].text in Constants.true)
+        self.alter_visibility(df["on"], df["off"], is_true(self.get_child_by_tag("df").children[0].text))
         self.alter_visibility(pt2["on"], pt2["off"], "caspt2" in self.get_child_by_tag("esttype").children[0].text.lower())
         self.display_children(0)
         box.menu.refresh()
@@ -353,7 +353,7 @@ class Menu():
                     child.display_children(depth+1)
             else:
                 box.menu.addstr(i+2, 40*depth, child.text, STAT[child.status])
-    
+
     def display_help(self):
         box.hlp.clear()
         lines = [s for s in self.hlp.split("\n") if s]
@@ -369,7 +369,7 @@ class Menu():
         box.inp.clear()
         box.inp.refresh()
 
-    
+
     def alter_visibility(self, on: list, off: list, orig: bool):
         for name in on:
             self.get_child_by_tag(name).visible = orig
@@ -380,14 +380,14 @@ class Menu():
         self.children.append(child)
         child.parent = self
         return self
-    
+
     def get_child_by_text(self, text: str):
         for child in self.children:
             if isinstance(child, TextField): continue
 
             if text == child.text:
                 return child
-            
+
             if (temp := child.get_child_by_text(text)) is None: continue
             else: return temp
 
@@ -397,10 +397,10 @@ class Menu():
 
             if text == child.tag:
                 return child
-            
+
             if (temp := child.get_child_by_tag(text)) is None: continue
-            else: return temp    
-    
+            else: return temp
+
     def remove_child(self, child):
         for i, other in enumerate(self.children):
             if other == child:
@@ -419,7 +419,7 @@ class Menu():
             if other == self.selected_child:
                 self.selected_child = self.vis_children[(i-1)%len(self.vis_children)]
                 return
-    
+
     def deselect_children(self):
         self.selected_child = None
         for child in self.children:
@@ -433,7 +433,7 @@ class Menu():
         stat = 2
         for child in self.vis_children:
             stat = min(child.get_status(), stat)
-        
+
         self.modified = self.status != stat
         self.status = stat
         return self.status
@@ -463,7 +463,7 @@ class Selectable(Menu):
         self.visible = True
         self.modified = False
 
-class TextField():    
+class TextField():
     def __init__(self, text: str = "", tp: type = str, lst: bool = False):
         self.text = text or ""
         self.vals = text
@@ -476,15 +476,17 @@ class TextField():
 
     def convert(self):
         def cnv(inp: str):
-            if self.input_type == bool: return inp in Constants.true
-            else: return self.input_type(inp)
+            if self.input_type == bool:
+                return is_true(inp)
+            else:
+                return self.input_type(inp)
 
         if self.lst:
             return [cnv(i) for i in self.text.replace("\n", " ").split()]
         else:
             out = "\n".join(self.text.replace("\n", " ").split())
             return cnv(out)
-    
+
     def check_input(self):
         try:
             inp = self.convert()
@@ -492,7 +494,7 @@ class TextField():
             else: return 0
         except:
             return 0
-        
+
     def display_input(self):
         box.inph.clear()
         box.inph.addstr(0, 0, "Input", curses.A_UNDERLINE)
@@ -528,9 +530,9 @@ def merge(into: dict, ref: dict):
 
 '''
 \u2554\u2550\u2557
-\u2551 \u2551
+\u2551      \u2551
 \u2560\u2550\u2563
-\u2551 \u2551
+\u2551      \u2551
 \u255a\u2550\u255d
 '''
 
@@ -554,7 +556,7 @@ def main(stdscr):
             with open(inp, "rb") as f:
                 menu: Menu = pickle.load(f)
 
-        elif inp.endswith(".json"): 
+        elif inp.endswith(".json"):
             with open(sys.argv[1], "r") as f: tree = json.load(f)
             tree = merge(tree, DEFAULT)
             menu = None
@@ -569,22 +571,22 @@ def main(stdscr):
     curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_YELLOW, curses.COLOR_BLACK)
     curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
-    
+
     global STAT
     STAT = {
         0: curses.color_pair(1),
         1: curses.color_pair(2),
         2: curses.color_pair(3)
     }
-    
+
     global box
     box = Box(
-        stdscr, 
+        stdscr,
         curses.newwin(curses.LINES//2-2, curses.COLS-2, 1, 1),
         curses.newwin(1, curses.COLS//2-2, curses.LINES//2+1, 1),
         curses.newwin(curses.LINES-curses.LINES//2-3, curses.COLS//2-2, curses.LINES//2+2, 1),
         curses.newwin(curses.LINES-curses.LINES//2-2, curses.COLS-curses.COLS//2-3, curses.LINES//2+1, curses.COLS//2+2))
-    
+
     curses.curs_set(0)
     rectangle(box.scr, 0, 0, curses.LINES//2-1, curses.COLS-1)
     rectangle(box.scr, curses.LINES//2, 0, curses.LINES-1, curses.COLS//2-1)
@@ -605,25 +607,20 @@ def main(stdscr):
 
     while True:
         key = box.scr.getkey()
-
-        # Ctrl + C
         if key == "q":
             exit()
-        
-        # Ctrl + D, for testing
+
         elif key == "d":
             menu.alter_visibility(adaptive, False)
 
-        # Ctrl + H
         elif key == "h":
             continue
 
-        # Ctrl + S
         elif key == "s":
             with open("save.pkl", "wb") as f:
                 pickle.dump(menu, f)
 
-            if menu.status > 0:               
+            if menu.status > 0:
                 with open("input.json", "w") as f:
                     json.dump(menu.to_dict(), f, indent=4)
             continue
@@ -653,5 +650,5 @@ def main(stdscr):
         menu.display()
         active.selected_child.display_help()
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     wrapper(main)

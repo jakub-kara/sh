@@ -79,7 +79,7 @@ class Dynamics(metaclass = SingletonFactory):
 
         out = Output()
         out.write_log(f"Total energy:   {convert(self.total_energy(traj.mol), 'au', 'ev'):.6f} eV")
-        out.write_log(f"Energy drift:   {convert(self.energy_diff(traj.mol, traj.mols[-2]), 'au', 'ev'):.6f} eV")
+        out.write_log(f"Energy shift:   {convert(self.energy_diff(traj.mol, traj.mols[-2]), 'au', 'ev'):.6f} eV")
         out.write_log()
 
         self.adjust_nuclear(traj.mols, traj.timestep.dt)

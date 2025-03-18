@@ -1,0 +1,126 @@
+body {
+    font-family: monospace;
+    /* white-space: pre; */
+}
+
+.main {
+    margin-left: 55px;
+    transition: margin-left 0.3s ease;
+}
+
+td {
+    margin: 0px;
+    padding-right: 10px;
+    padding-left: 10px;
+    border: 1px solid black;
+
+    overflow: auto;
+}
+
+table {
+    border-collapse: collapse;
+    border: 1px solid black;
+    margin-bottom: 20px;
+}
+
+h4 {
+    margin-bottom: 0px;
+    padding-bottom: 0px;
+}
+
+.indent {
+    padding-left: 30px;
+}
+
+.side {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 50px;
+    background-color: #1f77b4;
+    transition: width 0.3s ease;
+}
+
+.side:hover {
+    width: 150px;
+}
+
+.side ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.side ul li {
+    padding: 12px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.side ul li a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.side ul li .opt {
+    display: none;
+}
+
+.side:hover ul li .opt {
+    display: inline-block;
+    margin-left: 10px;
+}
+
+.side ul li:hover {
+    background-color: #ff7f0e;
+}
+
+svg text {
+    text-anchor: middle;
+    dominant-baseline: middle;
+    fill: black;
+    font-size: 14;
+}
+
+svg rect ellipse line {
+    stroke-width: 1px;
+}
+
+svg line {
+    stroke: black;
+}
+
+marker {
+    stroke: context-stroke;
+    fill: context-fill;
+}
+
+.white {
+    stroke: black;
+    fill: white;
+}
+.orange {
+    stroke: #FF7F0E;
+    fill: #FFE5CF;
+}
+
+.red {
+    stroke: #D62728;
+    fill: #F7D4D4;
+}
+
+.purple {
+    stroke: #9467BD;
+    fill: #EAE1F2;
+}
+
+.blue {
+    stroke: #1F77B4;
+    fill: #CCE5F6;
+}
+
+.green {
+    stroke: #2CA02C;
+    fill: #CFF2CF;
+}

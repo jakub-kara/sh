@@ -1,7 +1,6 @@
 import numpy as np
 
-class Constants:
-    pass
+is_true = lambda x: x in [True, "true", 1]
 
 atomic_widths = {
     "1": 1, "H": 4.7, "C": 22.7,

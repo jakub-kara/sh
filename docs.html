@@ -1,102 +1,187 @@
 <!DOCTYPE html>
 <head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet" href="resources/styles.css">
 
-<style>
-    body {
-        font-family: monospace;
-        /* white-space: pre; */
-    }
-
-    td {
-        margin: 0px;
-        padding-right: 10px;
-        padding-left: 10px;
-        border: 1px solid black;
-
-        overflow: auto;
-    }
-
-    table {
-        border-collapse: collapse;
-        border: 1px solid black;
-        margin-bottom: 20px;
-    }
-
-    h4 {
-        margin-bottom: 0px;
-        padding-bottom: 0px;
-    }
-
-    .indent {
-        padding-left: 30px;
-    }
-
-</style>
-
-<script>
-
-function get_span() {
-    spans = Array.prototype.slice.call(document.getElementsByClassName("tab"));
-    for (var span of spans) {
-        create_table(span);
-    }
-}
-
-function create_table(el) {
-    typ = el.hasAttribute("data-type") ? el.getAttribute("data-type") : "any";
-    def = el.hasAttribute("data-default") ? el.getAttribute("data-default") : "";
-    opt = el.hasAttribute("data-options") ? JSON.parse(el.getAttribute("data-options")) : {};
-
-    tab = document.createElement("table");
-    tr = document.createElement("tr");
-    td = document.createElement("td");
-    td.innerHTML = "Type";
-    tr.appendChild(td);
-    td = document.createElement("td");
-    td.innerHTML = typ;
-    tr.appendChild(td);
-    tab.appendChild(tr);
-
-    tr = document.createElement("tr");
-    td = document.createElement("td");
-    td.innerHTML = "Default";
-    tr.appendChild(td);
-    td = document.createElement("td");
-    td.innerHTML = def;
-    tr.appendChild(td);
-    tab.appendChild(tr);
-
-    i = 0;
-    for (var prop in opt) {
-        tr = document.createElement("tr");
-        if (i == 0) {
-            td = document.createElement("td");
-            td.innerHTML = "Options";
-            if (Object.keys(opt).length > 1) {
-                td.setAttribute("rowspan", "0")
-            }
-            tr.appendChild(td);
-        }
-
-        td = document.createElement("td");
-        td.innerHTML = prop + "<br>" + opt[prop];
-        tr.appendChild(td);
-        tab.appendChild(tr);
-        i++;
-    }
-
-    par = el.parentElement
-    par.replaceChild(tab, el);
-
-}
-
-</script>
+<script src="resources/scripts.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 
 </head>
 
 <body onload="get_span()">
 
-<h4>Units</h4>
+<div class="side" onmouseover="expand_sidebar()" onmouseout="collapse_sidebar()">
+    <ul>
+        <li>
+            <a href="#workflow">
+                <i class="fas fa-fw fa-project-diagram"></i>
+                <span class="opt">Workflow</span>
+            </a>
+        </li>
+        <li>
+            <a href="#units">
+                <i class="fas fa-fw fa-ruler-combined"></i>
+                <span class="opt">Units</span>
+            </a>
+        </li>
+        <li>
+            <a href="#keywords">
+            <i class="fas fa-fw fa-tags"></i>
+            <span class="opt">Keywords</span>
+            </a>
+        </li>
+        <li>
+            <a href="#commands">
+                <i class="fas fa-fw fa-terminal"></i>
+                <span class="opt">Commands</span>
+            </a>
+        </li>
+        <li>
+            <a href="#examples">
+                <i class="fas fa-fw fa-book"></i>
+                <span class="opt">Examples</span>
+            </a>
+        </li>
+    </ul>
+</div>
+
+<div class="main" id="main">
+
+    <h4 id="workflow">Workflow</h4>
+
+    <svg width="660" height="280" style="border:1px solid black;">
+        <ellipse cx="80" cy="60" rx="60" ry="20" class="orange"/>
+        <text x="80" y="53">
+            <tspan x="80" dy="0">&nbsp;Frequency</tspan>
+            <tspan x="80" dy="14">File</tspan>
+        </text>
+
+        <ellipse cx="80" cy="140" rx="60" ry="20" class="orange"/>
+        <text x="80" y="133">
+            <tspan x="80" dy="0">&nbsp;Input</tspan>
+            <tspan x="80" dy="14">File</tspan>
+        </text>
+
+        <ellipse cx="80" cy="220" rx="60" ry="20" stroke="black" class="orange"/>
+        <text x="80" y="213">
+            <tspan x="80" dy="0">&nbsp;Submission</tspan>
+            <tspan x="80" dy="14">Script(s)</tspan>
+        </text>
+
+
+
+        <rect x="180" width="120" y="120" height="40" rx="5" ry="5" class="red"/>
+        <text x="240" y="133">
+            <tspan x="240" dy="0">&nbsp;Initial</tspan>
+            <tspan x="240" dy="14">Sampling</tspan>
+        </text>
+
+        <rect x="180" width="20" y="40" height="40" rx="2" ry="2" class="white"/>
+        <text x="190" y="60" transform="rotate(-90,190,60)">T0</text>
+
+        <rect x="200" width="20" y="40" height="40" rx="2" ry="2" class="white"/>
+        <text x="210" y="60" transform="rotate(-90,210,60)">T1</text>
+
+        <rect x="220" width="20" y="40" height="40" rx="2" ry="2" class="white"/>
+        <text x="230" y="60" transform="rotate(-90,230,60)">T2</text>
+
+        <rect x="240" width="20" y="40" height="40" rx="2" ry="2" class="white"/>
+        <text x="250" y="60" transform="rotate(-90,250,60)">T3</text>
+
+        <text x="280" y="60">...</text>
+
+
+
+        <rect x="340" width="120" y="120" height="40" rx="5" ry="5" class="purple"/>
+        <text x="400" y="140">Dynamics</text>
+
+        <rect x="340" width="20" y="200" height="40" rx="2" ry="2" class="white"/>
+        <text x="350" y="220" transform="rotate(-90,350,220)">log</text>
+
+        <rect x="360" width="20" y="200" height="40" rx="2" ry="2" class="white"/>
+        <text x="370" y="220" transform="rotate(-90,370,220)">xyz</text>
+
+        <rect x="380" width="20" y="200" height="40" rx="2" ry="2" class="white"/>
+        <text x="390" y="220" transform="rotate(-90,390,220)">dat</text>
+
+        <rect x="400" width="20" y="200" height="40" rx="2" ry="2" class="white"/>
+        <text x="410" y="220" transform="rotate(-90,410,220)">h5</text>
+
+        <text x="440" y="220">...</text>
+
+
+
+        <rect x="500" width="120" y="120" height="40" rx="5" ry="5" class="blue"/>
+        <text x="560" y="140">Analysis</text>
+
+        <ellipse cx="560" cy="220" rx="60" ry="20" class="blue"/>
+        <text x="560" y="213">
+            <tspan x="560" dy="0">&nbsp;Analysis</tspan>
+            <tspan x="560" dy="14">Script(s)</tspan>
+        </text>
+
+        <rect x="500" width="100" y="40" height="20" rx="2" ry="2" class="green"/>
+        <text x="550" y="50">Populations</text>
+
+        <rect x="500" width="100" y="60" height="20" rx="2" ry="2" class="green"/>
+        <text x="550" y="70">Coordinates</text>
+
+        <text x="550" y="20" transform="rotate(-90,550,20)">...</text>
+
+
+
+        <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7"
+                    refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+                <polygon points="0 0, 8 3, 0 6"/>
+            </marker>
+        </defs>
+
+        <line x1="140" y1="60" x2="160" y2="60" class="red"/>
+        <line x1="140" y1="220" x2="160" y2="220" class="red"/>
+        <line x1="160" y1="60" x2="160" y2="220" class="red"/>
+        <line x1="140" y1="140" x2="177" y2="140" class="red" marker-end="url(#arrowhead)"/>
+
+        <line x1="80" y1="180" x2="320" y2="180" class="purple"/>
+        <line x1="80" y1="160" x2="80" y2="200" class="purple"/>
+        <line x1="320" y1="180" x2="320" y2="140" class="purple"/>
+        <line x1="320" y1="140" x2="338" y2="140" class="purple" marker-end="url(#arrowhead)"/>
+
+        <line x1="240" y1="120" x2="240" y2="100"/>
+        <line x1="190" y1="100" x2="280" y2="100"/>
+        <line x1="190" y1="100" x2="190" y2="82" marker-end="url(#arrowhead)"/>
+        <line x1="210" y1="100" x2="210" y2="82" marker-end="url(#arrowhead)"/>
+        <line x1="230" y1="100" x2="230" y2="82" marker-end="url(#arrowhead)"/>
+        <line x1="250" y1="100" x2="250" y2="82" marker-end="url(#arrowhead)"/>
+        <line x1="280" y1="100" x2="280" y2="82" marker-end="url(#arrowhead)"/>
+
+        <line x1="300" y1="60" x2="400" y2="60" class="purple"/>
+        <line x1="400" y1="60" x2="400" y2="118" class="purple" marker-end="url(#arrowhead)"/>
+
+        <line x1="400" y1="160" x2="400" y2="180"/>
+        <line x1="350" y1="180" x2="440" y2="180"/>
+        <line x1="350" y1="180" x2="350" y2="198" marker-end="url(#arrowhead)"/>
+        <line x1="350" y1="180" x2="350" y2="198" marker-end="url(#arrowhead)"/>
+        <line x1="370" y1="180" x2="370" y2="198" marker-end="url(#arrowhead)"/>
+        <line x1="390" y1="180" x2="390" y2="198" marker-end="url(#arrowhead)"/>
+        <line x1="410" y1="180" x2="410" y2="198" marker-end="url(#arrowhead)"/>
+        <line x1="440" y1="180" x2="440" y2="198" marker-end="url(#arrowhead)"/>
+
+        <line x1="460" y1="220" x2="480" y2="220" class="blue"/>
+        <line x1="480" y1="220" x2="480" y2="140" class="blue"/>
+        <line x1="480" y1="140" x2="498" y2="140" class="blue" marker-end="url(#arrowhead)"/>
+
+        <line x1="560" y1="200" x2="560" y2="162" class="blue" marker-end="url(#arrowhead)"/>
+
+        <line x1="620" y1="140" x2="640" y2="140" class="green"/>
+        <line x1="640" y1="140" x2="640" y2="20" class="green"/>
+        <line x1="640" y1="70" x2="602" y2="70" class="green" marker-end="url(#arrowhead)"/>
+        <line x1="640" y1="50" x2="602" y2="50" class="green" marker-end="url(#arrowhead)"/>
+        <line x1="640" y1="20" x2="602" y2="20" class="green" marker-end="url(#arrowhead)"/>
+    </svg>
+
+
+<h4 id="units">Units</h4>
 Values with units attached to them can be entered as both numbers and strings. <br>
 To specify a unit, include the appropriate unit(s) after the numerical value in a string. <br>
 <table>
@@ -163,7 +248,7 @@ To specify a unit, include the appropriate unit(s) after the numerical value in 
 If no units are provided, atomic units (au) are assumed. <br>
 Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
 
-<h4>Keywords</h4>
+<h4 id="keywords">Keywords</h4>
 <div class="indent">
 
     <h4>run</h4>
@@ -614,7 +699,7 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
             data-type="uint"
             data-default=""
             data-options='{
-                "any": "Number of active orbitals (including the closed ones)"p
+                "any": "Number of active orbitals (including the closed ones)"
             }'
             ></span>
 
@@ -699,17 +784,6 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
         }'
         ></span>
 
-        <h4>timer</h4>
-        [WIP]
-        <span class="tab"
-        data-type="bool"
-        data-default="true"
-        data-options='{
-            "true": "Enable dat file generation",
-            "false": "Disable dat file generation"
-        }'
-        ></span>
-
         <h4>dat</h4>
         Contains selected data in a human-readable form for convenient, fast access
         <span class="tab"
@@ -768,7 +842,7 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
     </div>
 </div>
 
-<h4>Commands</h4>
+<h4 id="commands">Commands</h4>
 To guarantee a successful execution of the programs, an environment variable should be set: <br>
 <pre>
     export SH=&lt;path to installation&gt;
@@ -824,7 +898,10 @@ The input file described in the previous section will be referred to as input.js
         </tr>
     </table>
 </div>
-<h4>Example</h4>
 
+<h4 id="examples">Examples</h4>
+
+
+</div>
 </body>
 </html>
