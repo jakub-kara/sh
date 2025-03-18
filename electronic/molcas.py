@@ -2,7 +2,6 @@ import numpy as np
 import os, sys
 
 from .base import ESTProgram, est_method
-from classes.constants import Constants
 
 class Molcas(ESTProgram):
     key = "molcas"
