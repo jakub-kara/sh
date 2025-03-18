@@ -92,7 +92,7 @@ class NACME(TDCUpdater):
     def update(self, mols: list[Molecule], dt: float):
         self.tdc.out = np.einsum("ijad, ad -> ij", mols[-1].nacdr_ssad, mols[-1].vel_ad)
 
-class NPI(TDCUpdater):
+class NPI(Multistage, TDCUpdater):
     # Meek and Levine's norm preserving interpolation, but integrated across the time-step
     key = "npi"
     mode = "o"
@@ -100,12 +100,14 @@ class NPI(TDCUpdater):
 
     def update(self, mols: list[Molecule], dt: float):
         nst = mols[-1].n_states
-        U =    np.eye(nst)      *   np.cos(np.arccos(mols[-1].ovlp_ss))
-        U -=  (np.eye(nst) - 1) *   np.sin(np.arcsin(mols[-1].ovlp_ss))
-        dU =   np.eye(nst)      * (-np.sin(np.arccos(mols[-1].ovlp_ss)) * np.arccos(mols[-1].ovlp_ss) / dt)
-        dU -= (np.eye(nst) - 1) *  (np.cos(np.arcsin(mols[-1].ovlp_ss)) * np.arcsin(mols[-1].ovlp_ss) / dt)
+        for i in range(self.substeps):
+            U   =  np.eye(nst)      *   np.cos(np.arccos(mols[-1].ovlp_ss) * i / self.substeps)
+            U  -= (np.eye(nst) - 1) *   np.sin(np.arcsin(mols[-1].ovlp_ss) * i / self.substeps)
+            dU  =  np.eye(nst)      * (-np.sin(np.arccos(mols[-1].ovlp_ss) * i / self.substeps) * np.arccos(mols[-1].ovlp_ss) / dt)
+            dU -= (np.eye(nst) - 1) *  (np.cos(np.arcsin(mols[-1].ovlp_ss) * i / self.substeps) * np.arcsin(mols[-1].ovlp_ss) / dt)
 
-        self.tdc.out = (U.T @ dU) * (1 - np.eye(nst)) # to get rid of non-zero diagonal elements
+            Utot = np.matmul(U.T, dU)
+            self.tdc.inter[i] = Utot * (1 - np.eye(nst))
 
 class NPISharc(Multistage, TDCUpdater):
     # NPI sharc mid-point averaged
