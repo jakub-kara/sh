@@ -156,7 +156,7 @@ class Molcas(ESTProgram):
                 if False: #SOC
                     pass
                 else:
-                    if self._type == 'pt2':
+                    if self._method_name == 'pt2':
                         if 'ms-caspt2 energies' in line or 'xdw-caspt2 energies' in line:
                             #  while (line := file.readline()):
                             for i in range(self._nstates):
