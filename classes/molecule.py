@@ -334,7 +334,10 @@ class SHMixin(MoleculeMixin):
     def nohop(self):
         self.target = self.active
 
-class MCEMixin(MoleculeMixin):
+class EhrMixin(MoleculeMixin):
+    key = "ehr"
+
+class MCEMixin(EhrMixin):
     key = "mce"
 
     def __init__(self, **kwargs):
@@ -393,8 +396,17 @@ class CSDMMixin(MoleculeMixin):
 
     def __init__(self, *, n_states: int, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
-        self.pointer = self._state
+        self.active = self._state
         self.coeff_co_s = np.zeros(n_states, dtype=np.complex128)
+        self.coeff_co_s[:] = self.coeff_s
+
+    @property
+    def pointer(self):
+        return self.active
+
+    @pointer.setter
+    def pointer(self, val):
+        self.active = val
 
 
 

@@ -13,7 +13,7 @@ from updaters.tdc import TDCUpdater
 class SurfaceHopping(Dynamics):
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
-        config["nuclear"]["mixins"].append("sh")
+        config["nuclear"]["mixins"] = "sh"
         dectypes = {
             "none": self._decoherence_none,
             "edc": self._decoherence_edc,

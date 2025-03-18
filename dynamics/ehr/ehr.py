@@ -7,6 +7,7 @@ class SimpleEhrenfest(Dynamics):
 
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
+        config["nuclear"]["mixins"] = "ehr"
 
         nactypes = {
             "nac": self._nac,
@@ -41,5 +42,8 @@ class SimpleEhrenfest(Dynamics):
             for j in range(mol.n_states):
                 if i == j:
                     continue
-                force += 2 * np.real(mol.nacdt_ss[i,j] * mol.coeff_s[j].conj() * mol.coeff_s[i] * nac[i,j] / (np.sum(nac[i,j] * mol.vel_ad))) * mol.ham_eig_ss[i,i]
+                if np.linalg.norm(nac[i,j]) > 1e-12:
+                    force += 2 * np.real(mol.nacdt_ss[i,j] * mol.coeff_s[i].conj() * mol.coeff_s[j] * nac[i,j] / (np.sum(nac[i,j] * mol.vel_ad))) * mol.ham_eig_ss[i,i]
+                else:
+                    force += 2 * np.real(mol.nacdt_ss[i,j] * mol.coeff_s[i].conj() * mol.coeff_s[j] * mol.vel_ad / np.sum(mol.vel_ad**2)) * mol.ham_eig_ss[i,i]
         mol.acc_ad = force / mol.mass_a[:,None]

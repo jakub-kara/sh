@@ -62,6 +62,8 @@ class Dynamics(metaclass = SingletonFactory):
         if not nupd.success:
             nupd.to_init()
             ESTProgram().recover_wf()
+            print("nupd")
+            breakpoint()
             return
 
         temp = nupd.active.out.out
@@ -69,6 +71,8 @@ class Dynamics(metaclass = SingletonFactory):
         if not valid:
             traj.timestep.fail()
             ESTProgram().recover_wf()
+            print("timestep")
+            breakpoint()
             return
         traj.add_molecule(temp)
         traj.pop_molecule(0)

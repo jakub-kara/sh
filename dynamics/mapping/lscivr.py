@@ -16,7 +16,7 @@ class LSCIVR(Dynamics):
     key = "lscivr"
 
     def __init__(self, *, dynamics: dict, **config):
-        config["nuclear"]["mixins"].append("mmst")
+        config["nuclear"]["mixins"] = "mmst"
         super().__init__(dynamics=dynamics, **config)
 
         self.PE: PopulationEstimator = PopulationEstimator[dynamics.get("pop_est", "wigner")]()
