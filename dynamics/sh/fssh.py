@@ -22,7 +22,7 @@ class FSSH(SurfaceHopping):
         out.write_log(f"target: {mol.target} \t\tactive: {mol.active}")
         # print(f"Final pops: {np.abs(mol.coeff_s)**2}")
         # print(f"Check sum:  {np.sum(np.abs(mol.coeff_s)**2)}")
-        # breakpoint()
+        breakpoint()
         if mol.hop_ready():
             delta = self._get_delta(mol)
             if self._has_energy(mol, delta):

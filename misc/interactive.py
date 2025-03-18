@@ -2,8 +2,6 @@ import json
 import os, sys
 import readline
 
-from constants import Constants
-
 COLOR = {
     "HEADER": "\033[95m",
     "BLUE": "\033[94m",

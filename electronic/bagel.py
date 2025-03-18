@@ -5,7 +5,6 @@ import json
 from classes.molecule import Molecule
 
 from .base import ESTProgram, est_method
-from classes.constants import Constants
 
 from .molpro import Molpro
 
@@ -18,7 +17,7 @@ class Bagel(ESTProgram):
     def initiate(self):
 
         fs = os.listdir(os.getcwd())
-        
+
         if f'{self._file}.wf' in fs:
             os.rename(f'{self._file}.wf',f'{self._file}.wf.archive')
 
@@ -114,7 +113,7 @@ class Bagel(ESTProgram):
     @est_method
     def dsrgmrpt2(self):
         #requires JW Park's bagel patch
-        
+
 
         geom = self._create_geom_sec()
 
@@ -281,7 +280,7 @@ class Bagel(ESTProgram):
 
 
 
-        return method 
+        return method
 
     def _create_dsrg_sec(self):
 
@@ -411,21 +410,21 @@ class Bagel(ESTProgram):
     def _write_lumorb(self, mo_coeff,lumorb_filename,nocc):
         no_ao = mo_coeff.shape[0]
         lf = open(lumorb_filename, 'w')
-        
+
         lf.write(f'#INPORB 2.2\n\n\n0 1 0\n{no_ao}\n{nocc}\n#ORB\n')
         for mo in range(nocc):
             lf.write(f'* ORBITAL   1   {mo+1}\n')
             for i in range((no_ao-1)//5+1):  # first case
                 lf.write(
                     ''.join([f"{elem:22.14E}" for elem in mo_coeff[5*i:5*(i+1),mo]])+'\n')
-        
+
         lf.close()
 
     def _read_ci(self,filename):
 
         # we're going to try to only read the CASSCF vectors...
         # except in the case of reference-relaxed DSRG-MRPT2, where we must read the second
-            
+
         ci = []
 
         with open(filename, 'r') as f:
@@ -453,7 +452,7 @@ class Bagel(ESTProgram):
     def _write_ci(self, det, filename):
 
         print(det)
-        
+
         keys = list(set().union(*det))
 
         na = keys[0].count('d') + keys[0].count('a')
@@ -480,7 +479,7 @@ class Bagel(ESTProgram):
         return 'd'*self._options['closed'] + key.replace('2','d').replace('.','e')
 
     def _get_sign(self, key, na):
-        
+
         a = 0
         b = 0
 
@@ -521,8 +520,8 @@ class Bagel(ESTProgram):
         s12 = S[:nao,nao:]
         np.savetxt('S_mix',s12,header=f"{s12.shape[0]} {s12.shape[1]}", comments='')
 
-        # self._write_lumorb(a[2],'lumorb_a',self._options['active']) 
-        self._write_lumorb(b[2],'lumorb_b',self._options['active']) 
+        # self._write_lumorb(a[2],'lumorb_a',self._options['active'])
+        self._write_lumorb(b[2],'lumorb_b',self._options['active'])
 
 
 
@@ -551,7 +550,7 @@ class Bagel(ESTProgram):
         if err < 0:
             sys.exit()
 
-        
+
         S_mat = Molpro._read_wf_overlap(self,'wf.out')
 
         shutil.copy(f'{self._file}.molden',f'{self._file}.molden.old')

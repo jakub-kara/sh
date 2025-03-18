@@ -1,6 +1,5 @@
 import numpy as np
 import os
-from constants import Constants
 
 class LVC:
     freqfile = f"{os.getcwd()}/molcas.freq.molden"
@@ -23,7 +22,7 @@ class LVC:
                 for i in range(6,3*nat):
                     line = file.readline()
                     freq[i] = float(line)/Constants.eh2cm
-            
+
             if "[FR-COORD]" in line:
                 for i in range(nat):
                     line = file.readline()
@@ -38,7 +37,7 @@ class LVC:
                     line = file.readline()
                     data = line.strip().split()
                     for j in range(3): mat[v, 3*i+j] = float(data[j])
-    
+
     paramfile = f"{os.getcwd()}/LVC.template"
     with open(paramfile, 'r') as file:
         line = file.readline()
@@ -66,7 +65,7 @@ class LVC:
                     st = int(data[1])
                     val = float(data[2])
                     epsilon[off[plet-1]+st-1] = val
-            
+
             if "kappa" in line:
                 line = file.readline()
                 tot = int(line.strip())
@@ -78,7 +77,7 @@ class LVC:
                     mode = int(data[2])
                     val = float(data[3])
                     kappa[off[plet-1]+st-1, mode] = val
-            
+
             if "lambda" in line:
                 line = file.readline()
                 tot = int(line.strip())
@@ -100,7 +99,7 @@ class LVC:
         file.write("\n")
         for i in range(nat):
             file.write(f"{name[i]} {ref[3*i]} {ref[3*i+1]} {ref[3*i+2]} {vel[3*i]} {vel[3*i+1]} {vel[3*i+2]}\n")
-    
+
     @staticmethod
     def cart_to_freq(cart_coords: np.ndarray):
         displ = cart_coords - LVC.ref
@@ -110,7 +109,7 @@ class LVC:
                 freq_coords[i] += LVC.mat[j,i]*np.sqrt(LVC.mass[j])*displ[j]
             freq_coords[i] *= np.sqrt(LVC.freq[i])
         return freq_coords
-    
+
     @staticmethod
     def freq_to_cart(freq_coords: np.ndarray):
         cart_coords = np.zeros(3*LVC.nat)
@@ -119,7 +118,7 @@ class LVC:
                 cart_coords[i] += LVC.mat[j,i]/np.sqrt(LVC.mass[j])*freq_coords[j]
             cart_coords[i] /= np.sqrt(LVC.freq[i])
         return cart_coords
-    
+
     @staticmethod
     def get_est(coords: np.ndarray):
         diab = LVC.hamiltonian(coords)
@@ -151,13 +150,13 @@ class LVC:
                 else:
                     gradh[i,j] = LVC.lamda[i,j]
         return gradh
-    
+
     @staticmethod
     def diagonalise_hamiltonian(diab: np.ndarray):
         eval, evec = np.linalg.eigh(diab)
         diag = np.diag(eval)
         return diag, evec
-    
+
     @staticmethod
     def get_nac(diag, gradh, state):
         nac = np.zeros((LVC.nst, LVC.nst, LVC.nat*3))
