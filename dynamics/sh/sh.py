@@ -11,6 +11,8 @@ from updaters.tdc import TDCUpdater
 
 
 class SurfaceHopping(Dynamics):
+    mode = "a"
+
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
         config["nuclear"]["mixins"] = "sh"
@@ -23,8 +25,9 @@ class SurfaceHopping(Dynamics):
         self._reverse = dynamics.get("reverse", False)
         self._decoherence = dectypes[dynamics.get("decoherence", "none")]
 
-    def mode(self, mol: Molecule):
-        return [f"g{mol.active}", CoeffUpdater().mode, TDCUpdater().mode]
+    @property
+    def step_mode(self):
+        return [self.mode, TDCUpdater().mode, CoeffUpdater().mode]
 
     def calculate_acceleration(self, mol: Molecule):
         mol.acc_ad = -mol.grad_sad[mol.active] / mol.mass_a[:,None]
@@ -39,13 +42,10 @@ class SurfaceHopping(Dynamics):
             return a / np.linalg.norm(a)
 
         if self._rescale == "nac":
+            print("Rescaling")
             # rescale along nacdr
-            if "n" not in self.mode(mol):
-                est = ESTProgram()
-                est.request(f"n{mol.active}{mol.target}")
-                est.run(mol)
-                est.read(mol, mol)
-                est.reset_calc()
+            if "n" not in self.step_mode:
+                self.run_est(mol, ref = mol, modes = [f"n{mol.active}{mol.target}"])
 
             # check this works
             delta = mol.nacdr_ssad[mol.active, mol.target]

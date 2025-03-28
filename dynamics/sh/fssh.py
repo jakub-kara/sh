@@ -22,7 +22,6 @@ class FSSH(SurfaceHopping):
         out.write_log(f"target: {mol.target} \t\tactive: {mol.active}")
         # print(f"Final pops: {np.abs(mol.coeff_s)**2}")
         # print(f"Check sum:  {np.sum(np.abs(mol.coeff_s)**2)}")
-        # breakpoint()
         if mol.hop_ready():
             delta = self._get_delta(mol)
             if self._has_energy(mol, delta):
@@ -32,10 +31,7 @@ class FSSH(SurfaceHopping):
                 CompositeIntegrator().to_init()
                 out.write_log(f"New state: {mol.active}")
 
-                est = ESTProgram()
-                est.request(*self.mode(mol))
-                est.run(mol)
-                est.read(mol, ref = mols[-2])
+                self.run_est(mol, mols[-2], ["a"])
                 self.calculate_acceleration(mol)
             else:
                 out.write_log("Hop failed")
@@ -47,3 +43,4 @@ class FSSH(SurfaceHopping):
                     out.write_log("Reversing velocity")
                     self._reverse_velocity(mol, delta)
                 mol.nohop()
+            out.write_log()

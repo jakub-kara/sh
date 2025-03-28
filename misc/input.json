@@ -1,0 +1,69 @@
+{
+    "sampling": {
+        "distr": "wigner",
+        "input": null,
+        "samples": [],
+        "emin": null,
+        "emax": null,
+        "from": [
+            0
+        ],
+        "to": [
+            -1
+        ]
+    },
+    "dynamics": {
+        "name": null,
+        "method": "fssh",
+        "prob": "tdc",
+        "seed": null,
+        "decoherence": "edc",
+        "initstate": null,
+        "backup": "True",
+        "tmax": null,
+        "dt": null,
+        "timestep": "const"
+    },
+    "nuclear": {
+        "input": "geom.xyz",
+        "nuc_upd": "vv",
+        "com": "True"
+    },
+    "quantum": {
+        "input": null,
+        "tdc_upd": "npi",
+        "coeff_upd": "tdc",
+        "n_substeps": 50
+    },
+    "electronic": {
+        "program": "molpro",
+        "path": null,
+        "method": "cas",
+        "states": [
+            null
+        ],
+        "options": {
+            "basis": null,
+            "closed": null,
+            "active": null,
+            "sa": null,
+            "nel": null,
+            "df": true,
+            "dfbasis": "avdz"
+        }
+    },
+    "output": {
+        "file": "out",
+        "log": "True",
+        "verbosity [TODO]": "1",
+        "dat": "True",
+        "record": [
+            "pop",
+            "pen",
+            "ten"
+        ],
+        "h5": "True",
+        "xyz": "True",
+        "dist": "False"
+    }
+}

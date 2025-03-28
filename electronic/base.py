@@ -31,6 +31,7 @@ class ESTProgram(metaclass = SingletonFactory):
             options = {}
         self._options = options
         self._file = program
+
         self._calc_grad = np.zeros(self._nstates)
         self._calc_nac = np.zeros((self._nstates, self._nstates))
         self._calc_ovlp = False
@@ -55,7 +56,7 @@ class ESTProgram(metaclass = SingletonFactory):
         self._calc_ovlp = False
         return self
 
-    def request(self, *args: str):
+    def request(self, mol: Molecule, *args):
         def to_idx(inp: str):
             if inp == "x":
                 return None
@@ -69,6 +70,8 @@ class ESTProgram(metaclass = SingletonFactory):
             elif arg[0] == "g":
                 idx = to_idx(arg[1])
                 self._calc_grad[idx] = True
+            elif arg[0] == "a":
+                self._calc_grad[mol.active] = True
             elif arg[0] == "n":
                 idx = to_idx(arg[1]), to_idx(arg[2])
                 self._calc_nac[idx] = True

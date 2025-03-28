@@ -63,7 +63,6 @@ class Dynamics(metaclass = SingletonFactory):
             nupd.to_init()
             ESTProgram().recover_wf()
             print("nupd")
-            breakpoint()
             return
 
         temp = nupd.active.out.out
@@ -72,7 +71,6 @@ class Dynamics(metaclass = SingletonFactory):
             traj.timestep.fail()
             ESTProgram().recover_wf()
             print("timestep")
-            breakpoint()
             return
         traj.add_molecule(temp)
         traj.pop_molecule(0)
@@ -92,10 +90,6 @@ class Dynamics(metaclass = SingletonFactory):
         if traj.is_finished:
             traj.save_step()
 
-    @abstractmethod
-    def mode(self, mol: Molecule):
-        return [TDCUpdater().mode, CoeffUpdater().mode]
-
     @Timer(id = "nuc",
            head = "Nuclear Adjustment")
     @abstractmethod
@@ -106,11 +100,16 @@ class Dynamics(metaclass = SingletonFactory):
         TDCUpdater().elapsed(steps + 1)
         CoeffUpdater().elapsed(steps + 1)
 
+    @property
+    @abstractmethod
+    def step_mode(self):
+        pass
+
     @Timer(id = "est",
            head = "Electronic Calculation")
-    def run_est(self, mol: Molecule, ref = None):
+    def run_est(self, mol: Molecule, ref = None, modes = []):
         est = ESTProgram()
-        est.request(*self.mode(mol))
+        est.request(mol, *modes)
         est.run(mol)
         est.read(mol, ref)
         est.reset_calc()
