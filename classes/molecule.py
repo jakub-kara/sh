@@ -269,14 +269,16 @@ class Molecule:
         pass
 
 class MoleculeMixin(metaclass = Factory):
-    def __init__(self, *, initstate: int, coeff = None, **kwargs):
+    def __init__(self, *, initstate: int, **kwargs):
         super().__init__(**kwargs)
         self._state = initstate
 
-        if coeff is None:
+
+    def get_coeff(self, input: str = None):
+        if input is None:
             self.set_coeff()
         else:
-            self.read_coeff(coeff)
+            self.read_coeff(input)
 
     def set_coeff(self):
         self.coeff_s[self._state] = 1.
@@ -380,43 +382,3 @@ class CSDMMixin(MoleculeMixin):
     @pointer.setter
     def pointer(self, val):
         self.active = val
-
-
-
-class HamTransform(metaclass = SingletonFactory):
-    @abstractmethod
-    def transform(self, mol: Molecule):
-        pass
-
-    def diagonalise_ham(self, mol: Molecule):
-        eval, evec = np.linalg.eigh(mol.ham_dia_ss)
-        mol.trans_ss = evec
-        mol.ham_eig_ss = np.diag(eval)
-
-class NoTransform(HamTransform):
-    key = "none"
-    mode = ""
-    def transform(self, mol: Molecule):
-        mol.ham_eig_ss[:] = np.real(mol.ham_dia_ss)
-        mol.trans_ss[:] = np.eye(mol.n_states)
-
-class NGT(HamTransform):
-    key = "ngt"
-    mode = "gn"
-    def transform(self, mol):
-        # need to transform gradient for non-diagonal hamiltonian
-        # for details, see https://doi.org/10.1002/qua.2489
-        self.diagonalise_ham()
-        g_dia = np.zeros_like(mol.nacdr_ssad, dtype=np.complex128)
-        for i in range(mol.n_states):
-            for j in range(mol.n_states):
-                # on-diagonal part
-                g_dia[i,j] = (i == j) * mol.grad_sad[i]
-                # off-diagonal part
-                g_dia[i,j] -= (mol.ham_dia_ss[i,i] - mol.ham_dia_ss[j,j]) * mol.nacdr_ssad[i,j]
-        # just a big matrix multiplication with some extra dimensions
-        g_eig = np.einsum("ij,jkad,kl->ilad", mol.trans_ss.conj().T, g_dia, mol.trans_ss)
-
-        # only keep the real part of the gradient
-        for i in range(mol.n_states):
-            mol.grad_sad[i] = np.real(g_eig[i,i])

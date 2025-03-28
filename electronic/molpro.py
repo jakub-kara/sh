@@ -316,7 +316,7 @@ class Molpro(ESTProgram):
         None
         """
 
-        grad = np.zeros((self._nstates, self._natoms, 3))
+        grad = np.full((self._nstates, self._natoms, 3), None)
         # read output file
         with open(f"{self._file}.out", "r") as file:
             while True:
@@ -365,7 +365,7 @@ class Molpro(ESTProgram):
         None
         """
 
-        nac = np.zeros((self._nstates, self._nstates, self._natoms, 3))
+        nac = np.full((self._nstates, self._nstates, self._natoms, 3), None)
         # read output file
         with open(f"{self._file}.out", "r") as file:
             while True:
@@ -398,7 +398,7 @@ class Molpro(ESTProgram):
         return nac
 
     def read_dipmom(self):
-        dipmom = np.zeros((self._nstates, self._nstates, 3))
+        dipmom = np.full((self._nstates, self._nstates, 3), None)
         with open(f"{self._file}.out", "r") as f:
             for line in f:
                 if 'Expectation values' in line:
@@ -644,4 +644,3 @@ class Molpro(ESTProgram):
         os.system('rm molpro_overlap*')
         S_mat = self._read_wf_overlap('wf.out')
         return S_mat
-

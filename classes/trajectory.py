@@ -46,8 +46,10 @@ class Trajectory:
         self.mols.remove(mol)
         return self
 
-    def get_molecule(self, **config):
-        return MoleculeFactory.create_molecule(n_states=ESTProgram().n_states, **config)
+    def get_molecule(self, coeff = None, **config):
+        mol = MoleculeFactory.create_molecule(n_states=ESTProgram().n_states, **config)
+        mol.get_coeff(coeff)
+        return mol
 
     def set_molecules(self, **nuclear):
         nupd = CompositeIntegrator()

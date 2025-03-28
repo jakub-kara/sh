@@ -15,7 +15,7 @@ class VelocityVerlet(NuclearUpdater):
         out: Molecule = self.out.inp.copy_all()
         out.pos_ad = mol.pos_ad + dt * mol.vel_ad + 0.5 * dt**2 * mol.acc_ad
 
-        dyn.run_est(out, ref = mol, modes = dyn.step_mode)
+        dyn.run_est(out, ref = mol, mode = dyn.step_mode(out))
         dyn.update_quantum(mols + [out], dt)
         dyn.calculate_acceleration(out)
         out.vel_ad = mol.vel_ad + 0.5 * dt * (mol.acc_ad + out.acc_ad)

@@ -41,7 +41,7 @@ class MISH(SurfaceHopping):
                 out.write_log(f"New state: {mol.active}")
 
                 est = ESTProgram()
-                est.request(self.mode(mol))
+                est.request(*self.mode(mol))
                 est.run(mol)
                 est.read(mol, ref = mols[-2])
                 self.calculate_acceleration(mol)
@@ -88,7 +88,7 @@ class MISH(SurfaceHopping):
 
         if "n" not in self.mode():
             est = ESTProgram()
-            est.request(self.mode(mol))
+            est.request(*self.mode(mol))
             est.run(mol)
             est.read(mol, mol)
             est.reset_calc()
@@ -110,18 +110,3 @@ class MISH(SurfaceHopping):
         delta = normalise(delta)
 
         return delta
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -4,18 +4,17 @@ from dynamics.base import Dynamics
 from classes.molecule import Molecule, SHMixin
 from classes.out import Printer, Output
 from classes.trajectory import Trajectory
-from electronic.base import ESTProgram
+from electronic.base import ESTMode
 from updaters.composite import CompositeIntegrator
 from updaters.coeff import CoeffUpdater
 from updaters.tdc import TDCUpdater
 
 
 class SurfaceHopping(Dynamics):
-    mode = "a"
+    mode = ESTMode("a")
 
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
-        config["nuclear"]["mixins"] = "sh"
         dectypes = {
             "none": self._decoherence_none,
             "edc": self._decoherence_edc,
@@ -25,9 +24,8 @@ class SurfaceHopping(Dynamics):
         self._reverse = dynamics.get("reverse", False)
         self._decoherence = dectypes[dynamics.get("decoherence", "none")]
 
-    @property
-    def step_mode(self):
-        return [self.mode, TDCUpdater().mode, CoeffUpdater().mode]
+    def step_mode(self, mol):
+        return self.mode(mol) + TDCUpdater().mode(mol) + CoeffUpdater().mode(mol)
 
     def calculate_acceleration(self, mol: Molecule):
         mol.acc_ad = -mol.grad_sad[mol.active] / mol.mass_a[:,None]
@@ -44,8 +42,8 @@ class SurfaceHopping(Dynamics):
         if self._rescale == "nac":
             print("Rescaling")
             # rescale along nacdr
-            if "n" not in self.step_mode:
-                self.run_est(mol, ref = mol, modes = [f"n{mol.active}{mol.target}"])
+            if np.isnan(mol.nacdr_ssad[mol.active, mol.target]):
+                self.run_est(mol, ref = mol, mode = ESTMode("t")(mol))
 
             # check this works
             delta = mol.nacdr_ssad[mol.active, mol.target]
@@ -160,5 +158,3 @@ class SurfaceHopping(Dynamics):
         dic = super().h5_dict(traj)
         dic["act"] = traj.mol.active
         return dic
-
-

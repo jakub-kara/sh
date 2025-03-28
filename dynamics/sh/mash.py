@@ -12,7 +12,7 @@ class MASH(SurfaceHopping):
     key = "mash"
 
     def __init__(self, **config):
-        config["nuclear"]["mixins"].append("bloch")
+        config["nuclear"]["mixins"] = "bloch"
         super().__init__(**config)
         BlochUpdater(**config["quantum"])
         HoppingUpdater["mash"](**config["quantum"])
@@ -35,7 +35,7 @@ class MASH(SurfaceHopping):
                 mol.hop()
 
                 est = ESTProgram()
-                est.request(self.mode(mol))
+                est.request(*self.mode(mol))
                 est.run(mol)
                 est.read(mol, ref = mols[-2])
                 self.calculate_acceleration(mol)
@@ -59,34 +59,12 @@ class MASH(SurfaceHopping):
         bupd.run(mols, dt)
         mols[-1].bloch_n3 = bupd.bloch.out
 
-    # def _has_energy(self, mol: Molecule):
-    #     d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
-    #     pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
-    #     ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
-    #     return np.sum(ppar**2) / 2 + mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target] >= 0
-
-    # def _adjust_velocity(self, mol: Molecule):
-    #     d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
-    #     pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
-    #     ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
-    #     pperp = pmw - ppar
-    #     pfin = np.sqrt(1 + 2 * (mol.ham_eig_ss[self.active, self.active] - mol.ham_eig_ss[self.target, self.target]) / np.sum(ppar**2)) * ppar
-    #     mol.vel_ad = (pperp + pfin) / np.sqrt(mol.mass_a[:,None])
-
-    # def _reverse_velocity(self, mol: Molecule):
-    #     d2 = np.sum(mol.nacdr_ssad[self.target, self.active]**2)
-    #     pmw = mol.vel_ad * np.sqrt(mol.mass_a[:,None])
-    #     ppar = np.sum(pmw * mol.nacdr_ssad[self.target, self.active]) / d2 * mol.nacdr_ssad[self.target, self.active]
-    #     pperp = pmw - ppar
-    #     pfin = -ppar
-    #     mol.vel_ad = (pperp + pfin) / np.sqrt(mol.mass_a[:,None])
-
     def _swap_bloch(self, mol: Molecule):
         swp = np.array([1, -1, -1])
         for s in range(mol.n_states):
-            if s == self.active:
-                mol.bloch_n3[s] = mol.bloch_n3[self._target] * swp
-                mol.bloch_n3[self._target] = None
+            if s == mol.active:
+                mol.bloch_n3[s] = mol.bloch_n3[mol.target] * swp
+                mol.bloch_n3[mol.target] = None
 
     def _reverse_bloch(self, mol: Molecule):
-        mol.bloch_n3[self._target, 2] *= -1
+        mol.bloch_n3[mol.target, 2] *= -1

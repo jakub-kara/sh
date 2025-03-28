@@ -4,13 +4,13 @@ from abc import abstractmethod
 from copy import deepcopy
 from classes.constants import convert
 from classes.meta import SingletonFactory
-from classes.molecule import Molecule, HamTransform
+from classes.molecule import Molecule
 from classes.out import Output, Printer, Timer
 from classes.trajectory import Trajectory
 from updaters.composite import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
-from electronic.base import ESTProgram
+from electronic.base import ESTProgram, HamTransform
 
 class Dynamics(metaclass = SingletonFactory):
     def __init__(self, *, dynamics: dict, **config: dict):
@@ -41,7 +41,7 @@ class Dynamics(metaclass = SingletonFactory):
         self.write_headers(traj)
 
         self.steps_elapsed(-1)
-        self.run_est(mol, mol)
+        self.run_est(mol, mol, mode = self.step_mode(mol))
         self.calculate_acceleration(mol)
 
         self.update_quantum(traj.mols, traj.timestep.dt)
@@ -100,16 +100,15 @@ class Dynamics(metaclass = SingletonFactory):
         TDCUpdater().elapsed(steps + 1)
         CoeffUpdater().elapsed(steps + 1)
 
-    @property
     @abstractmethod
-    def step_mode(self):
+    def step_mode(self, mol: Molecule):
         pass
 
     @Timer(id = "est",
            head = "Electronic Calculation")
-    def run_est(self, mol: Molecule, ref = None, modes = []):
+    def run_est(self, mol: Molecule, ref = None, mode = ""):
         est = ESTProgram()
-        est.request(mol, *modes)
+        est.request(*mode)
         est.run(mol)
         est.read(mol, ref)
         est.reset_calc()

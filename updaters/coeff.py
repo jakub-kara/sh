@@ -4,10 +4,10 @@ from .updaters import Updater, Multistage, UpdateResult
 from .tdc import TDCUpdater
 from classes.meta import Singleton, SingletonFactory
 from classes.molecule import Molecule, BlochMixin
+from electronic.base import ESTMode
 
 class CoeffUpdater(Updater, metaclass = SingletonFactory):
-    mode = ""
-
+    mode = ESTMode("")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.coeff = None
@@ -30,7 +30,6 @@ class BlankCoeffUpdater(CoeffUpdater):
 class CoeffTDCUpdater(Multistage, CoeffUpdater):
     key = "tdc"
     steps = 1
-    mode = ""
 
     def update(self, mols: list[Molecule], dt: float):
         tdcupd = TDCUpdater()
@@ -48,7 +47,7 @@ class CoeffTDCUpdater(Multistage, CoeffUpdater):
 class CoeffLDUpdater(Multistage, CoeffUpdater):
     key = "ld"
     steps = 1
-    mode = "o"
+    mode = ESTMode("o")
 
     def update(self, mols: list[Molecule], dt: float):
         coeff = self.coeff.inp
@@ -64,7 +63,6 @@ class CoeffLDUpdater(Multistage, CoeffUpdater):
 
 class BlochUpdater(Multistage, Updater, metaclass = Singleton):
     steps = 1
-    mode = ""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -73,28 +71,30 @@ class BlochUpdater(Multistage, Updater, metaclass = Singleton):
     def new_result(self, mol: Molecule, *args, **kwargs):
         self.bloch = UpdateResult(mol.bloch_n3, self.substeps)
 
-    def update(self, mols: list[Molecule], dt: float, active: int):
+    def update(self, mols: list[Molecule], dt: float):
         tdcupd = TDCUpdater()
         bloch = self.bloch.inp
-        nst = mols[-1].n_states
+        mol = mols[-1]
+        nst = mol.n_states
+        act = mol.active
 
         for i in range(self.substeps):
             frac = (i + 0.5) / self.substeps
             tdc = tdcupd.tdc.interpolate(frac)
             for s in range(nst):
-                if s == active:
+                if s == act:
                     bloch[s, :] = None
                     continue
                 ham = frac * mols[-1].ham_eig_ss + (1 - frac) * mols[-2].ham_eig_ss
                 mat = np.zeros((3, 3))
-                mat[0,1] = ham[s, s] - ham[active, active]
+                mat[0,1] = ham[s, s] - ham[act, act]
                 mat[1,0] = -mat[0,1]
-                mat[0,2] = 2 * tdc[active, s]
+                mat[0,2] = 2 * tdc[act, s]
                 mat[2,0] = -mat[0,2]
 
                 bloch[s] = expm(mat * dt / self.substeps) @ bloch[s]
                 # print(bloch[s])
                 self.bloch.inter[i,s] = bloch[s]
 
-    def no_update(self, mols: list[Molecule], dt: float, active: int):
+    def no_update(self, mols: list[Molecule], dt: float):
         self.bloch.fill()

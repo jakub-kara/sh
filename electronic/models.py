@@ -199,7 +199,7 @@ class Model(ESTProgram):
     def ho2(self):
         a = 0.005
         b = 4
-        c = 3
+        c = 2
         d = 0
 
         # a = 0.005

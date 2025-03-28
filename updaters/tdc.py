@@ -2,9 +2,10 @@ import numpy as np
 from .updaters import Updater, Multistage, UpdateResult
 from classes.meta import SingletonFactory
 from classes.molecule import Molecule
+from electronic.base import ESTMode
 
 class TDCUpdater(Updater, metaclass = SingletonFactory):
-    mode = ""
+    mode = ESTMode("")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -25,7 +26,6 @@ class BlankTDCUpdater(TDCUpdater):
 class kTDCe(TDCUpdater):
     # curvature-based TDC approximation, energy version
     key = "ktdce"
-    mode = ""
     steps = 3
 
     def _dh(self, mol: Molecule, i: int, j: int):
@@ -46,7 +46,7 @@ class kTDCe(TDCUpdater):
 class kTDCg(TDCUpdater):
     # curvature-based TDC approximation, gradient version
     key = "ktdcg"
-    mode = "g"
+    mode = ESTMode("g")
     steps = 1
 
     def _dh(self, mol: Molecule, i: int, j: int):
@@ -70,7 +70,7 @@ class kTDCg(TDCUpdater):
 class HST(TDCUpdater):
     # Classic Hammes-Schiffer-Tully mid point approximation (paper in 1994)
     key = "hst"
-    mode = "o"
+    mode = ESTMode("o")
     steps = 1
 
     def update(self, mols: list[Molecule], dt: float):
@@ -78,7 +78,7 @@ class HST(TDCUpdater):
 
 class HSTSharc(TDCUpdater):
     key = "hst3"
-    mode = "o"
+    mode = ESTMode("o")
     steps = 2
 
     def update(self, mols: list[Molecule], dt: float):
@@ -87,7 +87,7 @@ class HSTSharc(TDCUpdater):
 class NACME(TDCUpdater):
     # ddt = nacme . velocity (i.e. original Tully 1990 paper model)
     key = "nacme"
-    mode = "n"
+    mode = ESTMode("n")
 
     def update(self, mols: list[Molecule], dt: float):
         self.tdc.out = np.einsum("ijad, ad -> ij", mols[-1].nacdr_ssad, mols[-1].vel_ad)
@@ -95,7 +95,7 @@ class NACME(TDCUpdater):
 class NPI(Multistage, TDCUpdater):
     # Meek and Levine's norm preserving interpolation, but integrated across the time-step
     key = "npi"
-    mode = "o"
+    mode = ESTMode("o")
     steps = 1
 
     def update(self, mols: list[Molecule], dt: float):
@@ -112,7 +112,7 @@ class NPI(Multistage, TDCUpdater):
 class NPISharc(Multistage, TDCUpdater):
     # NPI sharc mid-point averaged
     key = "npisharc"
-    mode = "o"
+    mode = ESTMode("o")
     steps = 1
 
     def update(self, mols: list[Molecule], dt: float):
@@ -130,7 +130,7 @@ class NPISharc(Multistage, TDCUpdater):
 class NPIMeek(TDCUpdater):
     # NPI Meek and Levine mid-point averaged
     key = "npimeek"
-    mode = "o"
+    mode = ESTMode("o")
     steps = 1
 
     def update(self, mols: list[Molecule], dt: float, **kwargs):
