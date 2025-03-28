@@ -4,7 +4,7 @@ from abc import abstractmethod
 from copy import deepcopy
 from classes.constants import convert
 from classes.meta import SingletonFactory
-from classes.molecule import Molecule
+from classes.molecule import Molecule, HamTransform
 from classes.out import Output, Printer, Timer
 from classes.trajectory import Trajectory
 from updaters.composite import CompositeIntegrator
@@ -14,7 +14,7 @@ from electronic.base import ESTProgram
 
 class Dynamics(metaclass = SingletonFactory):
     def __init__(self, *, dynamics: dict, **config: dict):
-        pass
+        HamTransform[dynamics.get("trans", "none")]()
 
     @abstractmethod
     def calculate_acceleration(self, mol: Molecule):

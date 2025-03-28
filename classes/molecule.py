@@ -1,6 +1,7 @@
 import numpy as np
+from abc import abstractmethod
 from copy import deepcopy
-from classes.meta import Factory, DynamicClassProxy
+from classes.meta import Factory, SingletonFactory, DynamicClassProxy
 from classes.constants import convert, atomic_masses
 
 class MoleculeFactory:
@@ -261,34 +262,6 @@ class Molecule:
         for s in range(self.n_states):
             self.ham_dia_ss[s,s] -= refen
 
-    def diagonalise_ham(self):
-        eval, evec = np.linalg.eigh(self.ham_dia_ss)
-        self.trans_ss = evec
-        self.ham_eig_ss = np.diag(eval)
-
-    def transform(self, diagonalise: bool = False):
-        if not diagonalise:
-            self.ham_eig_ss[:] = np.real(self.ham_dia_ss)
-            self.trans_ss[:] = np.eye(self.n_states)
-            return
-
-        # need to transform gradient for non-diagonal hamiltonian
-        # for details, see https://doi.org/10.1002/qua.2489
-        self.diagonalise_ham()
-        g_diab = np.zeros_like(self.nacdr_ssad, dtype=np.complex128)
-        for i in range(self.n_states):
-            for j in range(self.n_states):
-                # on-diagonal part
-                g_diab[i,j] = (i == j) * self.grad_sad[i]
-                # off-diagonal part
-                g_diab[i,j] -= (self.ham_dia_ss[i,i] - self.ham_dia_ss[j,j]) * self.nacdr_ssad[i,j]
-        # just a big matrix multiplication with some extra dimensions
-        g_diag = np.einsum("ij,jkad,kl->ilad", self.trans_ss.conj().T, g_diab, self.trans_ss)
-
-        # only keep the real part of the gradient
-        for i in range(self.n_states):
-            self.grad_sad[i] = np.real(g_diag[i,i])
-
     def __reduce__(self):
         return (DynamicClassProxy(), (MoleculeFactory, self.__class__.__name__), self.__dict__.copy())
 
@@ -410,3 +383,40 @@ class CSDMMixin(MoleculeMixin):
 
 
 
+class HamTransform(metaclass = SingletonFactory):
+    @abstractmethod
+    def transform(self, mol: Molecule):
+        pass
+
+    def diagonalise_ham(self, mol: Molecule):
+        eval, evec = np.linalg.eigh(mol.ham_dia_ss)
+        mol.trans_ss = evec
+        mol.ham_eig_ss = np.diag(eval)
+
+class NoTransform(HamTransform):
+    key = "none"
+    mode = ""
+    def transform(self, mol: Molecule):
+        mol.ham_eig_ss[:] = np.real(mol.ham_dia_ss)
+        mol.trans_ss[:] = np.eye(mol.n_states)
+
+class NGT(HamTransform):
+    key = "ngt"
+    mode = "gn"
+    def transform(self, mol):
+        # need to transform gradient for non-diagonal hamiltonian
+        # for details, see https://doi.org/10.1002/qua.2489
+        self.diagonalise_ham()
+        g_dia = np.zeros_like(mol.nacdr_ssad, dtype=np.complex128)
+        for i in range(mol.n_states):
+            for j in range(mol.n_states):
+                # on-diagonal part
+                g_dia[i,j] = (i == j) * mol.grad_sad[i]
+                # off-diagonal part
+                g_dia[i,j] -= (mol.ham_dia_ss[i,i] - mol.ham_dia_ss[j,j]) * mol.nacdr_ssad[i,j]
+        # just a big matrix multiplication with some extra dimensions
+        g_eig = np.einsum("ij,jkad,kl->ilad", mol.trans_ss.conj().T, g_dia, mol.trans_ss)
+
+        # only keep the real part of the gradient
+        for i in range(mol.n_states):
+            mol.grad_sad[i] = np.real(g_eig[i,i])
