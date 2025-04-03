@@ -1,68 +1,78 @@
 import numpy as np
 
-subs = 4
-a = np.array([
-    1/18,
-    0,
-    2/9,
-    1/3,
-    0,
-    1/6
-])
-c = np.array([0,    1/3,    2/3,    1])
-b = np.array([13/120,   3/10,   3/40,   1/60])
-d = np.array([1/8,      3/8,    3/8,    1/8])
+class sy:
+    key = "sy4"
+    steps = 4
+    a = np.array([1, -1, 0, -1, 1])
+    b = np.array([0, 5/4, 1/2, 5/4, 0])
 
-# subs = 3
-# a = np.array([
-#     1/8,
-#     0,
-#     1/2
-# ])
-# c = np.array([0, 1/2, 1])
-# b = np.array([1/6, 1/3, 0])
-# d = np.array([1/6, 2/3, 1/6])
 
-def update(xin: np.ndarray, vin: np.ndarray, ain: np.ndarray, fun, dt: float):
-    # helper function for triangular numbers
-    def tri(x):
-        return x * (x + 1) // 2
+class am:
+    name = "am4"
+    steps = 4
+    order = 4
+    b = np.array([1/24, -5/24, 19/24, 3/8])
+    c = -19/720
 
-    xtmp = np.zeros((subs, *xin.shape))
-    atmp = np.zeros((subs, *xin.shape))
-    xtmp[0] = xin
-    atmp[0] = ain
+steps = 4
 
-    # RKN integration substep-by-substep
-    for i in range(1, subs):
-        # evaluate intermediate position and acceleration
-        xtmp[i] = xin + dt * c[i] * vin + dt**2 * np.einsum("j,j...->...", a[tri(i-1):tri(i)], atmp[:i])
-        atmp[i] = fun(xtmp[i])
+def update_sy(xin: np.ndarray, vin: np.ndarray, ain: np.ndarray, fun, dt: float):
+    xin = xin[-steps:]
+    vin = vin[-steps:]
+    ain = ain[-steps:]
 
-    # find new position and velocity from all the substeps
-    xout = xin + dt * vin + dt**2 * np.einsum("j,j...->...", b, atmp)
+    # find new position as a weighted sum of previous positions and accelerations
+    xout = -np.einsum("j,j...->...", sy.a[:-1], xin) + dt**2*np.einsum("j,j...->...", sy.b[:-1], ain)
+    xout /= sy.a[-1]
+
+    # calculate new acceleration
     aout = fun(xout)
-    vout = vin + dt * np.einsum("j,j...->...", d, atmp)
+
+    # calculate new velocity from new acceleration, previous velocities, and previous accelerations
+    vout = vin[-1] + dt*np.einsum("j,j...->...", am.b[:-1], ain[1:]) + dt*am.b[-1]*aout
+
+    return xout, vout, aout
+
+def update_vv(xin: np.ndarray, vin: np.ndarray, ain: np.ndarray, fun, dt: float):
+    xin = xin[-1]
+    vin = vin[-1]
+    ain = ain[-1]
+
+    xout = xin + vin*dt + 0.5*ain*dt**2
+    aout = fun(xout)
+    vout = vin + 0.5*(ain + aout)*dt
 
     return xout, vout, aout
 
 def kin(v):
-    return 0.5 * np.sum(v**2)
+    return 0.5 * v**2
 
 def pot(x):
-    return 0.5 * np.sum(x**2)
+    return 0.5 * x**2
 
 def func(x):
     return -x
 
 dt = 0.1
 tmax = 10
-t = 0
-x0 = np.array([1])
-a0 = func(x0)
-v0 = np.array([0])
+t = 3*dt
+x = np.array([np.cos(i*dt) for i in range(4)])
+a = func(x)
+v = np.array([-np.sin(i*dt) for i in range(4)])
+# breakpoint()
 
 while t <= tmax:
-    print(t, x0[0], v0[0], pot(x0) + kin(v0))
-    x0, v0, a0 = update(x0, v0, a0, func, dt)
+    print(t)
+    print(np.cos(t), x[-1])
+    print(-np.sin(t), v[-1])
+    print(pot(x[-1]) + kin(v[-1]))
+    print()
+    xout, vout, aout = update_sy(x, v, a, func, dt)
+    x[:-1] = x[1:]
+    x[-1] = xout
+    v[:-1] = v[1:]
+    v[-1] = vout
+    a[:-1] = a[1:]
+    a[-1] = aout
+
     t += dt

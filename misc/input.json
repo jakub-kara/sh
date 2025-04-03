@@ -2,15 +2,11 @@
     "sampling": {
         "distr": "wigner",
         "input": null,
-        "samples": [],
+        "samples": null,
         "emin": null,
         "emax": null,
-        "from": [
-            0
-        ],
-        "to": [
-            -1
-        ]
+        "from": [],
+        "to": []
     },
     "dynamics": {
         "name": null,
@@ -19,7 +15,7 @@
         "seed": null,
         "decoherence": "edc",
         "initstate": null,
-        "backup": "True",
+        "backup": true,
         "tmax": null,
         "dt": null,
         "timestep": "const"
@@ -27,7 +23,7 @@
     "nuclear": {
         "input": "geom.xyz",
         "nuc_upd": "vv",
-        "com": "True"
+        "com": true
     },
     "quantum": {
         "input": null,
@@ -54,16 +50,16 @@
     },
     "output": {
         "file": "out",
-        "log": "True",
+        "log": true,
         "verbosity [TODO]": "1",
-        "dat": "True",
+        "dat": true,
         "record": [
             "pop",
             "pen",
             "ten"
         ],
-        "h5": "True",
-        "xyz": "True",
-        "dist": "False"
+        "h5": true,
+        "xyz": true,
+        "dist": false
     }
 }

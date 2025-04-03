@@ -42,7 +42,7 @@ class SurfaceHopping(Dynamics):
         if self._rescale == "nac":
             print("Rescaling")
             # rescale along nacdr
-            if np.isnan(mol.nacdr_ssad[mol.active, mol.target]):
+            if np.any(np.isnan(mol.nacdr_ssad[mol.active, mol.target])):
                 self.run_est(mol, ref = mol, mode = ESTMode("t")(mol))
 
             # check this works

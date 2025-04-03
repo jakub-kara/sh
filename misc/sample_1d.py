@@ -12,9 +12,9 @@ def get_dirs(loc=".", cond=lambda x : True):
     return [d for d in os.listdir(loc) if (os.path.isdir(d) and not d.startswith(".") and cond(d))]
 
 def sample_nuclear():
-    gamma = 0.5
-    q0 = np.array([-2,0])
-    v0 = np.array([0.005, 0])
+    gamma = 2
+    q0 = np.array([-2.,0])
+    v0 = np.array([0., 0])
     m = 1 / units["amu"]
     p0 = m * v0
 
@@ -26,11 +26,11 @@ def sample_nuclear():
         os.chdir(f"T{i}")
         with open("geom.xyz", "w") as f:
             f.write("1\n\n")
-            f.write(f"H {q[i,0]} {q[i,1]} 0 {v[i,0]} {v[i,1]} 0")
+            f.write(f"H {q[i,0]} {q[i,1]} {v[i,0]} {v[i,1]}")
         os.chdir("..")
 
 def sample_quantum():
-    nst = 3
+    nst = 2
     theta = np.arccos(np.random.uniform(0, 1, (nsamp, nst - 1)))
     phi = np.random.uniform(0, 2*np.pi, (nsamp, nst - 1))
 
@@ -46,6 +46,6 @@ def sample_quantum():
         os.chdir("..")
 
 nsamp = 1000
-# make_dirs(".")
-# sample_nuclear()
+make_dirs(".")
+sample_nuclear()
 sample_quantum()

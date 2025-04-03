@@ -28,8 +28,6 @@ class Element:
             self.window.refresh()
             self.window.border()
             self.window.addstr(1, 2, Path.path, curses.A_UNDERLINE)
-
-
             curses.doupdate()
 
             self._draw()
@@ -61,7 +59,7 @@ class Menu(Element):
     @property
     def status(self):
         return min([child.status for child in self.children])
-    
+
     @property
     def vis_children(self):
         return [i for i in self.children if i.visible and (i.status < 2 or Observer.optional)]
@@ -92,7 +90,10 @@ class Menu(Element):
     def save(self):
         out = {}
         for child in self.vis_children:
-            out[child.name] = child.save()
+            # if child.status == 2:
+            #     continue
+            temp = child.save()
+            out[child.name] = temp
         return out
 
     def _process_input(self, key):
@@ -127,7 +128,7 @@ class Menu(Element):
             with open("input.json", "w") as f:
                 json.dump(out, f, indent=4)
         return 1
-    
+
 class Radio(Menu):
     def __init__(self, name, options: list[str], selected = 0, **kwargs):
         Element.__init__(self, name, **kwargs)
@@ -139,7 +140,7 @@ class Radio(Menu):
     @property
     def status(self):
         return self._status
-    
+
     @property
     def val(self):
         return self.vis_children[self.selected].val
@@ -173,10 +174,10 @@ class Radio(Menu):
             self.navigate(1)
 
         return 1
-    
+
     def save(self):
         return self.val
-    
+
 class Item(Element):
     def __init__(self, name, val = None, action = lambda: None, **kwargs):
         super().__init__(name, **kwargs)
@@ -242,8 +243,8 @@ class Text(Element):
         self.val = [i for i in self.val if i != ""]
         for conv in self._convs:
             self.val = [conv(i) for i in self.val]
-        
-        self._status = 1 + 2 * all(self.val) * bool(self.val)
+
+        self._status = 1 + 2 * all([i is not None for i in self.val]) * bool(self.val)
         if not self._multi:
             self._status = 1
             if len(self.val) == 1:
@@ -253,7 +254,7 @@ class Text(Element):
                 self.val = None
         if self._emptyok:
             self._status = 3
-                
+
     @staticmethod
     def to_int(x):
         try: return int(x)
@@ -298,7 +299,7 @@ class Description(Element):
         self.window.addstr(1, 2, "DESCRIPTION", curses.A_UNDERLINE)
         self.window.border()
         self.window.refresh()
-    
+
     def show_content(self, elem: Element):
         self.window.clear()
         self.window.addstr(1, 2, "DESCRIPTION", curses.A_UNDERLINE)
@@ -328,7 +329,7 @@ class Observer:
             cls._subs[src].append((sub, conds))
         else:
             cls._subs[src] = [(sub, conds)]
-    
+
     @classmethod
     def alert(cls, src):
         if src not in cls._subs.keys():
@@ -397,43 +398,43 @@ class App:
         sampling = Menu("sampling", **self.UL)
         sampling.children.extend([
             Radio("distr", [
-                Item("wigner"), 
-                Item("husimi"), 
+                Item("wigner"),
+                Item("husimi"),
                 Item("ho")], **self.LL),
             Text("input", **self.LL),
-            Text("samples", "", "int pos", True, **self.LL),
+            Text("samples", "", "int pos", **self.LL),
             Text("emin", "", "float pos", **self.LL),
             Text("emax", "", "float pos", **self.LL),
-            Text("from", 0, "int pos", True, **self.LL),
-            Text("to", -1, "int", True, **self.LL)
+            Text("from", "", "int pos", True, **self.LL),
+            Text("to", "", "int", True, **self.LL)
         ])
 
         dynamics = Menu("dynamics", **self.UL)
         dynamics.children.extend([
             Text("name", "", **self.LL),
             method:=Radio("method", [
-                Item("fssh"), 
-                Item("mash"), 
-                Item("ehr"), 
+                Item("fssh"),
+                Item("mash"),
+                Item("ehr"),
                 Item("csdm"),
                 Item("lscivr")], **self.LL),
             popest:=Radio("pop_est", [
-                Item("wigner"), 
-                Item("semiclassical"), 
+                Item("wigner"),
+                Item("semiclassical"),
                 Item("spinmap")], **self.LL),
             prob:=Radio("prob", [
-                Item("none"), 
-                Item("tdc"), 
-                Item("prop"), 
+                Item("none"),
+                Item("tdc"),
+                Item("prop"),
                 Item("gf")], selected=1, **self.LL),
             seed:=Text("seed", "", **self.LL),
             deco:=Radio("decoherence", [
-                Item("none"), 
+                Item("none"),
                 Item("edc")], selected=1, **self.LL),
             Text("initstate", "", "int pos", **self.LL),
             Radio("backup", [
-                Item("True"), 
-                Item("False")], **self.LL),
+                Item("True", True),
+                Item("False", False)], **self.LL),
             Text("tmax", "", "unit float pos", **self.LL),
             Text("dt", "", "unit float pos", **self.LL),
             timestep:=Radio("timestep", [
@@ -461,8 +462,8 @@ class App:
                 Item("rkn4"),
                 Item("y4")], **self.LL),
             Radio("com", [
-                Item("True"),
-                Item("False")], **self.LL)
+                Item("True", True),
+                Item("False", False)], **self.LL)
         ])
 
         quantum = Menu("quantum", **self.UL)
@@ -497,7 +498,7 @@ class App:
                 Item("False", False)], **self.LL),
             dfbasis:=Text("dfbasis", "avdz", **self.LL)
         ])
-        
+
         electronic = Menu("electronic", **self.UL)
         electronic.children.extend([
             program:=Radio("program", [
@@ -521,25 +522,25 @@ class App:
         output.children.extend([
             Text("file", "out", **self.LL),
             Radio("log", [
-                Item("True"),
-                Item("False")], **self.LL),
+                Item("True", True),
+                Item("False", False)], **self.LL),
             Radio("verbosity [TODO]", [
                 Item("1"),
                 Item("2"),
                 Item("3")], **self.LL),
             Radio("dat", [
-                Item("True"),
-                Item("False")], **self.LL),
+                Item("True", True),
+                Item("False", False)], **self.LL),
             Text("record", "pop, pen, ten", multiple=True, **self.LL),
             Radio("h5", [
-                Item("True"),
-                Item("False")], **self.LL),
+                Item("True", True),
+                Item("False", False)], **self.LL),
             Radio("xyz", [
-                Item("True"),
-                Item("False")], **self.LL),
+                Item("True", True),
+                Item("False", False)], **self.LL),
             Radio("dist", [
-                Item("True"),
-                Item("False")], selected=1, **self.LL),
+                Item("True", True),
+                Item("False", False)], selected=1, **self.LL),
         ])
 
         main.children.extend([

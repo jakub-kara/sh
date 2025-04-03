@@ -3,7 +3,6 @@ from .nuclear import NuclearUpdater
 from .updaters import UpdateResult
 from classes.molecule import Molecule
 from dynamics.base import Dynamics
-from electronic.base import ESTProgram
 
 class RKNBase(NuclearUpdater):
     a = np.empty((1,1))
@@ -17,37 +16,26 @@ class RKNBase(NuclearUpdater):
             return x * (x + 1) // 2
 
         dyn = Dynamics()
-        est = ESTProgram()
         mol = mols[-1]
         out = self.out
         out.inter[0] = mol
         # RKN integration substep-by-substep
         for i in range(1, self.substeps):
-            print(f"Substep {i}")
             # evaluate intermediate position and acceleration
             out.inter[i] = mol.copy_all()
             out.inter[i].pos_ad += dt * self.c[i] * mol.vel_ad + dt**2 * np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], [m.acc_ad for m in out.inter[:i]])
 
-            est.request(dyn.mode(out))
-            est.run(out.inter[i])
-            est.read(out.inter[i], ref = mol)
-            est.reset_calc()
-
+            dyn.run_est(out.inter[i], ref = mol, mode = dyn.step_mode(out.inter[i]))
             dyn.update_quantum(mols + [out.inter[i]], dt * self.c[i])
             dyn.calculate_acceleration(out.inter[i])
 
-        print("Final Step")
         # find new position and velocity from all the substeps
         temp = mol.copy_all()
         temp.pos_ad += dt * mol.vel_ad + dt**2 * np.einsum("j,j...->...", self.b, [m.acc_ad for m in out.inter])
         temp.vel_ad += dt * np.einsum("j,j...->...", self.d, [m.acc_ad for m in out.inter])
 
         # calculate new acceleration
-        est.request(dyn.mode(temp))
-        est.run(temp)
-        est.read(temp, ref = mol)
-        est.reset_calc()
-
+        dyn.run_est(temp, ref = mol, mode = dyn.step_mode(temp))
         dyn.update_quantum(mols + [temp], dt)
         dyn.calculate_acceleration(temp)
 

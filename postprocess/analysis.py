@@ -4,16 +4,26 @@ import h5py
 import argparse
 from classes.constants import convert
 
+def get_pos(pos, *idxs):
+    out = []
+    for idx in idxs:
+        if idx == "o":
+            out.append(np.zeros_like(pos[0]))
+        else:
+            out.append(pos[int(idx)])
+    return out
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--active", action="store_true", default=False)
 parser.add_argument("-p", "--pop", action="store_true", default=False)
-parser.add_argument("-b", "--bond", action="append", nargs=2, type=int, default=[])
-parser.add_argument("-a", "--angle", action="append", nargs=3, type=int, default=[])
-parser.add_argument("-d", "--dihedral", action="append", nargs=4, type=int, default=[])
+parser.add_argument("-b", "--bond", action="append", nargs=2, default=[])
+parser.add_argument("-a", "--angle", action="append", nargs=3, default=[])
+parser.add_argument("-d", "--dihedral", action="append", nargs=4, default=[])
 parser.add_argument("-i", "--trajs", action="store", nargs="*", required=True, default=[])
 parser.add_argument("-o", "--output", action="store", default=None)
 parser.add_argument("-s", "--show", action="store_true", default=False)
 parser.add_argument("-m", "--mean", action="store_true", default=False)
+parser.add_argument("-v", "--verbose", action="store_true", default=False)
 args = parser.parse_args()
 
 trajs = args.trajs
@@ -27,6 +37,8 @@ dihs = args.dihedral
 
 do_active = args.active
 do_pops = args.pop
+
+verb = args.verbose
 
 n_traj = len(trajs)
 f = h5py.File(trajs[0], "r")
@@ -43,6 +55,7 @@ times = convert(times, "fs")
 nout = len(bonds) + len(angles) + len(dihs) + do_active*n_states + do_pops*n_states
 data = np.zeros((n_traj, n_steps, nout))
 for itraj, traj in enumerate(trajs):
+    print(itraj, traj)
     f = h5py.File(traj, "r")
     for key in f.keys():
         if key == "info":
@@ -61,22 +74,25 @@ for itraj, traj in enumerate(trajs):
             data[itraj, step, idx:idx+n_states] = pop
             idx += n_states
 
-        for (b1,b2) in bonds:
-            res = convert(np.linalg.norm(pos[b1] - pos[b2]), "au", "aa")
+        for bond in bonds:
+            r1, r2 = get_pos(pos, *bond)
+            res = convert(np.linalg.norm(r1 - r2), "au", "aa")
             data[itraj, step, idx] = res
             idx += 1
 
-        for (a1,a2,a3) in angles:
-            v1 = pos[a1] - pos[a2]
-            v2 = pos[a3] - pos[a2]
+        for ang in angles:
+            r1, r2, r3 = get_pos(pos, *ang)
+            v1 = r1 - r2
+            v2 = r3 - r2
             res = np.arccos(np.dot(v1, v2) / np.linalg.norm(v1) / np.linalg.norm(v2))
             data[itraj, step, idx] = res
             idx += 1
 
-        for (a1,a2,a3,a4) in dihs:
-            v1 = pos[a2] - pos[a1]
-            v2 = pos[a3] - pos[a2]
-            v3 = pos[a4] - pos[a3]
+        for dih in dihs:
+            r1, r2, r3, r4 = get_pos(pos, *dih)
+            v1 = r2 - r1
+            v2 = r3 - r2
+            v3 = r4 - r3
             # https://en.wikipedia.org/wiki/Dihedral_angle
             cr = np.cross(v2, v3)
             res = np.arctan2(np.linalg.norm(v2) * np.dot(v1, cr), np.dot(np.cross(v1, v2), cr))

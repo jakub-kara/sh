@@ -14,7 +14,6 @@ class Yoshida4(NuclearUpdater):
 
     def update(self, mols: list[Molecule], dt: float):
         dyn = Dynamics()
-        est = ESTProgram()
         mol = mols[-1]
         out = self.out
 
@@ -24,10 +23,7 @@ class Yoshida4(NuclearUpdater):
                 out.inter[i].pos_ad = out.inp.pos_ad + dt * self.c[i] * out.inp.vel_ad
             else:
                 out.inter[i].pos_ad = out.inter[i-1].pos_ad + dt * self.c[i] * out.inter[i-1].vel_ad
-            est.request(dyn.mode(out))
-            est.run(out.inter[i])
-            est.read(out.inter[i], ref = mol)
-            est.reset_calc()
+            dyn.run_est(out.inter[i], ref = mols[-1], mode = dyn.step_mode(out.inter[i]))
 
             dyn.update_quantum(mols + [out.inter[i]], dt)
             dyn.calculate_acceleration(out.inter[i])

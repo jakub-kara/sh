@@ -5,8 +5,6 @@ from .checker import HoppingUpdater
 from classes.out import Output
 from classes.molecule import Molecule
 from electronic.base import ESTProgram
-from updaters.coeff import BlochUpdater
-from updaters.tdc import TDCUpdater
 
 class MISH(SurfaceHopping):
     ''' Runeson and Manolopoulos "Multi Mash". Also known as "MISH", the artist previously known as SHIAM '''

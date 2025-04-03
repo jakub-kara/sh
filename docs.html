@@ -418,8 +418,6 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
         }'
         ></span>
 
-
-
         <h4>decoherence</h4>
         Decoherence correction
         <span class="tab"
@@ -505,6 +503,19 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
         }'
         ></span>
 
+        <h4>transform</h4>
+        Scheme to transform the Hamiltonian from EST outputs to dynamics representation
+        Only if timestep == "half"
+        <span class="tab"
+        data-type="str"
+        data-default="none"
+        data-options='{
+            "none": "Do not perform any transformation",
+            "tdm": "Time-derivative matrix [TODO]",
+            "ngt": "Nuclear gradient tensor"
+        }'
+        ></span>
+
     </div>
 
     <h4>nuclear</h4>
@@ -539,7 +550,7 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
         data-type="str"
         data-default="vv"
         data-options='{
-            "vv": "Velocity verlet",
+            "vv": "Velocity Verlet",
             "rkn<i>N</i>": "<i>N</i>th order Runge-Kutta-Nystrom (<i>N</i> = 4, 6, 8)",
             "syam<i>N</i>": "<i>N</i>th order symmetric multistep method with Adams-Moulton for velocities (<i>N</i> = 4, 6, 8) <br> the starter method used is always rkn<i>N</i>",
             "y4": "4th order symplectic Yoshida integrator"
