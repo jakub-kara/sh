@@ -3,13 +3,14 @@ from .sh import SurfaceHopping
 from .checker import HoppingUpdater
 from classes.molecule import Molecule
 from classes.out import Output
-from electronic.base import ESTProgram
+from electronic.base import ESTMode
 from updaters.composite import CompositeIntegrator
 
 class FSSH(SurfaceHopping):
     key = "fssh"
 
     def __init__(self, *, dynamics, **config):
+        config["nuclear"]["mixins"] = "sh"
         super().__init__(dynamics=dynamics, **config)
         HoppingUpdater[dynamics.get("prob", "tdc")](**dynamics, **config["quantum"])
 
@@ -31,7 +32,7 @@ class FSSH(SurfaceHopping):
                 CompositeIntegrator().to_init()
                 out.write_log(f"New state: {mol.active}")
 
-                self.run_est(mol, mols[-2], ["a"])
+                self.run_est(mol, mols[-2], ESTMode("a")(mol))
                 self.calculate_acceleration(mol)
             else:
                 out.write_log("Hop failed")

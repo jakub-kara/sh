@@ -316,7 +316,7 @@ class Molpro(ESTProgram):
         None
         """
 
-        grad = np.full((self._nstates, self._natoms, 3), None)
+        grad = np.full((self._nstates, self._natoms, 3), np.nan)
         # read output file
         with open(f"{self._file}.out", "r") as file:
             while True:
@@ -365,7 +365,7 @@ class Molpro(ESTProgram):
         None
         """
 
-        nac = np.full((self._nstates, self._nstates, self._natoms, 3), None)
+        nac = np.full((self._nstates, self._nstates, self._natoms, 3), np.nan)
         # read output file
         with open(f"{self._file}.out", "r") as file:
             while True:
@@ -398,7 +398,7 @@ class Molpro(ESTProgram):
         return nac
 
     def read_dipmom(self):
-        dipmom = np.full((self._nstates, self._nstates, 3), None)
+        dipmom = np.full((self._nstates, self._nstates, 3), np.nan)
         with open(f"{self._file}.out", "r") as f:
             for line in f:
                 if 'Expectation values' in line:

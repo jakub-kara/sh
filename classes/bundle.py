@@ -41,6 +41,7 @@ class Bundle:
         for d in traj_dirs:
             os.chdir(d)
             traj = Trajectory.restart(**config)
+            breakpoint()
             bundle.add_trajectory(traj)
             os.chdir("..")
         return bundle
