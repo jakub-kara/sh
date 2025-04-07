@@ -10,13 +10,10 @@ from classes.trajectory import Trajectory
 from updaters.composite import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
-from electronic.base import ESTProgram, HamTransform, ESTMode
+from electronic.base import ESTProgram, ESTMode
 
 class Dynamics(metaclass = SingletonFactory):
     mode = ESTMode()
-
-    def __init__(self, *, dynamics: dict, **config: dict):
-        HamTransform[dynamics.get("transform", "none")]()
 
     @abstractmethod
     def calculate_acceleration(self, mol: Molecule):
@@ -119,8 +116,6 @@ class Dynamics(metaclass = SingletonFactory):
         nupd = CompositeIntegrator()
         nupd.run(mols, dt)
         temp = nupd.active.out.out
-        print(temp.pos_ad[0,0])
-        print(temp.pos_ad[0,1])
         nupd.validate(self.energy_diff(temp, mols[-1]))
 
     @Timer(id = "qua",

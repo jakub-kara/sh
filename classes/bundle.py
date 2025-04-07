@@ -7,7 +7,7 @@ from .molecule import MoleculeFactory
 from .out import Output
 from classes.trajectory import Trajectory
 from dynamics.base import Dynamics
-from electronic.base import ESTProgram
+from electronic.base import ESTProgram, HamTransform
 from updaters.composite import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
@@ -91,6 +91,7 @@ class Bundle:
         Dynamics[dynamics["method"]](dynamics=dynamics, **config)
 
     def set_est(self, **electronic):
+        HamTransform[electronic.get("transform", "none")]()
         ESTProgram.reset()
         ESTProgram[electronic["program"]](**electronic)
 

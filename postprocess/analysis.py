@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 import argparse
+import os, sys
 from classes.constants import convert
 
 def get_pos(pos, *idxs):
@@ -12,6 +13,16 @@ def get_pos(pos, *idxs):
         else:
             out.append(pos[int(idx)])
     return out
+
+def get_file(dir, ext):
+    files = [i for i in os.listdir(dir) if i.endswith(ext)]
+    if len(files) == 0:
+        print(f"No {ext} file found in {dir}.")
+        exit()
+    elif len(files) > 1:
+        print(f"More than one {ext} file found in {dir}.")
+        exit()
+    return files[0]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--active", action="store_true", default=False)
@@ -24,6 +35,7 @@ parser.add_argument("-o", "--output", action="store", default=None)
 parser.add_argument("-s", "--show", action="store_true", default=False)
 parser.add_argument("-m", "--mean", action="store_true", default=False)
 parser.add_argument("-v", "--verbose", action="store_true", default=False)
+parser.add_argument("--no-h5", action="store_true", default=False)
 args = parser.parse_args()
 
 trajs = args.trajs
@@ -39,18 +51,24 @@ do_active = args.active
 do_pops = args.pop
 
 verb = args.verbose
+noh5 = args.no_h5
 
 n_traj = len(trajs)
-f = h5py.File(trajs[0], "r")
-n_steps = len(f.keys()) - 1
-times = np.zeros(n_steps)
-for key in f.keys():
-    if key == "info":
-        n_states = f["info/nst"][()]
-        atoms = f["info/ats"][:].astype("<U2")
-    else:
-        times[int(key)] = f[f"{key}/time"][()]
-times = convert(times, "fs")
+
+if noh5:
+    data = np.genfromtxt(get_file(trajs[0] + "/data/", ".dat"), skip_header=1)
+    times = data[:,0]
+else:
+    f = h5py.File(get_file(trajs[0] + "/data/", ".h5"), "r")
+    n_steps = len(f.keys()) - 1
+    times = np.zeros(n_steps)
+    for key in f.keys():
+        if key == "info":
+            n_states = f["info/nst"][()]
+            atoms = f["info/ats"][:].astype("<U2")
+        else:
+            times[int(key)] = f[f"{key}/time"][()]
+    times = convert(times, "fs")
 
 nout = len(bonds) + len(angles) + len(dihs) + do_active*n_states + do_pops*n_states
 data = np.zeros((n_traj, n_steps, nout))

@@ -24,8 +24,6 @@ class MASH(SurfaceHopping):
         mol = mols[-1]
         self.update_target(mols, dt)
 
-        print(mol.nacdt_ss[0,1])
-        print(mol.bloch_n3[0,2])
         print(f"target: {mol.target} \t\tactive: {mol.active}")
 
         if mol.hop_ready():

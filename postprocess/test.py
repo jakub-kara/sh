@@ -32,8 +32,6 @@ def tbf_ham(x1, x2, p1, p2):
     return -1/2*cg_lap(x1, x2, p1, p2) + cg_pot(x1, x2, p1, p2)
 
 def tbf_dt(x1, x2, p1, p2):
-    if x1 != x2 or p1 != p2:
-        return 0
     temp = p2*cg_dx2(x1, x2, p1, p2) + acc(x2)*cg_dp2(x1, x2, p1, p2) + 1j/2*p2**2*cg_ovl(x1, x2, p1, p2)
     temp += cg_ovl(x1, x2, p1, p2) * (-1j*pot(x2))
     return temp

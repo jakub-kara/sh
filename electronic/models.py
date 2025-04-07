@@ -198,7 +198,7 @@ class Model(ESTProgram):
     @est_method
     def ho2(self):
         a = 0.005
-        b = 4
+        b = 2
         c = 2
         d = 0
 
@@ -288,7 +288,7 @@ class Model(ESTProgram):
     def ho2_2(self):
         a = 0.005
         b = 2
-        c = 1
+        c = 2
 
         x = self._geo[0,0]
         y = self._geo[0,1]
