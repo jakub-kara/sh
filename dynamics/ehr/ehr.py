@@ -1,9 +1,13 @@
 import numpy as np
 from classes.molecule import Molecule
 from dynamics.base import Dynamics
+from updaters.tdc import TDCUpdater
+from updaters.coeff import CoeffUpdater
+from electronic.base import ESTMode
 
 class SimpleEhrenfest(Dynamics):
     key = "ehr"
+    mode = ESTMode("gn")
 
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
@@ -17,12 +21,8 @@ class SimpleEhrenfest(Dynamics):
         self._nactype = dynamics.get("force", "nac")
         self._force_tensor = nactypes[self._nactype]
 
-    def mode(self, mol):
-        temp = super().mode(mol)
-        temp.append("g")
-        if self._nactype == "nac":
-            temp.append("n")
-        return temp
+    def step_mode(self, mol):
+        return self.mode(mol) + TDCUpdater().mode(mol) + CoeffUpdater().mode(mol)
 
     def _nac(self, mol: Molecule):
         return mol.nacdr_ssad
@@ -42,7 +42,9 @@ class SimpleEhrenfest(Dynamics):
             for j in range(mol.n_states):
                 if i == j:
                     continue
-                if np.linalg.norm(nac[i,j]) > 1e-12:
+                if self._nactype == "nac":
+                    force += 2 * np.real(mol.coeff_s[i].conj() * mol.coeff_s[j] * mol.nacdr_ssad[i,j] * mol.ham_eig_ss[i,i])
+                elif np.linalg.norm(nac[i,j]) > 1e-12:
                     force += 2 * np.real(mol.nacdt_ss[i,j] * mol.coeff_s[i].conj() * mol.coeff_s[j] * nac[i,j] / (np.sum(nac[i,j] * mol.vel_ad))) * mol.ham_eig_ss[i,i]
                 else:
                     force += 2 * np.real(mol.nacdt_ss[i,j] * mol.coeff_s[i].conj() * mol.coeff_s[j] * mol.vel_ad / np.sum(mol.vel_ad**2)) * mol.ham_eig_ss[i,i]

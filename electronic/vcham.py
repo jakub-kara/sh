@@ -159,6 +159,9 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
     def read_ovlp(self):
         raise NotImplementedError
 
+    def read_dipmom(self):
+        raise NotImplementedError
+
     def get_energy(self):
         self.calculate_energy(self.disp)
         # self.ham *= np.eye(self.no_s)
@@ -466,4 +469,3 @@ if __name__ == "__main__":
     ax.plot(x,hs[:,0,2])
     ax.plot(x,hs[:,0,2])
     plt.show()
-

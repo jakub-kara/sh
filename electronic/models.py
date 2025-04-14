@@ -66,8 +66,8 @@ class Model(ESTProgram):
         for i in range(self.n_states):
             for j in range(self.n_states):
                 ovl[i,j] = np.sum(old[:,i] * new[:,j])
-
-        return ovl
+        U, _, Vt = np.linalg.svd(ovl)
+        return U @ Vt
 
     def read_dipmom(self):
         raise NotImplementedError

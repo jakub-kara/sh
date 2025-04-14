@@ -4,13 +4,15 @@ from .sh import SurfaceHopping
 from .checker import HoppingUpdater
 from classes.out import Output
 from classes.molecule import Molecule
-from electronic.base import ESTProgram
+from electronic.base import ESTProgram, ESTMode
 
 class MISH(SurfaceHopping):
     ''' Runeson and Manolopoulos "Multi Mash". Also known as "MISH", the artist previously known as SHIAM '''
     key = "mish"
+    mode = ESTMode("a")
 
     def __init__(self, **config):
+        config["nuclear"]["mixins"] = "sh"
         super().__init__(**config)
 
         if self._rescale != "mish":
@@ -23,9 +25,7 @@ class MISH(SurfaceHopping):
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         out = Output()
         mol = mols[-1]
-        self.update_target(mols, self.dt)
-
-        #self._decoherence(mol, self._dt)
+        self.update_target(mols, dt)
 
         out.write_log(f"target: {mol.target} \t\tactive: {mol.active}")
         # print(f"Final pops: {np.abs(mol.coeff_s)**2}")
@@ -84,12 +84,8 @@ class MISH(SurfaceHopping):
         def normalise(a):
             return a / np.linalg.norm(a)
 
-        if "n" not in self.mode():
-            est = ESTProgram()
-            est.request(*self.mode(mol))
-            est.run(mol)
-            est.read(mol, mol)
-            est.reset_calc()
+        if np.any(np.isnan(mol.nacdr_ssad[mol.active, mol.target])):
+            self.run_est(mol, ref = mol, mode = ESTMode("t")(mol))
 
         nst = mol.n_states
         coeff = mol.coeff_s

@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.linalg import expm
+from scipy.interpolate import CubicSpline
 from .updaters import Updater, Multistage, UpdateResult
 from .tdc import TDCUpdater
 from classes.meta import Singleton, SingletonFactory
@@ -78,14 +79,14 @@ class BlochUpdater(Multistage, Updater, metaclass = Singleton):
         nst = mol.n_states
         act = mol.active
 
-        for i in range(self.substeps):
-            frac = (i + 0.5) / self.substeps
+        for k in range(self.substeps):
+            frac = (k + 0.5) / self.substeps
+            ham = frac * mols[-1].ham_eig_ss + (1 - frac) * mols[-2].ham_eig_ss
             tdc = tdcupd.tdc.interpolate(frac)
             for s in range(nst):
                 if s == act:
                     bloch[s, :] = None
                     continue
-                ham = frac * mols[-1].ham_eig_ss + (1 - frac) * mols[-2].ham_eig_ss
                 mat = np.zeros((3, 3))
                 mat[0,1] = ham[s, s] - ham[act, act]
                 mat[1,0] = -mat[0,1]
@@ -93,8 +94,7 @@ class BlochUpdater(Multistage, Updater, metaclass = Singleton):
                 mat[2,0] = -mat[0,2]
 
                 bloch[s] = expm(mat * dt / self.substeps) @ bloch[s]
-                # print(bloch[s])
-                self.bloch.inter[i,s] = bloch[s]
+                self.bloch.inter[k,s] = bloch[s]
 
     def no_update(self, mols: list[Molecule], dt: float):
         self.bloch.fill()

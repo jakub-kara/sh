@@ -1,4 +1,3 @@
-import enum
 import numpy as np
 from classes.molecule import Molecule, BlochMixin
 from classes.meta import SingletonFactory
@@ -20,7 +19,7 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
             "c" : self._check_hop_c
         }
 
-        self._check_hop = options[config.get("prob_type","i")]
+        self._check_hop = options[config.get("prob_type", "i")]
 
         if self._check_hop == self._check_hop_c:
             self._r = None
@@ -42,9 +41,8 @@ class HoppingUpdater(Updater, metaclass = SingletonFactory):
         self._cum_prob += (1-self._cum_prob) * (1-np.exp(-dt*np.sum(prob)))
 
         if self._r < self._cum_prob:
-            norm_prob = prob/np.sum(prob)
             a = self._rng.random()
-            for s, p in enumerate(norm_prob):
+            for s, p in enumerate(prob):
                 if a < p:
                     break
             self._r = None

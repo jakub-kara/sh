@@ -239,6 +239,8 @@ class Molecule:
                 self.ovlp_ss[:,i] *= -1
         self.phase_s = phase_vec
 
+        # self.ovlp_ss /= np.sum(self.ovlp_ss**2, axis=0)
+
     def adjust_nacs(self, other):
         for s1 in range(self.n_states):
             for s2 in range(s1):

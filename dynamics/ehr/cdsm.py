@@ -12,7 +12,7 @@ class CSDM(SimpleEhrenfest):
         super().__init__(dynamics=dynamics, **config)
         config["nuclear"]["mixins"] = "csdm"
         config["nuclear"]["keep"] = 3
-        HoppingUpdater[dynamics["prob"]](**config["quantum"])
+        HoppingUpdater[dynamics.get("prob", "tdc")](**dynamics, **config["quantum"])
 
     def prepare_dynamics(self, mols: list[Molecule], dt: float):
         mol = mols[-1]

@@ -41,7 +41,6 @@ class Bundle:
         for d in traj_dirs:
             os.chdir(d)
             traj = Trajectory.restart(**config)
-            breakpoint()
             bundle.add_trajectory(traj)
             os.chdir("..")
         return bundle
@@ -65,7 +64,7 @@ class Bundle:
         self.set_dynamics(dynamics, **config)
         self.set_components(**config)
 
-        # TODO: refactor
+        # TODO: rework
         traj = Trajectory(dynamics=dynamics, **config)
         mol = traj.get_molecule(coeff = config["quantum"].get("input", None), **config["nuclear"], **dynamics)
         traj.add_molecule(mol)
@@ -134,11 +133,17 @@ class Bundle:
         if hasattr(mol, "split") and mol.split:
             shutil.copytree(f"{self._iactive}", f"{self.n_traj}", dirs_exist_ok=True)
             with open("events.log", "a") as f:
-                temp = np.sum(np.abs(self._active.mol.coeff_s[self._active.split])**2)
+                temp = np.sum(np.abs(self._active.mol.coeff_s[self._active.mol.split])**2)
                 f.write(f"CLONE {self._iactive} {np.sqrt(temp)} {self.n_traj} {np.sqrt(1-temp)} {self._active.timestep.step} {self._active.timestep.time:.4f}\n")
             clone = self.split_traj(self._active)
+            os.chdir(f"{self.n_traj}")
+            Dynamics().write_outputs(clone)
+            os.chdir("..")
             self.add_trajectory(clone)
-        return self
+
+        os.chdir(f"{self._iactive}")
+        Dynamics().write_outputs(self._active)
+        os.chdir("..")
 
 
     def split_traj(self, traj: Trajectory):

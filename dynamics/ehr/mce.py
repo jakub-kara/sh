@@ -2,6 +2,7 @@ import numpy as np
 from .ehr import SimpleEhrenfest
 from classes.molecule import Molecule
 from classes.out import Printer
+from classes.trajectory import Trajectory
 
 class MultiEhrenfest(SimpleEhrenfest):
     key = "mce"
@@ -9,7 +10,6 @@ class MultiEhrenfest(SimpleEhrenfest):
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
         config["nuclear"]["mixins"] = "mce"
-
 
         self._dclone = dynamics.get("dclone", 5e-6)
         self._dnac = dynamics.get("dnac", 2e-3)
@@ -45,15 +45,17 @@ class MultiEhrenfest(SimpleEhrenfest):
                 break
 
     #TODO: move to molecule
-    def dat_header(self, mol: Molecule):
-        dic = super().dat_header()
+    def dat_header(self, traj: Trajectory):
+        dic = super().dat_header(traj)
         dic["phs"] = Printer.write("Phase", "s")
         return dic
 
-    def dat_dict(self, mol: Molecule):
-        dic = super().dat_dict()
-        dic["phs"] = Printer.write(mol.phase, "f")
+    def dat_dict(self, traj: Trajectory):
+        dic = super().dat_dict(traj)
+        dic["phs"] = Printer.write(traj.mol.phase, "f")
         return dic
 
-    def h5_dict(self, mol: Molecule):
-        return {"phase": mol.phase}
+    def h5_dict(self, traj: Trajectory):
+        dic = super().h5_dict(traj)
+        dic["phase"] = traj.mol.phase
+        return dic

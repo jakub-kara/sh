@@ -25,6 +25,7 @@ class MASH(SurfaceHopping):
         self.update_target(mols, dt)
 
         print(f"target: {mol.target} \t\tactive: {mol.active}")
+        print(mol.bloch_n3)
 
         if mol.hop_ready():
             if self._has_energy(mol, self._get_delta(mol)):

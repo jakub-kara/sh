@@ -32,6 +32,8 @@ def tbf_ham(x1, x2, p1, p2):
     return -1/2*cg_lap(x1, x2, p1, p2) + cg_pot(x1, x2, p1, p2)
 
 def tbf_dt(x1, x2, p1, p2):
+    if x1 != x2 or p1 != p2:
+        return 0
     temp = p2*cg_dx2(x1, x2, p1, p2) + acc(x2)*cg_dp2(x1, x2, p1, p2) + 1j/2*p2**2*cg_ovl(x1, x2, p1, p2)
     temp += cg_ovl(x1, x2, p1, p2) * (-1j*pot(x2))
     return temp
@@ -47,17 +49,25 @@ def to_mat(fn, x1, x2, p1, p2):
 
 x1, x2, p1, p2 = set_vars(0)
 ovl = to_mat(tbf_ovl, x1, x2, p1, p2)
-coeff = np.ones(2, dtype=np.complex128)
-coeff /= np.sqrt(np.einsum("a, ab, b ->", coeff.conj(), ovl, coeff))
+# coeff = np.ones(2, dtype=np.complex128)
+# coeff /= np.sqrt(np.einsum("a, ab, b ->", coeff.conj(), ovl, coeff))
+coeff = np.array([0, 1], dtype=np.complex128)
 t = 0
 dt = 1e-3
-tmax = 1e-2
+tmax = 10
 while t <= tmax:
     x1, x2, p1, p2 = set_vars(t)
-    ham = to_mat(tbf_ham, x1, x2, p1, p2)
-    ddt = to_mat(tbf_dt, x1, x2, p1, p2)
-    ovl = to_mat(tbf_ovl, x1, x2, p1, p2)
-    coeff = expm(-np.linalg.inv(ovl) @ (1j*ham+ddt) * dt) @ coeff
+    ham_old = to_mat(tbf_ham, x1, x2, p1, p2)
+    ddt_old = to_mat(tbf_dt, x1, x2, p1, p2)
+    ovl_old = to_mat(tbf_ovl, x1, x2, p1, p2)
+
+    x1, x2, p1, p2 = set_vars(t + dt)
+    ham_new = to_mat(tbf_ham, x1, x2, p1, p2)
+    ddt_new = to_mat(tbf_dt, x1, x2, p1, p2)
+    ovl_new = to_mat(tbf_ovl, x1, x2, p1, p2)
+
+    coeff = expm(-np.linalg.inv((ovl_new+ovl_old)/2) @ (1j*(ham_old+ham_new)/2 + (ddt_old+ddt_new)/2) * dt) @ coeff
+    # coeff = expm(-np.linalg.inv(ovl) @ (1j*ham+ddt) * dt) @ coeff
     print(coeff)
     print(np.real(np.einsum("a, ab, b ->", coeff.conj(), ovl, coeff)))
     t += dt

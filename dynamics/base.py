@@ -15,6 +15,9 @@ from electronic.base import ESTProgram, ESTMode
 class Dynamics(metaclass = SingletonFactory):
     mode = ESTMode()
 
+    def __init__(self, *args, **kwargs):
+        pass
+
     @abstractmethod
     def calculate_acceleration(self, mol: Molecule):
         pass
@@ -84,7 +87,6 @@ class Dynamics(metaclass = SingletonFactory):
         traj.next_step()
         traj.timestep.success()
         traj.timestep.save_nupd()
-        self.write_outputs(traj)
 
         if traj.is_finished:
             traj.save_step()
@@ -150,12 +152,14 @@ class Dynamics(metaclass = SingletonFactory):
     def split_mol(self, mol: Molecule):
         out1 = deepcopy(mol)
         out1.coeff_s[:] = 0
-        out1.coeff_s[self.split] = mol.coeff_s[self.split]
+        out1.coeff_s[mol.split] = mol.coeff_s[mol.split]
         out1.coeff_s /= np.sqrt(np.sum(np.abs(out1.coeff_s)**2))
+        self.calculate_acceleration(out1)
 
         out2 = deepcopy(mol)
-        out2.coeff_s[self.split] = 0
+        out2.coeff_s[mol.split] = 0
         out2.coeff_s /= np.sqrt(np.sum(np.abs(out2.coeff_s)**2))
+        self.calculate_acceleration(out2)
         return out1, out2
 
     def write_headers(self, traj: Trajectory):
