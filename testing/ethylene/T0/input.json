@@ -6,7 +6,7 @@
         "method": "fssh",
 	"prob": "tdc",
         "initstate": 1,
-	"backup": false
+	"backup": true
     },
     "nuclear": {
         "input": "geom.xyz",
@@ -19,7 +19,7 @@
     },
     "electronic": {
         "program": "model",
-        "type": "hh",
+        "method": "hh",
         "states": 2
     },
     "output": {

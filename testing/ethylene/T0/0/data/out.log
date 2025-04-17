@@ -1,18 +1,15 @@
 {
     "dynamics": {
-        "name": "ethylene",
-        "tunit": "au",
-        "tmax": 30,
-        "dt": 0.05,
-        "enthresh": 1,
+        "name": "model",
+        "tmax": 10000,
+        "dt": 20,
         "method": "fssh",
-        "prob": "tdc",
-        "decoherence": "edc",
-        "initstate": 0,
+	"prob": "tdc",
+        "initstate": 1,
 	"backup": true
     },
     "nuclear": {
-        "input": "model.xyz",
+        "input": "geom.xyz",
         "nuc_upd": "vv"
     },
     "quantum": {
@@ -22,383 +19,69 @@
     },
     "electronic": {
         "program": "model",
-        "path": "",
-        "type": "sub_1",
-        "states": [2,0,0],
-        "options": {
-            "basis": "6-31g**",
-            "closed": 7,
-            "active": 9,
-            "nel": 16,
-            "sa": 3,
-            "mld": false,
-            "df": false,
-            "dfbasis": "avdz"
-        }
+        "method": "hh",
+        "states": 2
     },
     "output": {
         "file": "out",
-        "record": ["act", "pop", "pes", "pen", "ken", "ten", "nacdt"],
+        "record": ["act", "pop", "pes", "pen", "ken", "ten", "nacdt", "posx"],
         "timer": ["est", "coe", "tdc", "tot", "sav", "wrt"]
     }
 }
 
+
+========================================
+Trajectory Initialisation
+Electronic Calculation
+Wall time: 0.0193 s
+
+Outputs
+Wall time: 0.0743 s
+
+Total time: 0.1654 s
+
 ========================================
 Step:           0
 Time:           0.000000 fs
-Stepsize:       0.001209 fs
+Stepsize:       0.483777 fs
 
-target: 0 		active: 0
+Saving
+Wall time: 0.1723 s
+
+Electronic Calculation
+Wall time: 0.0049 s
+
+Quantum Propagation
+Wall time: 0.0044 s
+
+Total energy:   2446.663345 eV
+Energy shift:   2432.858860 eV
+
+Nuclear Adjustment
+target: 1 		active: 1
+Wall time: 0.0003 s
+
+Total time: 0.1974 s
+========================================
+
+Outputs
+Wall time: 0.0352 s
+
 ========================================
 Step:           1
-Time:           0.001209 fs
-Stepsize:       0.001209 fs
+Time:           0.483777 fs
+Stepsize:       0.483777 fs
 
-target: 0 		active: 0
+Saving
+Wall time: 0.0796 s
+
+Electronic Calculation
+Wall time: 0.0061 s
+
+Quantum Propagation
+Wall time: 0.0022 s
+
+Total time: 0.0892 s
 ========================================
-Step:           2
-Time:           0.002419 fs
-Stepsize:       0.001209 fs
 
-target: 0 		active: 0
-========================================
-Step:           3
-Time:           0.003628 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           4
-Time:           0.004838 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           5
-Time:           0.006047 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           6
-Time:           0.007257 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           7
-Time:           0.008466 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           8
-Time:           0.009676 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           9
-Time:           0.010885 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           10
-Time:           0.012094 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           11
-Time:           0.013304 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           12
-Time:           0.014513 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           13
-Time:           0.015723 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           14
-Time:           0.016932 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           15
-Time:           0.018142 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           16
-Time:           0.019351 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           17
-Time:           0.020561 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           18
-Time:           0.021770 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           19
-Time:           0.022979 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           20
-Time:           0.024189 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           21
-Time:           0.025398 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           22
-Time:           0.026608 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           23
-Time:           0.027817 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           24
-Time:           0.029027 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           25
-Time:           0.030236 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           26
-Time:           0.031445 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           27
-Time:           0.032655 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           28
-Time:           0.033864 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           29
-Time:           0.035074 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           30
-Time:           0.036283 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           31
-Time:           0.037493 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           32
-Time:           0.038702 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           33
-Time:           0.039912 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           34
-Time:           0.041121 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           35
-Time:           0.042330 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           36
-Time:           0.043540 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           37
-Time:           0.044749 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           38
-Time:           0.045959 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           39
-Time:           0.047168 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           40
-Time:           0.048378 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           41
-Time:           0.049587 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           42
-Time:           0.050797 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           43
-Time:           0.052006 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           44
-Time:           0.053215 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           45
-Time:           0.054425 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           46
-Time:           0.055634 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           47
-Time:           0.056844 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           48
-Time:           0.058053 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           49
-Time:           0.059263 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           50
-Time:           0.060472 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           51
-Time:           0.061682 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           52
-Time:           0.062891 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           53
-Time:           0.064100 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           54
-Time:           0.065310 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           55
-Time:           0.066519 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           56
-Time:           0.067729 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           57
-Time:           0.068938 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           58
-Time:           0.070148 fs
-Stepsize:       0.001209 fs
-
-target: 0 		active: 0
-========================================
-Step:           59
-Time:           0.071357 fs
-Stepsize:       0.001209 fs
-
+Outputs

@@ -1,5 +1,5 @@
 import numpy as np
-from .updaters import Updater, Multistage, UpdateResult
+from .base import Updater, Multistage, UpdateResult
 from classes.meta import SingletonFactory
 from classes.molecule import Molecule
 from electronic.base import ESTMode
@@ -88,9 +88,12 @@ class NACME(TDCUpdater):
     # ddt = nacme . velocity (i.e. original Tully 1990 paper model)
     key = "nacme"
     mode = ESTMode("n")
+    steps = 0
 
     def update(self, mols: list[Molecule], dt: float):
-        self.tdc.out = np.einsum("ijad, ad -> ij", mols[-1].nacdr_ssad, mols[-1].vel_ad)
+        print("RUNNING NACME")
+        temp = np.nan_to_num(mols[-1].nacdr_ssad)
+        self.tdc.out = np.einsum("ijad, ad -> ij", temp, mols[-1].vel_ad)
 
 class NPI(Multistage, TDCUpdater):
     # Meek and Levine's norm preserving interpolation, but integrated across the time-step
@@ -99,6 +102,7 @@ class NPI(Multistage, TDCUpdater):
     steps = 1
 
     def update(self, mols: list[Molecule], dt: float):
+        print("RUNNING NPI")
         nst = mols[-1].n_states
         for i in range(self.substeps):
             U   =  np.eye(nst)      *   np.cos(np.arccos(mols[-1].ovlp_ss) * i / self.substeps)

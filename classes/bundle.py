@@ -145,7 +145,6 @@ class Bundle:
         Dynamics().write_outputs(self._active)
         os.chdir("..")
 
-
     def split_traj(self, traj: Trajectory):
         clone = deepcopy(traj)
         dyn = Dynamics()

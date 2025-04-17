@@ -3,13 +3,13 @@ import os, sys, shutil
 import json
 
 from classes.molecule import Molecule
-
 from .base import ESTProgram, est_method
-
 from .molpro import Molpro
 
-from pyscf import tools, gto
-from functools import reduce
+try:
+    from pyscf import gto, tools
+except ImportError:
+    print("Warning: pyscf module not found")
 
 class Bagel(ESTProgram):
     key = "bagel"
@@ -562,6 +562,3 @@ class Bagel(ESTProgram):
 
 
         return S_mat
-
-
-

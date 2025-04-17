@@ -1,5 +1,5 @@
 import numpy as np
-from .updaters import Updater
+from .base import Updater
 from .nuclear import NuclearUpdater
 from classes.constants import convert
 from classes.meta import Singleton

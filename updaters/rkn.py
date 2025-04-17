@@ -1,6 +1,6 @@
 import numpy as np
 from .nuclear import NuclearUpdater
-from .updaters import UpdateResult
+from .base import UpdateResult
 from classes.molecule import Molecule
 from dynamics.base import Dynamics
 

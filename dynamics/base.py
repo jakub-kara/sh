@@ -43,10 +43,10 @@ class Dynamics(metaclass = SingletonFactory):
         self.write_headers(traj)
 
         self.steps_elapsed(-1)
-        self.run_est(mol, mol, mode = self.mode(mol))
+        self.run_est(mol, mol, mode = self.step_mode(mol))
         self.calculate_acceleration(mol)
 
-        self.update_quantum(traj.mols, traj.timestep.dt)
+        self.update_tdc(traj.mols, traj.timestep.dt)
 
         self.write_outputs(traj)
 

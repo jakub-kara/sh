@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Callable
-from .updaters import Updater
+from .base import Updater
 from classes.molecule import Molecule
 
 class AMBase(Updater):

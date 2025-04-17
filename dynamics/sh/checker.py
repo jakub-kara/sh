@@ -1,7 +1,7 @@
 import numpy as np
 from classes.molecule import Molecule, BlochMixin
 from classes.meta import SingletonFactory
-from updaters.updaters import Updater, Multistage, UpdateResult
+from updaters.base import Updater, Multistage, UpdateResult
 from updaters.coeff import CoeffUpdater
 from updaters.tdc import TDCUpdater
 

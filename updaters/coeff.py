@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.linalg import expm
 from scipy.interpolate import CubicSpline
-from .updaters import Updater, Multistage, UpdateResult
+from .base import Updater, Multistage, UpdateResult
 from .tdc import TDCUpdater
 from classes.meta import Singleton, SingletonFactory
 from classes.molecule import Molecule, BlochMixin

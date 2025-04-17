@@ -1,6 +1,9 @@
 import numpy as np
 from functools import reduce
-from pyscf import gto, scf, mcscf, lib, tools, ci, grad
+try:
+    from pyscf import gto, scf, mcscf, lib, tools, ci, grad
+except ImportError:
+    print("Warning: pyscf module not found")
 import os, sys
 
 from errors import *
@@ -76,7 +79,7 @@ def run_pyscf_mcscf(traj: Trajectory, config: dict):
     mol = get_mol(traj, config)
 
 
-    
+
 
     ncas = config['active'] - config['closed']
     nelecas = config['nel'] - 2*config['closed']
@@ -114,12 +117,3 @@ def run_pyscf_mcscf(traj: Trajectory, config: dict):
             if traj.est.calculate_nacs[i,j]:
                 traj.pes.nac_ddr_mnssad[-1,0,i,j,:,:] = mc_nacs.kernel(state=(i,j), use_etfs=True)
                 traj.pes.nac_ddr_mnssad[-1,0,j,i,:,:] = -traj.pes.nac_ddr_mnssad[-1,0,i,j,:,:]
-
-
-
-    
-
-
-
-
-

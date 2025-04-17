@@ -1,4 +1,4 @@
-from .updaters import Updater, UpdateResult
+from .base import Updater, UpdateResult
 from classes.meta import Factory
 from classes.molecule import Molecule
 
