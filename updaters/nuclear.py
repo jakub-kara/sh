@@ -1,8 +1,8 @@
 from .base import Updater, UpdateResult
-from classes.meta import Factory
+from classes.meta import Selector
 from classes.molecule import Molecule
 
-class NuclearUpdater(Updater, metaclass = Factory):
+class NuclearUpdater(Updater, Selector):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.out = None

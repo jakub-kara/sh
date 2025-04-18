@@ -1,9 +1,9 @@
 import numpy as np
-from .meta import Factory
+from .meta import Selector
 from .constants import convert
 from updaters.composite import CompositeIntegrator
 
-class Timestep(metaclass = Factory):
+class Timestep(Selector):
     def __init__(self, *, dt, steps, tmax, **kwargs):
         self._end = convert(tmax, "au")
         self.time = 0
@@ -71,4 +71,3 @@ class Half(Timestep):
             raise RuntimeError("Maximum timestep halving depth exceeded. Terminating.")
         self.dt /= 2
         self._it += 1
-

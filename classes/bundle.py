@@ -2,8 +2,7 @@ import numpy as np
 import os, sys, shutil
 import pickle
 from copy import deepcopy
-from .meta import Singleton
-from .molecule import MoleculeFactory
+from .meta import Singleton, Factory
 from .out import Output
 from classes.trajectory import Trajectory
 from dynamics.base import Dynamics
@@ -22,22 +21,22 @@ class Bundle:
         with open("single.pkl", "wb") as pkl:
             pickle.dump(Singleton.save(), pkl)
 
-        with open("mol.pkl", "wb") as pkl:
-            pickle.dump(MoleculeFactory.save(), pkl)
+        with open("fact.pkl", "wb") as pkl:
+            pickle.dump(Factory.save(), pkl)
 
     @staticmethod
     def load_setup():
         with open("single.pkl", "rb") as pkl:
             Singleton.restart(pickle.load(pkl))
 
-        with open("mol.pkl", "rb") as pkl:
-            MoleculeFactory.restart(pickle.load(pkl))
+        with open("fact.pkl", "rb") as pkl:
+            Factory.restart(pickle.load(pkl))
 
     @staticmethod
     def restart(**config):
         bundle = Bundle()
-        traj_dirs = [d for d in os.listdir() if (os.path.isdir(d) and d.isdigit())]
         Bundle.load_setup()
+        traj_dirs = [d for d in os.listdir() if (os.path.isdir(d) and d.isdigit())]
         for d in traj_dirs:
             os.chdir(d)
             traj = Trajectory.restart(**config)
@@ -87,12 +86,12 @@ class Bundle:
 
     def set_dynamics(self, dynamics, **config):
         Dynamics.reset()
-        Dynamics[dynamics["method"]](dynamics=dynamics, **config)
+        Dynamics.select(dynamics["method"])(dynamics=dynamics, **config)
 
     def set_est(self, **electronic):
-        HamTransform[electronic.get("transform", "none")]()
+        HamTransform.select(electronic.get("transform", "none"))()
         ESTProgram.reset()
-        ESTProgram[electronic["program"]](**electronic)
+        ESTProgram.select(electronic["program"])(**electronic)
 
     def set_nuclear(self, **nuclear):
         CompositeIntegrator.reset()
@@ -100,11 +99,11 @@ class Bundle:
 
     def set_tdc_updater(self, **quantum):
         TDCUpdater.reset()
-        TDCUpdater[quantum.get("tdc_upd", "npi")](**quantum)
+        TDCUpdater.select(quantum.get("tdc_upd", "npi"))(**quantum)
 
     def set_coeff_updater(self, **quantum):
         CoeffUpdater.reset()
-        CoeffUpdater[quantum.get("coeff_upd", "tdc")](**quantum)
+        CoeffUpdater.select(quantum.get("coeff_upd", "tdc"))(**quantum)
 
     def set_io(self, **output):
         Output(**output)

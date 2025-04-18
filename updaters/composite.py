@@ -13,10 +13,10 @@ class CompositeIntegrator(Updater, metaclass = Singleton):
         self._thresh = convert(kwargs.get("thresh", 1e10), "au")
         self._upds: dict[int, NuclearUpdater] = {}
 
-        base = NuclearUpdater[nuc_upd]()
+        base = NuclearUpdater.select(nuc_upd)()
         self._upds[0] = base
         if base.steps > 1:
-            self._upds[-1] = NuclearUpdater[f"rkn{base.steps}"]()
+            self._upds[-1] = NuclearUpdater.select(f"rkn{base.steps}")()
 
         self.to_init()
 

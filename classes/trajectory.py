@@ -2,13 +2,13 @@ import numpy as np
 import sys, pickle
 import time
 from copy import deepcopy
-from .molecule import Molecule, MoleculeFactory
+from .meta import Factory
+from .molecule import Molecule, MoleculeMixin
 from .out import Output, Timer
 from .constants import convert
 from .timestep import Timestep
 from electronic.base import ESTProgram
 from updaters.composite import CompositeIntegrator
-from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
 
 class Trajectory:
@@ -46,8 +46,10 @@ class Trajectory:
         self.mols.remove(mol)
         return self
 
-    def get_molecule(self, coeff = None, **config):
-        mol = MoleculeFactory.create_molecule(n_states=ESTProgram().n_states, **config)
+    def get_molecule(self, mixins, coeff = None, **config):
+        fac = Factory(Molecule, MoleculeMixin)
+        fac.add_mixins(mixins)
+        mol = fac.create()(n_states=ESTProgram().n_states, **config)
         mol.get_coeff(coeff)
         return mol
 
@@ -57,7 +59,7 @@ class Trajectory:
             self.add_molecule(self.mol.copy_all())
 
     def set_timestep(self, **dynamics):
-        self.timestep: Timestep = Timestep[dynamics.get("timestep", "const")](
+        self.timestep: Timestep = Timestep.select(dynamics.get("timestep", "const"))(
             steps = len(self.mols), **dynamics)
 
     def step_header(self):

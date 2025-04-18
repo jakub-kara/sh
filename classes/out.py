@@ -87,6 +87,8 @@ class Output(metaclass = Singleton):
             if to_write is None:
                 return
             key = str(to_write["step"])
+            if key in file.keys():
+                del file[key]
             grp = file.create_group(key)
             to_write.pop("step")
             for key, val in to_write.items():
@@ -96,29 +98,25 @@ class Output(metaclass = Singleton):
                     grp.create_dataset(key, data=val)
 
 class Timer(Decorator):
-    _timers = []
-
-    def __init__(self, id = None, head = None, msg = "Wall time", foot = None):
-        self._id = id
+    def __init__(self, id, head = "", msg = "Wall time: ", foot = "", out = lambda x: None):
+        super().__init__(id)
         self._head = head
         self._msg = msg
         self._foot = foot
+        self._out = out
 
-    def _inner(self, func, *args, **kwargs):
-        if self._id in self._timers:
-            return func(*args, **kwargs)
-
-        if self._id is not None:
-            self._timers.append(self._id)
-        out = Output()
+    def run(self, func, instance, *args, **kwargs):
+        self._out(f"{self._head}")
         t0 = time.time()
-        out.write_log(self._head)
-        res = func(*args, **kwargs)
-        out.write_log(f"{self._msg}: {time.time() - t0 :.4f} s")
-        out.write_log(self._foot)
-        out.write_log()
-        if self._id is not None:
-            self._timers.remove(self._id)
+        res = func(instance, *args, **kwargs)
+        self._out(f"{self._msg}: {time.time() - t0 :.4f} s")
+        self._out(f"{self._foot}")
+        return res
+
+class Logger(Decorator):
+    def run(self, func, instance, *args, **kwargs):
+        print(f"Running method {func} of {instance}")
+        res = func(instance, *args, **kwargs)
         return res
 
 class Printer:

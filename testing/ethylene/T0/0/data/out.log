@@ -19,7 +19,7 @@
     },
     "electronic": {
         "program": "model",
-        "method": "hh",
+        "method": "ho2",
         "states": 2
     },
     "output": {
@@ -31,57 +31,210 @@
 
 
 ========================================
-Trajectory Initialisation
-Electronic Calculation
-Wall time: 0.0193 s
-
-Outputs
-Wall time: 0.0743 s
-
-Total time: 0.1654 s
-
-========================================
 Step:           0
 Time:           0.000000 fs
 Stepsize:       0.483777 fs
 
-Saving
-Wall time: 0.1723 s
+Total energy:   10.592658 eV
+Energy shift:   8.382245 eV
 
-Electronic Calculation
-Wall time: 0.0049 s
-
-Quantum Propagation
-Wall time: 0.0044 s
-
-Total energy:   2446.663345 eV
-Energy shift:   2432.858860 eV
-
-Nuclear Adjustment
 target: 1 		active: 1
-Wall time: 0.0003 s
-
-Total time: 0.1974 s
-========================================
-
-Outputs
-Wall time: 0.0352 s
-
 ========================================
 Step:           1
 Time:           0.483777 fs
 Stepsize:       0.483777 fs
 
-Saving
-Wall time: 0.0796 s
+Total energy:   61.644111 eV
+Energy shift:   51.051453 eV
 
-Electronic Calculation
-Wall time: 0.0061 s
+target: 1 		active: 1
+========================================
+Step:           2
+Time:           0.967554 fs
+Stepsize:       0.483777 fs
 
-Quantum Propagation
-Wall time: 0.0022 s
+Total energy:   232.843305 eV
+Energy shift:   171.199194 eV
 
-Total time: 0.0892 s
+target: 1 		active: 1
+========================================
+Step:           3
+Time:           1.451331 fs
+Stepsize:       0.483777 fs
+
+Total energy:   653.867430 eV
+Energy shift:   421.024126 eV
+
+target: 1 		active: 1
+========================================
+Step:           4
+Time:           1.935107 fs
+Stepsize:       0.483777 fs
+
+Total energy:   1506.645441 eV
+Energy shift:   852.778010 eV
+
+target: 1 		active: 1
+========================================
+Step:           5
+Time:           2.418884 fs
+Stepsize:       0.483777 fs
+
+Total energy:   3025.353178 eV
+Energy shift:   1518.707737 eV
+
+target: 1 		active: 1
+========================================
+Step:           6
+Time:           2.902661 fs
+Stepsize:       0.483777 fs
+
+Total energy:   5496.412591 eV
+Energy shift:   2471.059413 eV
+
+target: 1 		active: 1
+========================================
+Step:           7
+Time:           3.386438 fs
+Stepsize:       0.483777 fs
+
+Total energy:   9258.491567 eV
+Energy shift:   3762.078976 eV
+
+target: 1 		active: 1
+========================================
+Step:           8
+Time:           3.870215 fs
+Stepsize:       0.483777 fs
+
+Total energy:   14702.503880 eV
+Energy shift:   5444.012313 eV
+
+target: 1 		active: 1
+========================================
+Step:           9
+Time:           4.353992 fs
+Stepsize:       0.483777 fs
+
+Total energy:   22271.609179 eV
+Energy shift:   7569.105299 eV
+
+target: 1 		active: 1
+========================================
+Step:           10
+Time:           4.837769 fs
+Stepsize:       0.483777 fs
+
+Total energy:   32461.212977 eV
+Energy shift:   10189.603798 eV
+
+target: 1 		active: 1
+========================================
+Step:           11
+Time:           5.321546 fs
+Stepsize:       0.483777 fs
+
+
+========================================
+Succesfully restarted from backups.
 ========================================
 
-Outputs
+========================================
+Step:           10
+Time:           4.837769 fs
+Stepsize:       0.483777 fs
+
+Total energy:   32461.212977 eV
+Energy shift:   10189.603798 eV
+
+target: 1 		active: 1
+========================================
+Step:           11
+Time:           5.321546 fs
+Stepsize:       0.483777 fs
+
+Total energy:   45818.966650 eV
+Energy shift:   13357.753673 eV
+
+target: 1 		active: 1
+========================================
+Step:           12
+Time:           5.805322 fs
+Stepsize:       0.483777 fs
+
+Total energy:   62944.767435 eV
+Energy shift:   17125.800785 eV
+
+target: 1 		active: 1
+========================================
+Step:           13
+Time:           6.289099 fs
+Stepsize:       0.483777 fs
+
+Total energy:   84490.758430 eV
+Energy shift:   21545.990995 eV
+
+target: 1 		active: 1
+========================================
+Step:           14
+Time:           6.772876 fs
+Stepsize:       0.483777 fs
+
+Total energy:   111161.328591 eV
+Energy shift:   26670.570162 eV
+
+target: 1 		active: 1
+========================================
+Step:           15
+Time:           7.256653 fs
+Stepsize:       0.483777 fs
+
+Total energy:   143713.112737 eV
+Energy shift:   32551.784146 eV
+
+target: 1 		active: 1
+========================================
+Step:           16
+Time:           7.740430 fs
+Stepsize:       0.483777 fs
+
+Total energy:   182954.991545 eV
+Energy shift:   39241.878807 eV
+
+target: 1 		active: 1
+========================================
+Step:           17
+Time:           8.224207 fs
+Stepsize:       0.483777 fs
+
+Total energy:   229748.091549 eV
+Energy shift:   46793.100005 eV
+
+target: 1 		active: 1
+========================================
+Step:           18
+Time:           8.707984 fs
+Stepsize:       0.483777 fs
+
+Total energy:   285005.785147 eV
+Energy shift:   55257.693598 eV
+
+target: 1 		active: 1
+========================================
+Step:           19
+Time:           9.191760 fs
+Stepsize:       0.483777 fs
+
+Total energy:   349693.690594 eV
+Energy shift:   64687.905446 eV
+
+target: 1 		active: 1
+========================================
+Step:           20
+Time:           9.675537 fs
+Stepsize:       0.483777 fs
+
+Total energy:   424829.672003 eV
+Energy shift:   75135.981409 eV
+
+target: 1 		active: 1

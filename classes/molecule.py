@@ -1,38 +1,7 @@
 import numpy as np
-from abc import abstractmethod
 from copy import deepcopy
-from classes.meta import Factory, SingletonFactory, DynamicClassProxy
+from classes.meta import Selector
 from classes.constants import convert, atomic_masses
-
-class MoleculeFactory:
-    _products: dict = {}
-
-    @classmethod
-    def create_molecule(cls, mixins, *args, **kwargs):
-        if not isinstance(mixins, (list, tuple)):
-            mixins = [mixins]
-        name = "Molecule" + "".join(mixins)
-        cls._products[name] = mixins
-        mol = cls._get_molecule(name, mixins)
-        setattr(cls, name, mol)
-        return mol(*args, **kwargs)
-
-    @classmethod
-    def _get_molecule(cls, name, mixins):
-        return type(
-            name,
-            tuple([MoleculeMixin[mix] for mix in mixins] + [Molecule]),
-            {})
-
-    @classmethod
-    def save(cls):
-        return cls._products.copy()
-
-    @classmethod
-    def restart(cls, dic: dict):
-        cls._products = dic
-        for key, val in cls._products.items():
-            setattr(cls, key, cls._get_molecule(key, val))
 
 class Molecule:
     def __init__(self, *, n_states: int = 1, input = "geom.xyz", com = False, vxyz = True, **config):
@@ -264,17 +233,13 @@ class Molecule:
         for s in range(self.n_states):
             self.ham_dia_ss[s,s] -= refen
 
-    def __reduce__(self):
-        return (DynamicClassProxy(), (MoleculeFactory, self.__class__.__name__), self.__dict__.copy())
-
     def to_dict(self):
         pass
 
-class MoleculeMixin(metaclass = Factory):
+class MoleculeMixin(Selector):
     def __init__(self, *, initstate: int, **kwargs):
         super().__init__(**kwargs)
         self._state = initstate
-
 
     def get_coeff(self, input: str = None):
         if input is None:

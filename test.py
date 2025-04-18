@@ -1,18 +1,20 @@
 import pickle, time
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 # from functools import partial
-from classes.meta import Singleton, Factory, SingletonFactory
-from dynamics.base import Dynamics
-import argparse
+from classes.meta import Singleton, Decorator, DecoratorDistributor, Selector, Factory
+from classes.molecule import Molecule, MoleculeMixin
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-b", "--bonds", action="append", nargs=2, type=int)
-parser.add_argument("-i", "--trajs", action="store", nargs="*")
-args = parser.parse_args()
+molfac = Factory(Molecule, MoleculeMixin)
+molfac.add_mixins("sh")
+molcls = molfac.create()
+mol = molcls(initstate = 0)
 
+with open("temp.pkl", "wb") as pkl:
+    pickle.dump(mol, pkl)
 breakpoint()
 
-class Parent(metaclass = Factory):
+
+class Parent(Selector, DecoratorDistributor, metaclass = Singleton):
     a = 1
     def __init__(self, x):
         self.x = x
@@ -43,6 +45,9 @@ class Child2(Parent):
         print("in Child2")
         super().do(*args, **kwargs)
 
-x = Parent[2](x=1)
+x = Parent(10)
 x.do(1,2)
+
+temp = pickle.dumps(x)
+pickle.loads(temp)
 breakpoint()

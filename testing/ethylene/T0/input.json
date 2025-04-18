@@ -19,7 +19,7 @@
     },
     "electronic": {
         "program": "model",
-        "method": "hh",
+        "method": "ho2",
         "states": 2
     },
     "output": {

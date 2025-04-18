@@ -3,7 +3,7 @@ import numpy as np
 from abc import abstractmethod
 from copy import deepcopy
 from classes.constants import convert
-from classes.meta import SingletonFactory
+from classes.meta import Singleton, Selector, DecoratorDistributor
 from classes.molecule import Molecule
 from classes.out import Output, Printer, Timer
 from classes.trajectory import Trajectory
@@ -12,7 +12,7 @@ from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
 from electronic.base import ESTProgram, ESTMode
 
-class Dynamics(metaclass = SingletonFactory):
+class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     mode = ESTMode()
 
     def __init__(self, *args, **kwargs):

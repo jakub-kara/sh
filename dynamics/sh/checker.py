@@ -1,11 +1,11 @@
 import numpy as np
 from classes.molecule import Molecule, BlochMixin
-from classes.meta import SingletonFactory
+from classes.meta import Singleton, Selector
 from updaters.base import Updater, Multistage, UpdateResult
 from updaters.coeff import CoeffUpdater
 from updaters.tdc import TDCUpdater
 
-class HoppingUpdater(Updater, metaclass = SingletonFactory):
+class HoppingUpdater(Updater, Selector, metaclass = Singleton):
     def __init__(self, *, seed = None, **config):
         super().__init__(**config)
         if seed is None:

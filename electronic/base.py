@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from abc import abstractmethod
-from classes.meta import SingletonFactory
+from classes.meta import Singleton, Selector
 from classes.molecule import Molecule
 from classes.constants import convert
 
@@ -38,7 +38,7 @@ class ESTMode:
                 out.append(f"n{mol.active}{mol.target}")
         return out
 
-class HamTransform(metaclass = SingletonFactory):
+class HamTransform(Selector, metaclass = Singleton):
     mode = ESTMode("")
 
     @abstractmethod
@@ -79,7 +79,7 @@ class NGT(HamTransform):
         for i in range(mol.n_states):
             mol.grad_sad[i] = np.real(g_eig[i,i])
 
-class ESTProgram(metaclass = SingletonFactory):
+class ESTProgram(Selector, metaclass = Singleton):
     _methods = {}
 
     def __init__(self, *, states: list, program: str, method, path: str = "", options: dict = None, refen = 0, **config):

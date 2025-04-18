@@ -12,7 +12,7 @@ class FSSH(SurfaceHopping):
     def __init__(self, *, dynamics, **config):
         config["nuclear"]["mixins"] = "sh"
         super().__init__(dynamics=dynamics, **config)
-        HoppingUpdater[dynamics.get("prob", "tdc")](**dynamics, **config["quantum"])
+        HoppingUpdater.select(dynamics.get("prob", "tdc"))(**dynamics, **config["quantum"])
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         out = Output()

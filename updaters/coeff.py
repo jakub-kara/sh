@@ -3,11 +3,11 @@ from scipy.linalg import expm
 from scipy.interpolate import CubicSpline
 from .base import Updater, Multistage, UpdateResult
 from .tdc import TDCUpdater
-from classes.meta import Singleton, SingletonFactory
+from classes.meta import Singleton, Singleton, Selector
 from classes.molecule import Molecule, BlochMixin
 from electronic.base import ESTMode
 
-class CoeffUpdater(Updater, metaclass = SingletonFactory):
+class CoeffUpdater(Updater, Selector, metaclass = Singleton):
     mode = ESTMode("")
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

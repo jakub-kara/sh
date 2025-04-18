@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import fsolve
-from classes.meta import Factory
+from classes.meta import Selector
 from classes.molecule import Molecule
 from classes.out import Output
 from dynamics.base import Dynamics
@@ -126,7 +126,7 @@ class LSCIVR(Dynamics):
         #current hack to generate correct initial distributinos if no file given
         self.setup_x_p(mols[-1], mols[-1].state)
 
-class PopulationEstimator(metaclass = Factory):
+class PopulationEstimator(Selector):
     def population(mol: Molecule, s: int):
         raise NotImplementedError
 
@@ -184,4 +184,3 @@ class SpinMappingPE(PopulationEstimator):
         else:
             return 1/3 + 0.5*mol.r2[s] - 1/6 * np.sum(mol.r2)
         # return 1/mol.n_states
-

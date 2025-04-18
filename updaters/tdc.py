@@ -1,10 +1,10 @@
 import numpy as np
 from .base import Updater, Multistage, UpdateResult
-from classes.meta import SingletonFactory
+from classes.meta import Singleton, Selector
 from classes.molecule import Molecule
 from electronic.base import ESTMode
 
-class TDCUpdater(Updater, metaclass = SingletonFactory):
+class TDCUpdater(Updater, Selector, metaclass = Singleton):
     mode = ESTMode("")
 
     def __init__(self, **kwargs):
