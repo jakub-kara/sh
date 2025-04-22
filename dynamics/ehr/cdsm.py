@@ -48,7 +48,7 @@ class CSDM(SimpleEhrenfest):
                 continue
             tau[i] = 1 / np.abs(mol.ham_eig_ss[i,i] - mol.ham_eig_ss[mol.pointer, mol.pointer])
             tau[i] *= C + 4 * E0 / np.sum(mol.mass_a * np.einsum("ad, ad -> a", mol.vel_ad, norm[i])**2)
-            # tau[i] *= C + 2 * E0 / mol.kinetic_energy
+            # tau[i] *= C + 2 * E0 / mol.kinetic_energy()
 
         print(f"pointer: {mol.pointer}")
         print(f"tau: {tau}")

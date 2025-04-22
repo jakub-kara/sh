@@ -1,12 +1,11 @@
-import __init__
+import imports
 import os, json
 import time
 import argparse
 
 from sampling.icond import icond
 from classes.bundle import Bundle
-
-
+from dynamics.base import Dynamics
 
 def main():
     parser = argparse.ArgumentParser(
@@ -47,10 +46,12 @@ def run_dynamics(args, config: dict):
     if args.restart:
         bundle = Bundle.restart(**config)
     else:
-        bundle = Bundle().setup(**config)
+        Dynamics.set_dynamics(**config)
+        bundle = Bundle(**config)
+        Dynamics().prepare_bundle(bundle)
 
     while not bundle.is_finished:
-        bundle.run_step()
+        Dynamics().step_bundle(bundle)
 
 if __name__ == "__main__":
     main()

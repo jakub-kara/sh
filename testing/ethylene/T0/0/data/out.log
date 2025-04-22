@@ -1,16 +1,17 @@
 {
     "dynamics": {
         "name": "model",
-        "tmax": 10000,
+        "tmax": 2000,
         "dt": 20,
-        "method": "fssh",
-	"prob": "tdc",
+        "method": "mce",
+        "prob": "tdc",
         "initstate": 1,
-	"backup": true
+        "backup": true
     },
     "nuclear": {
         "input": "geom.xyz",
-        "nuc_upd": "vv"
+        "nuc_upd": "vv",
+        "mixins": "mce"
     },
     "quantum": {
         "tdc_upd": "nacme",
@@ -24,10 +25,32 @@
     },
     "output": {
         "file": "out",
-        "record": ["act", "pop", "pes", "pen", "ken", "ten", "nacdt", "posx"],
-        "timer": ["est", "coe", "tdc", "tot", "sav", "wrt"]
+        "record": [
+            "act",
+            "pop",
+            "pes",
+            "pen",
+            "ken",
+            "ten",
+            "nacdt"
+        ],
+        "timer": [
+            "est",
+            "coe",
+            "tdc",
+            "tot",
+            "sav",
+            "wrt"
+        ]
     }
 }
+
+========================================
+Trajectory Initialisation
+Electronic Calculation
+Wall time: : 0.0021 s
+
+Total time: 0.0421 s
 
 
 ========================================
@@ -35,108 +58,104 @@ Step:           0
 Time:           0.000000 fs
 Stepsize:       0.483777 fs
 
-Total energy:   10.592658 eV
-Energy shift:   8.382245 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0017 s
 
-target: 1 		active: 1
+Quantum Propagation
+Wall time: : 0.0003 s
+
+Total energy:   2.216658 eV
+Energy shift:   0.000000 eV
+Energy drift:   0.000000 eV
+
+Wall time: : 0.0126 s
+
+Total time: 0.0286 s
 ========================================
-Step:           1
-Time:           0.483777 fs
-Stepsize:       0.483777 fs
 
-Total energy:   61.644111 eV
-Energy shift:   51.051453 eV
-
-target: 1 		active: 1
 ========================================
 Step:           2
 Time:           0.967554 fs
 Stepsize:       0.483777 fs
 
-Total energy:   232.843305 eV
-Energy shift:   171.199194 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0022 s
 
-target: 1 		active: 1
+Quantum Propagation
+Wall time: : 0.0073 s
+
+Total energy:   2.216650 eV
+Energy shift:   0.000009 eV
+Energy drift:   -0.000009 eV
+
+Wall time: : 0.0226 s
+
+Total time: 0.0434 s
 ========================================
-Step:           3
-Time:           1.451331 fs
-Stepsize:       0.483777 fs
 
-Total energy:   653.867430 eV
-Energy shift:   421.024126 eV
-
-target: 1 		active: 1
 ========================================
 Step:           4
 Time:           1.935107 fs
 Stepsize:       0.483777 fs
 
-Total energy:   1506.645441 eV
-Energy shift:   852.778010 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0022 s
 
-target: 1 		active: 1
+Quantum Propagation
+Wall time: : 0.0063 s
+
+Total energy:   2.216636 eV
+Energy shift:   0.000014 eV
+Energy drift:   -0.000023 eV
+
+Wall time: : 0.0219 s
+
+Total time: 0.0411 s
 ========================================
-Step:           5
-Time:           2.418884 fs
-Stepsize:       0.483777 fs
 
-Total energy:   3025.353178 eV
-Energy shift:   1518.707737 eV
-
-target: 1 		active: 1
 ========================================
 Step:           6
 Time:           2.902661 fs
 Stepsize:       0.483777 fs
 
-Total energy:   5496.412591 eV
-Energy shift:   2471.059413 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0019 s
 
-target: 1 		active: 1
+Quantum Propagation
+Wall time: : 0.0035 s
+
+Total energy:   2.216616 eV
+Energy shift:   0.000020 eV
+Energy drift:   -0.000043 eV
+
+Wall time: : 0.0175 s
+
+Total time: 0.0320 s
 ========================================
-Step:           7
-Time:           3.386438 fs
-Stepsize:       0.483777 fs
 
-Total energy:   9258.491567 eV
-Energy shift:   3762.078976 eV
-
-target: 1 		active: 1
 ========================================
 Step:           8
 Time:           3.870215 fs
 Stepsize:       0.483777 fs
 
-Total energy:   14702.503880 eV
-Energy shift:   5444.012313 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0017 s
 
-target: 1 		active: 1
-========================================
-Step:           9
-Time:           4.353992 fs
-Stepsize:       0.483777 fs
+Quantum Propagation
+Wall time: : 0.0048 s
 
-Total energy:   22271.609179 eV
-Energy shift:   7569.105299 eV
+Total energy:   2.216591 eV
+Energy shift:   0.000025 eV
+Energy drift:   -0.000067 eV
 
-target: 1 		active: 1
-========================================
-Step:           10
-Time:           4.837769 fs
-Stepsize:       0.483777 fs
+Wall time: : 0.0185 s
 
-Total energy:   32461.212977 eV
-Energy shift:   10189.603798 eV
-
-target: 1 		active: 1
-========================================
-Step:           11
-Time:           5.321546 fs
-Stepsize:       0.483777 fs
-
-
-========================================
-Succesfully restarted from backups.
+Total time: 0.0327 s
 ========================================
 
 ========================================
@@ -144,97 +163,942 @@ Step:           10
 Time:           4.837769 fs
 Stepsize:       0.483777 fs
 
-Total energy:   32461.212977 eV
-Energy shift:   10189.603798 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0017 s
 
-target: 1 		active: 1
+Quantum Propagation
+Wall time: : 0.0033 s
+
+Total energy:   2.216563 eV
+Energy shift:   0.000029 eV
+Energy drift:   -0.000096 eV
+
+Wall time: : 0.0144 s
+
+Total time: 0.0273 s
 ========================================
-Step:           11
-Time:           5.321546 fs
-Stepsize:       0.483777 fs
 
-Total energy:   45818.966650 eV
-Energy shift:   13357.753673 eV
-
-target: 1 		active: 1
 ========================================
 Step:           12
 Time:           5.805322 fs
 Stepsize:       0.483777 fs
 
-Total energy:   62944.767435 eV
-Energy shift:   17125.800785 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0019 s
 
-target: 1 		active: 1
+Quantum Propagation
+Wall time: : 0.0045 s
+
+Total energy:   2.216528 eV
+Energy shift:   0.000035 eV
+Energy drift:   -0.000131 eV
+
+Wall time: : 0.0197 s
+
+Total time: 0.0377 s
 ========================================
-Step:           13
-Time:           6.289099 fs
-Stepsize:       0.483777 fs
 
-Total energy:   84490.758430 eV
-Energy shift:   21545.990995 eV
-
-target: 1 		active: 1
 ========================================
 Step:           14
 Time:           6.772876 fs
 Stepsize:       0.483777 fs
 
-Total energy:   111161.328591 eV
-Energy shift:   26670.570162 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0019 s
 
-target: 1 		active: 1
+Quantum Propagation
+Wall time: : 0.0033 s
+
+Total energy:   2.216486 eV
+Energy shift:   0.000041 eV
+Energy drift:   -0.000172 eV
+
+Wall time: : 0.0159 s
+
+Total time: 0.0301 s
 ========================================
-Step:           15
-Time:           7.256653 fs
-Stepsize:       0.483777 fs
 
-Total energy:   143713.112737 eV
-Energy shift:   32551.784146 eV
-
-target: 1 		active: 1
 ========================================
 Step:           16
 Time:           7.740430 fs
 Stepsize:       0.483777 fs
 
-Total energy:   182954.991545 eV
-Energy shift:   39241.878807 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0019 s
 
-target: 1 		active: 1
+Quantum Propagation
+Wall time: : 0.0038 s
+
+Total energy:   2.216441 eV
+Energy shift:   0.000045 eV
+Energy drift:   -0.000217 eV
+
+Wall time: : 0.0162 s
+
+Total time: 0.0320 s
 ========================================
-Step:           17
-Time:           8.224207 fs
-Stepsize:       0.483777 fs
 
-Total energy:   229748.091549 eV
-Energy shift:   46793.100005 eV
-
-target: 1 		active: 1
 ========================================
 Step:           18
 Time:           8.707984 fs
 Stepsize:       0.483777 fs
 
-Total energy:   285005.785147 eV
-Energy shift:   55257.693598 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0018 s
 
-target: 1 		active: 1
+Quantum Propagation
+Wall time: : 0.0036 s
+
+Total energy:   2.216392 eV
+Energy shift:   0.000049 eV
+Energy drift:   -0.000266 eV
+
+Wall time: : 0.0178 s
+
+Total time: 0.0333 s
 ========================================
-Step:           19
-Time:           9.191760 fs
-Stepsize:       0.483777 fs
 
-Total energy:   349693.690594 eV
-Energy shift:   64687.905446 eV
-
-target: 1 		active: 1
 ========================================
 Step:           20
 Time:           9.675537 fs
 Stepsize:       0.483777 fs
 
-Total energy:   424829.672003 eV
-Energy shift:   75135.981409 eV
+Nuclear
+Electronic Calculation
+Wall time: : 0.0022 s
 
-target: 1 		active: 1
+Quantum Propagation
+Wall time: : 0.0034 s
+
+Total energy:   2.216336 eV
+Energy shift:   0.000056 eV
+Energy drift:   -0.000322 eV
+
+Wall time: : 0.0192 s
+
+Total time: 0.0381 s
+========================================
+
+========================================
+Step:           22
+Time:           10.643091 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0016 s
+
+Quantum Propagation
+Wall time: : 0.0047 s
+
+Total energy:   2.216269 eV
+Energy shift:   0.000067 eV
+Energy drift:   -0.000389 eV
+
+Wall time: : 0.0203 s
+
+Total time: 0.0379 s
+========================================
+
+========================================
+Step:           24
+Time:           11.610645 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0016 s
+
+Quantum Propagation
+Wall time: : 0.0035 s
+
+Total energy:   2.216192 eV
+Energy shift:   0.000078 eV
+Energy drift:   -0.000467 eV
+
+Wall time: : 0.0179 s
+
+Total time: 0.0344 s
+========================================
+
+========================================
+Step:           26
+Time:           12.578198 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0017 s
+
+Quantum Propagation
+Wall time: : 0.0065 s
+
+Total energy:   2.216102 eV
+Energy shift:   0.000090 eV
+Energy drift:   -0.000557 eV
+
+Wall time: : 0.0209 s
+
+Total time: 0.0391 s
+========================================
+
+========================================
+Step:           28
+Time:           13.545752 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0018 s
+
+Quantum Propagation
+Wall time: : 0.0044 s
+
+Total energy:   2.215991 eV
+Energy shift:   0.000111 eV
+Energy drift:   -0.000668 eV
+
+Wall time: : 0.0165 s
+
+Total time: 0.0329 s
+========================================
+
+========================================
+Step:           30
+Time:           14.513306 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0018 s
+
+Quantum Propagation
+Wall time: : 0.0035 s
+
+Total energy:   2.215837 eV
+Energy shift:   0.000154 eV
+Energy drift:   -0.000822 eV
+
+Wall time: : 0.0180 s
+
+Total time: 0.0331 s
+========================================
+
+========================================
+Step:           32
+Time:           15.480860 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0014 s
+
+Quantum Propagation
+Wall time: : 0.0036 s
+
+Total energy:   2.215599 eV
+Energy shift:   0.000238 eV
+Energy drift:   -0.001059 eV
+
+Wall time: : 0.0144 s
+
+Total time: 0.0289 s
+========================================
+
+========================================
+Step:           34
+Time:           16.448413 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0017 s
+
+Quantum Propagation
+Wall time: : 0.0036 s
+
+Total energy:   2.215197 eV
+Energy shift:   0.000403 eV
+Energy drift:   -0.001462 eV
+
+Wall time: : 0.0166 s
+
+Total time: 0.0359 s
+========================================
+
+========================================
+Step:           36
+Time:           17.415967 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0028 s
+
+Quantum Propagation
+Wall time: : 0.0034 s
+
+Total energy:   2.214471 eV
+Energy shift:   0.000726 eV
+Energy drift:   -0.002188 eV
+
+Wall time: : 0.0218 s
+
+Total time: 0.0353 s
+========================================
+
+========================================
+Step:           38
+Time:           18.383521 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0018 s
+
+Quantum Propagation
+Wall time: : 0.0033 s
+
+Total energy:   2.213154 eV
+Energy shift:   0.001316 eV
+Energy drift:   -0.003504 eV
+
+Wall time: : 0.0157 s
+
+Total time: 0.0447 s
+========================================
+
+========================================
+Step:           40
+Time:           19.351075 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0020 s
+
+Quantum Propagation
+Wall time: : 0.0036 s
+
+Total energy:   2.211052 eV
+Energy shift:   0.002102 eV
+Energy drift:   -0.005606 eV
+
+Wall time: : 0.0183 s
+
+Total time: 0.0436 s
+========================================
+
+========================================
+Step:           42
+Time:           20.318628 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0019 s
+
+Quantum Propagation
+Wall time: : 0.0034 s
+
+Total energy:   2.208869 eV
+Energy shift:   0.002183 eV
+Energy drift:   -0.007789 eV
+
+Wall time: : 0.0178 s
+
+Total time: 0.0348 s
+========================================
+
+========================================
+Step:           44
+Time:           21.286182 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0022 s
+
+Quantum Propagation
+Wall time: : 0.0035 s
+
+Total energy:   2.208629 eV
+Energy shift:   0.000240 eV
+Energy drift:   -0.008030 eV
+
+Wall time: : 0.0184 s
+
+Total time: 0.0330 s
+========================================
+
+========================================
+Step:           46
+Time:           22.253736 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0020 s
+
+Quantum Propagation
+Wall time: : 0.0055 s
+
+Total energy:   2.210704 eV
+Energy shift:   0.002075 eV
+Energy drift:   -0.005955 eV
+
+Wall time: : 0.0198 s
+
+Total time: 0.0351 s
+========================================
+
+========================================
+Step:           48
+Time:           23.221290 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0016 s
+
+Quantum Propagation
+Wall time: : 0.0034 s
+
+Total energy:   2.212555 eV
+Energy shift:   0.001851 eV
+Energy drift:   -0.004104 eV
+
+Wall time: : 0.0154 s
+
+Total time: 0.0295 s
+========================================
+
+========================================
+Step:           50
+Time:           24.188843 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0014 s
+
+Quantum Propagation
+Wall time: : 0.0076 s
+
+Total energy:   2.212489 eV
+Energy shift:   0.000066 eV
+Energy drift:   -0.004170 eV
+
+Wall time: : 0.0269 s
+
+Total time: 0.0432 s
+========================================
+
+========================================
+Step:           52
+Time:           25.156397 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0017 s
+
+Quantum Propagation
+Wall time: : 0.0045 s
+
+Total energy:   2.210998 eV
+Energy shift:   0.001491 eV
+Energy drift:   -0.005660 eV
+
+Wall time: : 0.0203 s
+
+Total time: 0.0387 s
+========================================
+
+========================================
+Step:           54
+Time:           26.123951 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0020 s
+
+Quantum Propagation
+Wall time: : 0.0036 s
+
+Total energy:   2.209375 eV
+Energy shift:   0.001623 eV
+Energy drift:   -0.007283 eV
+
+Wall time: : 0.0195 s
+
+Total time: 0.0352 s
+========================================
+
+========================================
+Step:           56
+Time:           27.091504 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0021 s
+
+Quantum Propagation
+Wall time: : 0.0059 s
+
+Total energy:   2.208385 eV
+Energy shift:   0.000990 eV
+Energy drift:   -0.008273 eV
+
+Wall time: : 0.0210 s
+
+Total time: 0.0371 s
+========================================
+
+========================================
+Step:           58
+Time:           28.059058 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0011 s
+
+Quantum Propagation
+Wall time: : 0.0054 s
+
+Total energy:   2.207915 eV
+Energy shift:   0.000470 eV
+Energy drift:   -0.008744 eV
+
+Wall time: : 0.0166 s
+
+Total time: 0.0337 s
+========================================
+
+========================================
+Step:           60
+Time:           29.026612 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0019 s
+
+Quantum Propagation
+Wall time: : 0.0053 s
+
+Total energy:   2.207508 eV
+Energy shift:   0.000407 eV
+Energy drift:   -0.009151 eV
+
+Wall time: : 0.0199 s
+
+Total time: 0.0469 s
+========================================
+
+========================================
+Step:           62
+Time:           29.994166 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0020 s
+
+Quantum Propagation
+Wall time: : 0.0032 s
+
+Total energy:   2.207100 eV
+Energy shift:   0.000407 eV
+Energy drift:   -0.009558 eV
+
+Wall time: : 0.0174 s
+
+Total time: 0.0345 s
+========================================
+
+========================================
+Step:           64
+Time:           30.961719 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0021 s
+
+Quantum Propagation
+Wall time: : 0.0060 s
+
+Total energy:   2.207326 eV
+Energy shift:   0.000226 eV
+Energy drift:   -0.009332 eV
+
+Wall time: : 0.0239 s
+
+Total time: 0.0402 s
+========================================
+
+========================================
+Step:           66
+Time:           31.929273 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0018 s
+
+Quantum Propagation
+Wall time: : 0.0045 s
+
+Total energy:   2.208543 eV
+Energy shift:   0.001217 eV
+Energy drift:   -0.008115 eV
+
+Wall time: : 0.0191 s
+
+Total time: 0.0347 s
+========================================
+
+========================================
+Step:           68
+Time:           32.896827 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0015 s
+
+Quantum Propagation
+Wall time: : 0.0034 s
+
+Total energy:   2.209395 eV
+Energy shift:   0.000851 eV
+Energy drift:   -0.007264 eV
+
+Wall time: : 0.0171 s
+
+Total time: 0.0339 s
+========================================
+
+========================================
+Step:           70
+Time:           33.864381 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0024 s
+
+Quantum Propagation
+Wall time: : 0.0033 s
+
+Total energy:   2.208540 eV
+Energy shift:   0.000855 eV
+Energy drift:   -0.008118 eV
+
+Wall time: : 0.0184 s
+
+Total time: 0.0350 s
+========================================
+
+========================================
+Step:           72
+Time:           34.831934 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0021 s
+
+Quantum Propagation
+Wall time: : 0.0036 s
+
+Total energy:   2.207384 eV
+Energy shift:   0.001156 eV
+Energy drift:   -0.009274 eV
+
+Wall time: : 0.0174 s
+
+Total time: 0.0344 s
+========================================
+
+========================================
+Step:           74
+Time:           35.799488 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0019 s
+
+Quantum Propagation
+Wall time: : 0.0040 s
+
+Total energy:   2.208099 eV
+Energy shift:   0.000715 eV
+Energy drift:   -0.008559 eV
+
+Wall time: : 0.0177 s
+
+Total time: 0.0326 s
+========================================
+
+========================================
+Step:           76
+Time:           36.767042 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0027 s
+
+Quantum Propagation
+Wall time: : 0.0038 s
+
+Total energy:   2.209423 eV
+Energy shift:   0.001323 eV
+Energy drift:   -0.007236 eV
+
+Wall time: : 0.0180 s
+
+Total time: 0.0328 s
+========================================
+
+========================================
+Step:           78
+Time:           37.734595 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0023 s
+
+Quantum Propagation
+Wall time: : 0.0041 s
+
+Total energy:   2.208772 eV
+Energy shift:   0.000650 eV
+Energy drift:   -0.007886 eV
+
+Wall time: : 0.0192 s
+
+Total time: 0.0390 s
+========================================
+
+========================================
+Step:           80
+Time:           38.702149 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0017 s
+
+Quantum Propagation
+Wall time: : 0.0046 s
+
+Total energy:   2.207781 eV
+Energy shift:   0.000992 eV
+Energy drift:   -0.008878 eV
+
+Wall time: : 0.0259 s
+
+Total time: 0.0441 s
+========================================
+
+========================================
+Step:           82
+Time:           39.669703 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0016 s
+
+Quantum Propagation
+Wall time: : 0.0036 s
+
+Total energy:   2.208673 eV
+Energy shift:   0.000892 eV
+Energy drift:   -0.007985 eV
+
+Wall time: : 0.0221 s
+
+Total time: 0.0431 s
+========================================
+
+========================================
+Step:           84
+Time:           40.637257 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0015 s
+
+Quantum Propagation
+Wall time: : 0.0039 s
+
+Total energy:   2.209282 eV
+Energy shift:   0.000609 eV
+Energy drift:   -0.007376 eV
+
+Wall time: : 0.0183 s
+
+Total time: 0.0347 s
+========================================
+
+========================================
+Step:           86
+Time:           41.604810 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0020 s
+
+Quantum Propagation
+Wall time: : 0.0051 s
+
+Total energy:   2.208399 eV
+Energy shift:   0.000883 eV
+Energy drift:   -0.008260 eV
+
+Wall time: : 0.0195 s
+
+Total time: 0.0354 s
+========================================
+
+========================================
+Step:           88
+Time:           42.572364 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0024 s
+
+Quantum Propagation
+Wall time: : 0.0037 s
+
+Total energy:   2.208398 eV
+Energy shift:   0.000001 eV
+Energy drift:   -0.008261 eV
+
+Wall time: : 0.0178 s
+
+Total time: 0.0403 s
+========================================
+
+========================================
+Step:           90
+Time:           43.539918 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0026 s
+
+Quantum Propagation
+Wall time: : 0.0041 s
+
+Total energy:   2.209071 eV
+Energy shift:   0.000673 eV
+Energy drift:   -0.007587 eV
+
+Wall time: : 0.0208 s
+
+Total time: 0.0398 s
+========================================
+
+========================================
+Step:           92
+Time:           44.507472 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0023 s
+
+Quantum Propagation
+Wall time: : 0.0058 s
+
+Total energy:   2.208729 eV
+Energy shift:   0.000343 eV
+Energy drift:   -0.007930 eV
+
+Wall time: : 0.0220 s
+
+Total time: 0.0389 s
+========================================
+
+========================================
+Step:           94
+Time:           45.475025 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0022 s
+
+Quantum Propagation
+Wall time: : 0.0037 s
+
+Total energy:   2.208586 eV
+Energy shift:   0.000142 eV
+Energy drift:   -0.008072 eV
+
+Wall time: : 0.0189 s
+
+Total time: 0.0354 s
+========================================
+
+========================================
+Step:           96
+Time:           46.442579 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0017 s
+
+Quantum Propagation
+Wall time: : 0.0034 s
+
+Total energy:   2.208873 eV
+Energy shift:   0.000286 eV
+Energy drift:   -0.007786 eV
+
+Wall time: : 0.0190 s
+
+Total time: 0.0361 s
+========================================
+
+========================================
+Step:           98
+Time:           47.410133 fs
+Stepsize:       0.483777 fs
+
+Nuclear
+Electronic Calculation
+Wall time: : 0.0018 s
+
+Quantum Propagation
+Wall time: : 0.0034 s
+
+Total energy:   2.208632 eV
+Energy shift:   0.000241 eV
+Energy drift:   -0.008026 eV
+
+Wall time: : 0.0162 s
+
+Total time: 0.0406 s
+========================================

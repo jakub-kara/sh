@@ -1,5 +1,5 @@
 import numpy as np
-from classes.molecule import Molecule
+from classes.molecule import Molecule, MoleculeMixin
 from dynamics.base import Dynamics
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
@@ -15,7 +15,7 @@ class SimpleEhrenfest(Dynamics):
 
         nactypes = {
             "nac": self._nac,
-            "eff": self._eff_nac,
+            "eff": self._eff,
         }
 
         self._nactype = dynamics.get("force", "nac")
@@ -26,6 +26,9 @@ class SimpleEhrenfest(Dynamics):
 
     def _nac(self, mol: Molecule):
         return mol.nacdr_ssad
+
+    def _eff(self, mol: Molecule):
+        return mol.eff_nac()
 
     def potential_energy(self, mol: Molecule):
         poten = 0
@@ -49,3 +52,6 @@ class SimpleEhrenfest(Dynamics):
                 else:
                     force += 2 * np.real(mol.nacdt_ss[i,j] * mol.coeff_s[i].conj() * mol.coeff_s[j] * mol.vel_ad / np.sum(mol.vel_ad**2)) * mol.ham_eig_ss[i,i]
         mol.acc_ad = force / mol.mass_a[:,None]
+
+class EhrMixin(MoleculeMixin):
+    key = "ehr"

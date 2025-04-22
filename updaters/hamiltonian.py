@@ -1,14 +1,14 @@
 import numpy as np
 from .nuclear import NuclearUpdater
-from .coeff import CoeffUpdater
 from classes.molecule import Molecule
+from classes.timestep import Timestep
 from dynamics.base import Dynamics
 from electronic.base import ESTProgram
-import scipy.integrate as spi
 
 class HAM_base(NuclearUpdater):
     #For mapping Hamiltonians
     #Does Molecule need to be MoleculeMMST?
+    # hardcoded for 3D ??
 
     def mol_to_y(self, mol: Molecule):
         ns = mol.n_states
@@ -44,43 +44,30 @@ class RK4_ham(HAM_base):
     b = np.array([1/6,1/3,1/3,1/6])
     c = np.array([0,1/2,1/2,1.])
 
-    def update(self, mols: list[Molecule], dt: float, dyn: Dynamics):
+    def update(self, mols: list[Molecule], ts: Timestep):
         # update position
         mol = mols[-1]
         out = self.out
+        dyn = Dynamics()
         out.inter[0] = mol
 
         y = self.mol_to_y(out.inter[0])
         grad = self.grad(out.inter[0], dyn)
-        k = np.zeros((self.substeps,len(y)))
+        k = np.zeros((self.substeps, len(y)))
         k[0] = 1*grad
 
         for i in range(1,self.substeps):
             out.inter[i] = mol.copy_all()
-            self.y_to_mol(out.inter[i],y+dt*k[i-1]*self.c[i])
-            est = ESTProgram()
-            dyn.setup_est(mode = dyn.get_mode())
-            est.run(out.inter[i])
-            est.read(out.inter[i], ref = mol)
-            est.reset_calc()
-            grad = self.grad(out.inter[i],dyn)
+            self.y_to_mol(out.inter[i], y + ts.dt*k[i-1]*self.c[i])
+            dyn.run_est(out.inter[i], mol, dyn.step_mode(out.inter[i]))
+            grad = self.grad(out.inter[i], dyn)
             k[i] = 1*grad
 
-
         temp = mol.copy_all()
-        self.y_to_mol(temp,y + np.sum(self.b[:,None] * k,axis=0))
+        self.y_to_mol(temp, y + np.sum(self.b[:,None] * k, axis=0))
 
         # calculate new acceleration
-        est = ESTProgram()
-        dyn.setup_est(mode = dyn.get_mode())
-        est.run(temp)
-        est.read(temp, ref = mol)
-        est.reset_calc()
-        grad = self.grad(temp,dyn)
+        dyn.run_est(temp, mol, dyn.step_mode(temp))
+        grad = self.grad(temp, dyn)
         out.inter[:-1] = out.inter[1:]
         out.inter[-1] = temp
-
-
-
-
-

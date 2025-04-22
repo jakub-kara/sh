@@ -10,7 +10,7 @@ class GSE(SimpleEhrenfest):
         mol = mols[-1]
         print(f"Final pops: {np.abs(mol.coeff_s)**2}")
         print(f"Check sum:  {np.sum(np.abs(mol.coeff_s)**2)}")
-        print(f"Total en:   {self.potential_energy(mol) + mol.kinetic_energy}")
+        print(f"Total en:   {self.potential_energy(mol) + mol.kinetic_energy()}")
 
     def _get_eff_nac(self, mol: Molecule):
         nac_eff_pre = np.zeros_like(mol.nacdr_ssad)

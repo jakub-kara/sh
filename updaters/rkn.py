@@ -2,6 +2,7 @@ import numpy as np
 from .nuclear import NuclearUpdater
 from .base import UpdateResult
 from classes.molecule import Molecule
+from classes.timestep import Timestep
 from dynamics.base import Dynamics
 
 class RKNBase(NuclearUpdater):
@@ -10,7 +11,7 @@ class RKNBase(NuclearUpdater):
     c = np.empty(1)
     d = np.empty(1)
 
-    def update(self, mols: list[Molecule], dt: float):
+    def update(self, mols: list[Molecule], ts: Timestep):
         # helper function for triangular numbers
         def tri(x):
             return x * (x + 1) // 2
@@ -23,20 +24,20 @@ class RKNBase(NuclearUpdater):
         for i in range(1, self.substeps):
             # evaluate intermediate position and acceleration
             out.inter[i] = mol.copy_all()
-            out.inter[i].pos_ad += dt * self.c[i] * mol.vel_ad + dt**2 * np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], [m.acc_ad for m in out.inter[:i]])
+            out.inter[i].pos_ad += ts.dt * self.c[i] * mol.vel_ad + ts.dt**2 * np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], [m.acc_ad for m in out.inter[:i]])
 
             dyn.run_est(out.inter[i], ref = mol, mode = dyn.step_mode(out.inter[i]))
-            dyn.update_quantum(mols + [out.inter[i]], dt * self.c[i])
+            dyn.update_quantum(mols + [out.inter[i]], ts.dt * self.c[i])
             dyn.calculate_acceleration(out.inter[i])
 
         # find new position and velocity from all the substeps
         temp = mol.copy_all()
-        temp.pos_ad += dt * mol.vel_ad + dt**2 * np.einsum("j,j...->...", self.b, [m.acc_ad for m in out.inter])
-        temp.vel_ad += dt * np.einsum("j,j...->...", self.d, [m.acc_ad for m in out.inter])
+        temp.pos_ad += ts.dt * mol.vel_ad + ts.dt**2 * np.einsum("j,j...->...", self.b, [m.acc_ad for m in out.inter])
+        temp.vel_ad += ts.dt * np.einsum("j,j...->...", self.d, [m.acc_ad for m in out.inter])
 
         # calculate new acceleration
         dyn.run_est(temp, ref = mol, mode = dyn.step_mode(temp))
-        dyn.update_quantum(mols + [temp], dt)
+        dyn.update_quantum(mols + [temp], ts.dt)
         dyn.calculate_acceleration(temp)
 
         out.inter[:-1] = out.inter[1:]

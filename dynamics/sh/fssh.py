@@ -2,7 +2,9 @@ import numpy as np
 from .sh import SurfaceHopping
 from .checker import HoppingUpdater
 from classes.molecule import Molecule
-from classes.out import Output
+from classes.out import Output as out
+from classes.timestep import Timestep
+from classes.trajectory import Trajectory
 from electronic.base import ESTMode
 from updaters.composite import CompositeIntegrator
 
@@ -14,11 +16,11 @@ class FSSH(SurfaceHopping):
         super().__init__(dynamics=dynamics, **config)
         HoppingUpdater.select(dynamics.get("prob", "tdc"))(**dynamics, **config["quantum"])
 
-    def adjust_nuclear(self, mols: list[Molecule], dt: float):
-        out = Output()
-        mol = mols[-1]
-        self._decoherence(mol, dt)
-        self.update_target(mols, dt)
+    def adjust_nuclear(self, traj: Trajectory):
+        mol = traj.mol
+        ts = traj.timestep
+        self._decoherence(mol, ts.dt)
+        self.update_target(traj.mols, ts)
 
         out.write_log(f"target: {mol.target} \t\tactive: {mol.active}")
         print(f"Final pops: {np.abs(mol.coeff_s)**2}")
@@ -32,7 +34,7 @@ class FSSH(SurfaceHopping):
                 CompositeIntegrator().to_init()
                 out.write_log(f"New state: {mol.active}")
 
-                self.run_est(mol, mols[-2], ESTMode("a")(mol))
+                self.run_est(mol, traj.mols[-2], ESTMode("a")(mol))
                 self.calculate_acceleration(mol)
             else:
                 out.write_log("Hop failed")

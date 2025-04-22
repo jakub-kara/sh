@@ -1,7 +1,7 @@
 import numpy as np
 from .ehr import SimpleEhrenfest
 from classes.molecule import Molecule
-from classes.out import Output, Printer
+from classes.out import Output as out, Printer
 
 class BCMF(SimpleEhrenfest):
     key = "bcmf"
@@ -12,7 +12,6 @@ class BCMF(SimpleEhrenfest):
 
     def _choose_group(self, coeff: np.ndarray, refl: np.ndarray):
         tot = np.sum(np.abs(coeff)**2 * refl)
-        out = Output()
         r = np.random.uniform()
         if r < tot:
             out.write_log("Chose reflected group")
@@ -21,7 +20,6 @@ class BCMF(SimpleEhrenfest):
         return r < tot
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
-        out = Output()
         mol = mols[-1]
         nst = mol.n_states
         eta = np.zeros(nst)
@@ -29,7 +27,7 @@ class BCMF(SimpleEhrenfest):
         refl = np.zeros(nst, dtype=bool)
 
         for s in range(nst):
-            temp = 1 + (self.potential_energy(mol) - mol.ham_eig_ss[s,s]) / mol.kinetic_energy
+            temp = 1 + (self.potential_energy(mol) - mol.ham_eig_ss[s,s]) / mol.kinetic_energy()
             allow[s] = temp > 0
             if temp > 0:
                 eta[s] = np.sqrt(temp)
@@ -52,25 +50,25 @@ class BCMF(SimpleEhrenfest):
             prg = np.sum(np.abs(mol.coeff_s)**2 * allow)
             e_old = self.potential_energy(mol)
             mol.coeff_s *= allow / np.sqrt(prg)
-            mol.vel_ad *= np.sqrt(1 + (e_old - self.potential_energy(mol)) / mol.kinetic_energy)
+            mol.vel_ad *= np.sqrt(1 + (e_old - self.potential_energy(mol)) / mol.kinetic_energy())
 
         elif np.any(refl):
             e_old = self.potential_energy(mol)
-            out.write_log(Printer.write(e_old + mol.kinetic_energy, "f"))
+            out.write_log(Printer.write(e_old + mol.kinetic_energy(), "f"))
 
             coeff = mol.coeff_s.copy()
             reflect = self._choose_group(mol.coeff_s, refl)
             self._adjust_coeff(mol.coeff_s, refl == reflect)
             print(refl == reflect)
 
-            temp = 1 + (e_old - self.potential_energy(mol)) / mol.kinetic_energy
+            temp = 1 + (e_old - self.potential_energy(mol)) / mol.kinetic_energy()
             if temp < 0:
                 out.write_log("Chosen group not allowed")
                 mol.coeff_s[:] = coeff
                 self._adjust_coeff(mol.coeff_s, refl != reflect)
 
-            mol.vel_ad *= np.sqrt(1 + (e_old - self.potential_energy(mol)) / mol.kinetic_energy)
-            out.write_log(Printer.write(self.potential_energy(mol) + mol.kinetic_energy, "f"))
+            mol.vel_ad *= np.sqrt(1 + (e_old - self.potential_energy(mol)) / mol.kinetic_energy())
+            out.write_log(Printer.write(self.potential_energy(mol) + mol.kinetic_energy(), "f"))
 
         self.calculate_acceleration(mol)
 

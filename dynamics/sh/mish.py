@@ -2,7 +2,7 @@ import numpy as np
 
 from .sh import SurfaceHopping
 from .checker import HoppingUpdater
-from classes.out import Output
+from classes.out import Output as out
 from classes.molecule import Molecule
 from electronic.base import ESTProgram, ESTMode
 
@@ -16,14 +16,12 @@ class MISH(SurfaceHopping):
         super().__init__(**config)
 
         if self._rescale != "mish":
-            #            out = Output()
-            #out.write_log(f"MISH called without MISH rescaling. Changing to default MISH rescaling\t")
+            out.write_log("MISH called without MISH rescaling. Changing to default MISH rescaling.")
             self._rescale = "mish"
 
-        HoppingUpdater["mish"](**config["quantum"])
+        HoppingUpdater.select("mish")(**config["quantum"])
 
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
-        out = Output()
         mol = mols[-1]
         self.update_target(mols, dt)
 
@@ -73,7 +71,6 @@ class MISH(SurfaceHopping):
             return coeff
 
         coeff = _uniform_cap_distribution(nst, mol.active)
-        out = Output()
         out.write_log(f"Uniform cap initial conditions\t\tInitial state:      {mol.active},\t\tInitial coeff:     {coeff}")
         out.write_log("\n")
 

@@ -2,15 +2,16 @@ import numpy as np
 from typing import Callable
 from .base import Updater
 from classes.molecule import Molecule
+from classes.timestep import Timestep
 
 class AMBase(Updater):
     substeps = 1
     b = np.empty(1)
     c = None
 
-    def update(self, mols: list[Molecule], dt: float, fun: Callable):
+    def update(self, mols: list[Molecule], ts: Timestep):
         temp = mols[-1].copy_all()
-        temp.vel_ad = mols[-1].pos_ad + dt*np.einsum("j,j...->...", self.b, np.array([mol.vel_ad for mol in mols]))
+        temp.vel_ad = mols[-1].pos_ad + ts.dt*np.einsum("j,j...->...", self.b, np.array([mol.vel_ad for mol in mols]))
         return temp
 
 class AM2(AMBase):

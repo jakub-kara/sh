@@ -1,6 +1,7 @@
 import numpy as np
 from classes.molecule import Molecule, BlochMixin
 from classes.meta import Singleton, Selector
+from classes.timestep import Timestep
 from updaters.base import Updater, Multistage, UpdateResult
 from updaters.coeff import CoeffUpdater
 from updaters.tdc import TDCUpdater
@@ -30,7 +31,7 @@ class HoppingUpdater(Updater, Selector, metaclass = Singleton):
         self.hop = UpdateResult(mol.active, self.substeps)
         self.prob = UpdateResult(np.zeros(mol.n_states), self.substeps)
 
-    def no_update(self, mols: list[Molecule], dt: float):
+    def no_update(self, mols: list[Molecule], ts: Timestep):
         self.hop.fill()
 
     def _check_hop_c(self, prob: np.ndarray, active : int, dt: float):
@@ -69,7 +70,7 @@ class TDCHoppingChecker(Multistage, HoppingUpdater):
     key = "tdc"
     steps = 1
 
-    def update(self, mols: list[Molecule], dt: float):
+    def update(self, mols: list[Molecule], ts: Timestep):
         cupd = CoeffUpdater()
         tdcupd = TDCUpdater()
 
@@ -94,17 +95,17 @@ class TDCHoppingChecker(Multistage, HoppingUpdater):
                 # standard Tully-based hopping probability
                 else:
                     temp = np.real(tdc[s, active] * np.conj(coeff[active]) * coeff[s])
-                    temp *= -2 * (dt/self.substeps) /  np.abs(coeff[active])**2
+                    temp *= -2 * (ts.dt/self.substeps) /  np.abs(coeff[active])**2
                     prob[s] = max(0, temp)
             self.prob.inter[i] = prob
-            self.hop.inter[i] = self._check_hop(prob, active, dt/self.substeps)
+            self.hop.inter[i] = self._check_hop(prob, active, ts.dt/self.substeps)
             target = self.hop.inter[i]
 
 class PropHoppingChecker(HoppingUpdater):
     key = "prop"
     steps = 1
 
-    def update(self, mols: list[Molecule], dt: float):
+    def update(self, mols: list[Molecule], ts: Timestep):
         cupd = CoeffUpdater()
 
         nst = mols[-1].n_states
@@ -121,13 +122,13 @@ class PropHoppingChecker(HoppingUpdater):
                          np.real(cupd.coeff.out[active] * np.conj(cupd.prop.out[active, active]) * np.conj(cupd.coeff.inp[active])))
                 prob[s] = max(0, temp)
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, active, dt)
+        self.hop.out = self._check_hop(prob, active, ts.dt)
 
 class GFHoppingChecker(HoppingUpdater):
     key = "gf"
     steps = 1
 
-    def update(self, mols: list[Molecule], dt: float):
+    def update(self, mols: list[Molecule], ts: Timestep):
         cupd = CoeffUpdater()
 
         nst = mols[-1].n_states
@@ -144,12 +145,12 @@ class GFHoppingChecker(HoppingUpdater):
                 prob[s] = max(0, temp)
 
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, active, dt)
+        self.hop.out = self._check_hop(prob, active, ts.dt)
 
 class MASHChecker(HoppingUpdater):
     key = "mash"
 
-    def update(self, mols: list[Molecule], dt: float):
+    def update(self, mols: list[Molecule], ts: Timestep):
         nst = mols[-1].n_states
         active = mols[-1].active
         prob = self.prob.inp
@@ -159,25 +160,15 @@ class MASHChecker(HoppingUpdater):
             if mols[-1].bloch_n3[s,2] < 0:
                 prob[s] = 1
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, active, dt)
+        self.hop.out = self._check_hop(prob, active, ts.dt)
 
 class MISHChecker(HoppingUpdater):
     key = "mish"
 
-    def update(self, mols: list[Molecule], dt: float):
+    def update(self, mols: list[Molecule], ts: Timestep):
         prob = self.prob.inp
         prob[:] = 0
         target = np.argmax(np.abs(mols[-1].coeff_s)**2)
         prob[target] = 1.
         self.prob.out = prob
-        self.hop.out = self._check_hop(prob, mols[-1].active, dt)
-
-# class FSSHCChecker(HoppingUpdater, ):
-#     key = "fssh-c"
-#
-#     def __init__(self, *, seed = None, **config):
-#         super().__init__(**config)
-#         self.r = 0.
-#     def _check_hop(self, prob: np.ndarray, active: int):
-#         return
-#
+        self.hop.out = self._check_hop(prob, mols[-1].active, ts.dt)

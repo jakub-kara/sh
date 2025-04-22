@@ -2,6 +2,7 @@ import numpy as np
 from copy import deepcopy
 from classes.meta import Selector
 from classes.constants import convert, atomic_masses
+from classes.out import Printer
 
 class Molecule:
     def __init__(self, *, n_states: int = 1, input = "geom.xyz", com = False, vxyz = True, **config):
@@ -53,12 +54,37 @@ class Molecule:
     def nac_norm_ss(self):
         return np.sqrt(np.sum(self.nacdr_ssad**2, axis=(2,3)))
 
+    def kinetic_energy(self):
+        return 0.5 * np.sum(self.mass_a[:,None] * self.vel_ad**2)
+
+    def potential_energy(self):
+        pass
+
+    def total_energy(self):
+        pass
+
+    def population(self):
+        pass
+
     def copy_empty(self):
         pass
 
     # might copy less
     def copy_all(self):
         return deepcopy(self)
+
+    def eff_nac(self):
+        nac_eff = np.zeros_like(self.nacdr_ssad)
+        for i in range(self.n_states):
+            for j in range(i):
+                diff = self.grad_sad[i] - self.grad_sad[j]
+                if np.abs(self.nacdt_ss[i,j]) < 1e-8:
+                    alpha = 0
+                else:
+                    alpha = (self.nacdt_ss[i,j] - np.sum(diff * self.vel_ad)) / np.sum(self.vel_ad**2)
+                nac_eff[i,j] = diff + alpha * self.vel_ad
+                nac_eff[j,i] = -nac_eff[i,j]
+        return nac_eff
 
     # probably should be static
     def from_xyz(self, filename: str):
@@ -189,14 +215,6 @@ class Molecule:
             v_rot = np.cross(ang_vel, self.pos_ad[a])
             self.vel_ad[a] -= v_rot
 
-    @property
-    def kinetic_energy(self):
-        return 0.5 * np.sum(self.mass_a[:,None] * self.vel_ad**2)
-
-    @property
-    def dmat_ss(self):
-        return np.outer(self.coeff_s.conj(), self.coeff_s)
-
     def adjust_ovlp(self):
         for i in range(self.n_states):
             self.ovlp_ss[i,:] *= self.phase_s[i]
@@ -233,8 +251,47 @@ class Molecule:
         for s in range(self.n_states):
             self.ham_dia_ss[s,s] -= refen
 
-    def to_dict(self):
-        pass
+    def dat_header(self):
+        nst = self.n_states
+        dic = {
+            "pop": "".join([Printer.write(f"Population {i}", "s") for i in range(nst)]),
+            "pes": "".join([Printer.write(f"Pot En {i} [eV]", "s") for i in range(nst)]),
+            "ken": Printer.write("Total Kin En [eV]", "s"),
+            "pen": Printer.write("Total Pot En [eV]", "s"),
+            "ten": Printer.write("Total En [eV]", "s"),
+            "nacdr": "".join([Printer.write(f"NACdr {j}-{i} [au]", "s") for i in range(nst) for j in range(i)]),
+            "nacdt": "".join([Printer.write(f"NACdt {j}-{i} [au]", "s") for i in range(nst) for j in range(i)]),
+            "coeff": "".join([Printer.write(f"Coeff {i}", f" <{Printer.field_length*2+1}") for i in range(nst)]),
+        }
+        return dic
+
+    def dat_dict(self):
+        nst = self.n_states
+        dic = {
+            "pop": "".join([Printer.write(self.population(i), "f") for i in range(nst)]),
+            "pes": "".join([Printer.write(convert(self.ham_eig_ss[i,i], "au", "ev"), "f") for i in range(nst)]),
+            "ken": Printer.write(convert(self.kinetic_energy(), "au", "ev"), "f"),
+            "pen": Printer.write(convert(self.potential_energy(), "au", "ev"), "f"),
+            "ten": Printer.write(convert(self.total_energy(), "au", "ev"), "f"),
+            "nacdr": "".join([Printer.write(self.nac_norm_ss[i,j], "f") for i in range(nst) for j in range(i)]),
+            "nacdt": "".join([Printer.write(self.nacdt_ss[i,j], "f") for i in range(nst) for j in range(i)]),
+            "coeff": "".join([Printer.write(self.coeff_s[i], "z") for i in range(nst)]),
+        }
+        return dic
+
+    def h5_dict(self):
+        dic = {
+            "pos": self.pos_ad,
+            "vel": self.vel_ad,
+            "acc": self.acc_ad,
+            "trans": self.trans_ss,
+            "hdiag": self.ham_eig_ss,
+            "grad": self.grad_sad,
+            "nacdr": self.nacdr_ssad,
+            "nacdt": self.nacdt_ss,
+            "coeff": self.coeff_s,
+        }
+        return dic
 
 class MoleculeMixin(Selector):
     def __init__(self, *, initstate: int, **kwargs):
@@ -259,6 +316,15 @@ class MoleculeMixin(Selector):
         self.coeff_s[:] = data[:,0]
         self.coeff_s += 1j*data[:,1]
 
+    def dat_header(self):
+        return super().dat_header()
+
+    def dat_dic(self):
+        return super().dat_dict()
+
+    def h5_dict(self):
+        return super().h5_dict()
+
 class SHMixin(MoleculeMixin):
     key = "sh"
 
@@ -275,18 +341,6 @@ class SHMixin(MoleculeMixin):
 
     def nohop(self):
         self.target = self.active
-
-class EhrMixin(MoleculeMixin):
-    key = "ehr"
-
-class MCEMixin(EhrMixin):
-    key = "mce"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.nspawn = 0
-        self.phase = 0
-        self.split = None
 
 class BlochMixin(SHMixin):
     key = "bloch"

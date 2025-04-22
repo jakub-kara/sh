@@ -2,6 +2,7 @@ import numpy as np
 from copy import deepcopy
 from abc import abstractmethod
 from classes.molecule import Molecule
+from classes.timestep import Timestep
 
 class Updater:
     name = ""
@@ -9,35 +10,25 @@ class Updater:
     substeps = 1
 
     def __init__(self, **kwargs):
-        self._ready = False
+        pass
 
-    @property
-    def single_step(self):
-        return self.substeps > 1
-
-    def elapsed(self, step: int):
-        self._ready = step >= self.steps
-
-    def is_ready(self):
-        return self._ready
-
-    def run(self, mols: list[Molecule], dt: float, *args, **kwargs):
+    def run(self, mols: list[Molecule], ts: Timestep, *args, **kwargs):
         self.new_result(mols[-1], *args, **kwargs)
-        if self._ready:
-            self.update(mols, dt, *args, **kwargs)
+        if ts.step >= self.steps:
+            self.update(mols, ts, *args, **kwargs)
         else:
-            self.no_update(mols, dt, *args, **kwargs)
+            self.no_update(mols, ts, *args, **kwargs)
 
     @abstractmethod
     def new_result(self, mol: Molecule):
         raise NotImplementedError
 
     @abstractmethod
-    def update(self, mols: list[Molecule], dt: float, *args, **kwargs):
+    def update(self, mols: list[Molecule], ts: Timestep, *args, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
-    def no_update(self, mols: list[Molecule], dt: float, *args, **kwargs):
+    def no_update(self, mols: list[Molecule], ts: Timestep, *args, **kwargs):
         raise NotImplementedError
 
 # Multistage mixin

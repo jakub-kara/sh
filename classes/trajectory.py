@@ -1,10 +1,8 @@
 import numpy as np
 import sys, pickle
-import time
 from copy import deepcopy
-from .meta import Factory
-from .molecule import Molecule, MoleculeMixin
-from .out import Output, Timer
+from .molecule import Molecule
+from .out import Output as out, Timer, Printer
 from .constants import convert
 from .timestep import Timestep
 from electronic.base import ESTProgram
@@ -18,6 +16,7 @@ class Trajectory:
 
         self.mols: list[Molecule] = []
         self.timestep = None
+        self.ref_en = None
 
     @property
     def n_steps(self):
@@ -33,6 +32,11 @@ class Trajectory:
 
     def next_step(self):
         self.timestep.next_step()
+        self.timestep.step_success()
+        self.timestep.save_nupd()
+
+        if self.is_finished:
+            self.save_step()
 
     def add_molecule(self, mol: Molecule):
         self.mols.append(mol)
@@ -46,13 +50,6 @@ class Trajectory:
         self.mols.remove(mol)
         return self
 
-    def get_molecule(self, mixins, coeff = None, **config):
-        fac = Factory(Molecule, MoleculeMixin)
-        fac.add_mixins(mixins)
-        mol = fac.create()(n_states=ESTProgram().n_states, **config)
-        mol.get_coeff(coeff)
-        return mol
-
     def set_molecules(self, **nuclear):
         nupd = CompositeIntegrator()
         for _ in range(max(nupd.steps, CoeffUpdater().steps, nuclear.get("keep", 0))):
@@ -62,9 +59,8 @@ class Trajectory:
         self.timestep: Timestep = Timestep.select(dynamics.get("timestep", "const"))(
             steps = len(self.mols), **dynamics)
 
+
     def step_header(self):
-        out = Output()
-        out.open_log()
         out.write_border()
         out.write_log(f"Step:           {self.timestep.step}")
         out.write_log(f"Time:           {convert(self.timestep.time, 'au', 'fs'):.6f} fs")
@@ -77,12 +73,9 @@ class Trajectory:
         est = ESTProgram()
         est.backup_wf()
 
-        out = Output()
-        out.close_log()
         if self._backup:
             with open("backup/traj.pkl", "wb") as pkl:
                 pickle.dump(self, pkl)
-        out.open_log()
 
     @staticmethod
     def restart(**config):
@@ -90,8 +83,6 @@ class Trajectory:
             traj: Trajectory = pickle.load(pkl)
         traj.restart_components(**config)
 
-        out = Output()
-        out.open_log()
         out.write_log()
         out.write_border()
         out.write_log("Succesfully restarted from backups.")
@@ -105,3 +96,65 @@ class Trajectory:
 
     def copy(self):
         return deepcopy(self)
+
+    def energy_diff(self, mol: Molecule, ref: Molecule):
+        return np.abs(mol.total_energy() - ref.total_energy())
+
+    def report_energy(self):
+        tot = self.mol.total_energy()
+        out.write_log(f"Total energy:   {convert(tot, 'au', 'ev'):.6f} eV")
+        out.write_log(f"Energy shift:   {convert(self.energy_diff(self.mol, self.mols[-2]), 'au', 'ev'):.6f} eV")
+        out.write_log(f"Energy drift:   {convert(tot - self.ref_en, 'au', 'ev'):.6f} eV")
+        out.write_log()
+
+    def write_headers(self):
+        out.write_dat(self.dat_header(), "w")
+        out.write_h5(self.h5_info(), "w")
+        out.write_xyz("", "w")
+        out.write_dist("", "w")
+
+    @Timer(id = "out",
+           head = "Outputs")
+    def write_outputs(self):
+        out.write_dat(self.dat_dict())
+        out.write_h5(self.h5_dict())
+        out.write_xyz(self.vxyz_string())
+        out.write_dist(self.dist_string())
+
+    def dat_header(self):
+        dic = {
+            "time": "#" + Printer.write("Time [fs]", "s")
+        }
+        return dic | self.mol.dat_header()
+
+    def dat_dict(self):
+        dic = {
+            "time": Printer.write(convert(self.timestep.time, "au", "fs"), "f")
+        }
+        return dic | self.mol.dat_dict()
+
+    def dist_string(self):
+        return self.mol.to_dist()
+
+    def xyz_string(self):
+        return self.mol.to_xyz()
+
+    def vxyz_string(self):
+        return self.mol.to_vxyz()
+
+    def h5_info(self):
+        mol = self.mol
+        dic = {}
+        dic["step"] = "info"
+        dic["nst"] = mol.n_states
+        dic["nat"] = mol.n_atoms
+        dic["ats"] = mol.name_a
+        dic["mass"] = mol.mass_a
+        return dic
+
+    def h5_dict(self):
+        dic = {
+            "step": self.timestep.step,
+            "time": self.timestep.time
+        }
+        return dic | self.mol.h5_dict()

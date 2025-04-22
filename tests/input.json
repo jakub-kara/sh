@@ -1,0 +1,30 @@
+{
+    "dynamics": {
+        "name": "model",
+        "tmax": 1000,
+        "dt": 20,
+        "method": "mash",
+	"prob": "tdc",
+        "initstate": 1,
+	"backup": false
+    },
+    "nuclear": {
+        "input": "geom.xyz",
+        "nuc_upd": "vv"
+    },
+    "quantum": {
+        "tdc_upd": "nacme",
+        "coeff_upd": "tdc",
+        "n_substeps": 50
+    },
+    "electronic": {
+        "program": "model",
+        "method": "ho2",
+        "states": 2
+    },
+    "output": {
+        "file": "out",
+        "record": ["act", "pop", "pes", "pen", "ken", "ten", "nacdt", "posx"],
+        "timer": ["est", "coe", "tdc", "tot", "sav", "wrt"]
+    }
+}

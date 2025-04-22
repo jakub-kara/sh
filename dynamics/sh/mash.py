@@ -3,6 +3,7 @@ from .sh import SurfaceHopping
 from .checker import HoppingUpdater
 from classes.molecule import Molecule
 from classes.timestep import Timestep
+from classes.trajectory import Trajectory
 from electronic.base import ESTProgram
 from updaters.composite import CompositeIntegrator
 from updaters.coeff import BlochUpdater
@@ -15,14 +16,22 @@ class MASH(SurfaceHopping):
         config["nuclear"]["mixins"] = "bloch"
         super().__init__(**config)
         BlochUpdater(**config["quantum"])
-        HoppingUpdater["mash"](**config["quantum"])
 
         self._rescale = "nac"
         self._reverse = True
 
-    def adjust_nuclear(self, mols: list[Molecule], dt: float):
-        mol = mols[-1]
-        self.update_target(mols, dt)
+    def set_components(self, *, quantum, **kwargs):
+        super().set_components(quantum=quantum, **kwargs)
+
+        BlochUpdater.reset()
+        BlochUpdater(**quantum)
+
+        HoppingUpdater.reset()
+        HoppingUpdater.select("mash")(**quantum)
+
+    def adjust_nuclear(self, traj: Trajectory):
+        mol = traj.mols[-1]
+        self.update_target(traj.mols, traj.timestep)
 
         print(f"target: {mol.target} \t\tactive: {mol.active}")
         print(mol.bloch_n3)
@@ -37,17 +46,13 @@ class MASH(SurfaceHopping):
                 est = ESTProgram()
                 est.request(*self.mode(mol))
                 est.run(mol)
-                est.read(mol, ref = mols[-2])
+                est.read(mol, ref = traj.mols[-2])
                 self.calculate_acceleration(mol)
                 est.reset_calc()
             else:
                 self._reverse_velocity(mol, self._get_delta(mol))
                 self._reverse_bloch(mol)
                 mol.nohop()
-
-    def steps_elapsed(self, steps):
-        super().steps_elapsed(steps)
-        BlochUpdater().elapsed(steps)
 
     def update_quantum(self, mols, dt: float):
         self.update_tdc(mols, dt)

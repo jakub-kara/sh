@@ -1,27 +1,34 @@
 from abc import ABC, abstractmethod
 import functools
+from typing import Callable
 
 class Singleton(type):
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
         if cls.initialised:
-            return cls._instances[cls.par]
+            return cls._instances[cls._lookup_key]
         else:
             obj = super().__call__(*args, **kwargs)
-            cls._instances[cls.par] = obj
+            cls._instances[cls._lookup_key] = obj
             return obj
+
+    @property
+    def _lookup_key(cls):
+        if issubclass(cls, Selector):
+            return cls.par
+        return cls
 
     @property
     def par(cls):
         return [x for x in cls.mro() if type(x) == type(cls)][-1]
 
     def reset(cls):
-        cls._instances.pop(cls.par, None)
+        cls._instances.pop(cls._lookup_key, None)
 
     @property
     def initialised(cls):
-        return cls.par in cls._instances.keys()
+        return cls._lookup_key in cls._instances.keys()
 
     @classmethod
     def save(cls):
@@ -39,6 +46,7 @@ class Factory:
         self._base = base
         self._selector: Selector = selector
         self._mixins = []
+        self._methods = {}
 
     def add_mixins(self, *args):
         for arg in args:
@@ -47,6 +55,10 @@ class Factory:
             else:
                 self._mixins.append(self._selector.select(arg))
         return self
+
+    def add_methods(self, **kwargs):
+        for key, val in kwargs.items():
+            self._methods[key] = val
 
     def create(self):
         # remove duplicates
@@ -57,8 +69,8 @@ class Factory:
         setattr(self.__class__, name, prod)
         return prod
 
-    def _get_product(self, name):
-        kls = type(name, tuple(self._mixins + [self._base]), {})
+    def _get_product(self, name: str):
+        kls = type(name, tuple(self._mixins + [self._base]), self._methods)
         kls.__reduce__ = lambda inst: (DynamicClassProxy(), (Factory, inst.__class__.__name__), inst.__dict__.copy())
         return kls
 
@@ -95,6 +107,48 @@ class DynamicClassProxy:
         dyninst.__class__ = dyncls
         return dyninst
 
+class Wrapper:
+    def __init__(self, func, decorator):
+        functools.update_wrapper(self, func)
+        self.func = func
+        self.decorator: Decorator = decorator
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        return functools.partial(self.__call__, instance)
+
+    def __call__(self, instance, *args, **kwargs):
+        if self.decorator.id in self.decorator.active:
+            return self.func(instance, *args, **kwargs)
+
+        self.decorator.activate()
+        res = self.decorator.run(self.func, instance, *args, **kwargs)
+        self.decorator.deactivate()
+        return res
+
+class Decorator(ABC):
+    active = None
+
+    def __init__(self, id):
+        self.id = id
+
+    def __init_subclass__(cls):
+        cls.active = []
+
+    def __call__(self, func) -> Callable:
+        return Wrapper(func, self)
+
+    def activate(self):
+        self.active.append(self.id)
+
+    def deactivate(self):
+        self.active.remove(self.id)
+
+    @abstractmethod
+    def run(self, func, instance, *args, **kwargs):
+        pass
+
 class DecoratorDistributor:
     def __init_subclass__(cls):
         super().__init_subclass__()
@@ -128,45 +182,3 @@ class DecoratorDistributor:
             if func is None:
                 break
         return decorators[::-1]
-
-class Wrapper:
-    def __init__(self, func, decorator):
-        functools.update_wrapper(self, func)
-        self.func = func
-        self.decorator: Decorator = decorator
-
-    def __get__(self, instance, owner):
-        if instance is None:
-            return self
-        return functools.partial(self.__call__, instance)
-
-    def __call__(self, instance, *args, **kwargs):
-        if self.decorator.id in self.decorator.active:
-            return self.func(instance, *args, **kwargs)
-
-        self.decorator.activate()
-        res = self.decorator.run(self.func, instance, *args, **kwargs)
-        self.decorator.deactivate()
-        return res
-
-class Decorator(ABC):
-    active = None
-
-    def __init__(self, id):
-        self.id = id
-
-    def __init_subclass__(cls):
-        cls.active = []
-
-    def __call__(self, func):
-        return Wrapper(func, self)
-
-    def activate(self):
-        self.active.append(self.id)
-
-    def deactivate(self):
-        self.active.remove(self.id)
-
-    @abstractmethod
-    def run(self, func, instance, *args, **kwargs):
-        pass

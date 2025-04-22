@@ -1,12 +1,14 @@
 import numpy as np
-import pickle, h5py
+import h5py
 import time
-from classes.meta import Singleton, Decorator
+import atexit
+import os
+from classes.meta import Decorator
 
-class Output(metaclass = Singleton):
+class OutMeta(type):
     border = "="*40
 
-    def __init__(self, *, file: str = "out", record: list = "", **config):
+    def setup(self, *, file: str = "out", record: list = "", **config):
         if not isinstance(record, list):
             record = record.split()
         self._record = record
@@ -19,21 +21,12 @@ class Output(metaclass = Singleton):
 
         self._log = config.get("log", True)
         self._logfile = None
-
         self._xyz = config.get("xyz", True)
         self._dist = config.get("dist", False)
         self._h5 = config.get("h5", True)
         self._dat = config.get("dat", True)
         if self._record == []:
             self._dat = False
-
-    def __del__(self):
-        self.write_log()
-        self.write_border()
-        self.write_log("Program terminated.")
-        self.write_log("Exiting.")
-        self.write_border()
-        self.close_log()
 
     def to_log(self, filename):
         with open(filename, "r") as f:
@@ -50,13 +43,14 @@ class Output(metaclass = Singleton):
     def write_border(self):
         self.write_log(self.border)
 
-    def write_log(self, msg = ""):
+    def write_log(self, msg = "", mode = "a"):
         if msg is None:
             return
         if not self._log:
             return
         print(msg)
-        self._logfile.write(f"{msg}\n")
+        with open(f"data/{self._file}.log", mode) as file:
+            file.write(f"{msg}\n")
 
     def write_dat(self, data: dict, mode="a"):
         if not self._dat:
@@ -97,6 +91,20 @@ class Output(metaclass = Singleton):
                 else:
                     grp.create_dataset(key, data=val)
 
+    def save(self):
+        return {
+            key: val for key, val in self.__dict__.items()
+            if not (key.startswith("__") and key.endswith("__"))
+            and not callable(val)
+        }
+
+    def restart(self, dic: dict):
+        for key, val in dic.items():
+            setattr(self, key, val)
+
+class Output(metaclass = OutMeta):
+    pass
+
 class Timer(Decorator):
     def __init__(self, id, head = "", msg = "Wall time: ", foot = "", out = lambda x: None):
         super().__init__(id)
@@ -113,10 +121,25 @@ class Timer(Decorator):
         self._out(f"{self._foot}")
         return res
 
+class DirChange(Decorator):
+    def __init__(self, id, before, after = None):
+        super().__init__(id)
+        self._before = before
+        if after is None:
+            after = "/".join(".." for i in before.split("/"))
+        self._after = after
+
+    def run(self, func, instance, *args, **kwargs):
+        os.chdir(self._before)
+        res = func(instance, *args, **kwargs)
+        os.chdir(self._after)
+        return res
+
 class Logger(Decorator):
     def run(self, func, instance, *args, **kwargs):
-        print(f"Running method {func} of {instance}")
+        Output.open_log()
         res = func(instance, *args, **kwargs)
+        Output.close_log()
         return res
 
 class Printer:

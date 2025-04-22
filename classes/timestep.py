@@ -1,7 +1,7 @@
 import numpy as np
 from .meta import Selector
 from .constants import convert
-from updaters.composite import CompositeIntegrator
+from .out import Output as out
 
 class Timestep(Selector):
     def __init__(self, *, dt, steps, tmax, **kwargs):
@@ -10,6 +10,8 @@ class Timestep(Selector):
         self.step = 0
         self.dts = np.zeros(steps)
         self.dts[:] = convert(dt, "au")
+
+        self.success = False
 
         self._nupd: dict = None
 
@@ -22,12 +24,13 @@ class Timestep(Selector):
         self.dts[-1] = val
 
     def validate(self, val):
-        return True
+        self.success = True
 
-    def success(self):
-        pass
+    def step_success(self):
+        self.next_step()
+        self.save_nupd()
 
-    def fail(self):
+    def step_fail(self):
         pass
 
     @property
@@ -38,12 +41,18 @@ class Timestep(Selector):
         self.time += self.dt
         self.step += 1
 
-    def adjust(self, *, tmax, **kwargs):
-        self._end = convert(tmax, "au")
-        CompositeIntegrator().set_state(**self._nupd)
+    # def adjust(self, *, tmax, **kwargs):
+    #     self._end = convert(tmax, "au")
+    #     CompositeIntegrator().set_state(**self._nupd)
 
-    def save_nupd(self):
-        self._nupd = CompositeIntegrator().get_state()
+    # def save_nupd(self):
+    #     self._nupd = CompositeIntegrator().get_state()
+
+    def adjust(self, *args, **kwargs):
+        pass
+
+    def save_nupd(self, *args, **kwargs):
+        pass
 
 class Constant(Timestep):
     key = "const"
@@ -59,15 +68,18 @@ class Half(Timestep):
         self._it = 0
 
     def validate(self, val: float):
-        return val < self._enthresh
+        self.success = val < self._enthresh
 
-    def success(self):
+    def step_success(self):
+        super().step_success()
         if self.dt < self.maxdt:
             self._it -= 1
             self.dt *= 2
 
-    def fail(self):
+    def step_fail(self):
         if self._it >= self.maxit:
-            raise RuntimeError("Maximum timestep halving depth exceeded. Terminating.")
+            msg = "Maximum timestep halving depth exceeded. Terminating."
+            out.write_log(msg)
+            raise RuntimeError(msg)
         self.dt /= 2
         self._it += 1

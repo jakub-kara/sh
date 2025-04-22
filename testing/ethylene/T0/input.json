@@ -1,12 +1,12 @@
 {
     "dynamics": {
         "name": "model",
-        "tmax": 10000,
+        "tmax": 1000,
         "dt": 20,
-        "method": "fssh",
+        "method": "mash",
 	"prob": "tdc",
         "initstate": 1,
-	"backup": true
+	"backup": false
     },
     "nuclear": {
         "input": "geom.xyz",

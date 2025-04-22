@@ -1,7 +1,7 @@
 import numpy as np
-from typing import Callable
 from .nuclear import NuclearUpdater
 from .am import *
+from classes.timestep import Timestep
 from dynamics.base import Dynamics
 from electronic.base import ESTProgram
 
@@ -11,7 +11,7 @@ class SYBase(NuclearUpdater):
     b = np.empty(1)
     c = 1
 
-    def update(self, mols: list[Molecule], dt: float, fun: Callable):
+    def update(self, mols: list[Molecule], ts: Timestep):
         raise NotImplementedError
         # find new position as a weighted sum of previous positions and accelerations
         pos_ad = -np.einsum("j,j...->...", self.a[:-1], np.array([mol.pos_ad for mol in mols])) + dt**2*np.einsum("j,j...->...", self.b[:-1], np.array([mol.vel_ad for mol in mols]))
@@ -60,21 +60,21 @@ class SYAMBase(NuclearUpdater):
     sy: SYBase = None
     am: AMBase = None
 
-    def update(self, mols: list[Molecule], dt: float):
+    def update(self, mols: list[Molecule], ts: Timestep):
         dyn = Dynamics()
         out = mols[-1].copy_all()
         temp = mols[-self.steps:]
         # find new position as a weighted sum of previous positions and accelerations
-        out.pos_ad = -np.einsum("j,j...->...", self.sy.a[:-1], np.array([mol.pos_ad for mol in temp])) + dt**2*np.einsum("j,j...->...", self.sy.b[:-1], np.array([mol.acc_ad for mol in temp]))
+        out.pos_ad = -np.einsum("j,j...->...", self.sy.a[:-1], np.array([mol.pos_ad for mol in temp])) + ts.dt**2*np.einsum("j,j...->...", self.sy.b[:-1], np.array([mol.acc_ad for mol in temp]))
         out.pos_ad /= self.sy.a[-1]
 
         # calculate new acceleration
         dyn.run_est(out, ref = mols[-1], mode = dyn.step_mode(out))
-        dyn.update_quantum(mols + [out], dt)
+        dyn.update_quantum(mols + [out], ts.dt)
         dyn.calculate_acceleration(out)
 
         # calculate new velocity from new acceleration, previous velocities, and previous accelerations
-        out.vel_ad += dt*np.einsum("j,j...->...", self.am.b[:-1], np.array([mol.acc_ad for mol in temp])[1:]) + dt*self.am.b[-1]*out.acc_ad
+        out.vel_ad += ts.dt*np.einsum("j,j...->...", self.am.b[:-1], np.array([mol.acc_ad for mol in temp])[1:]) + ts.dt*self.am.b[-1]*out.acc_ad
 
         self.out.out = out
 

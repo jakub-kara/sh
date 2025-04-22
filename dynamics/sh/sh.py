@@ -4,6 +4,7 @@ from dynamics.base import Dynamics
 from classes.molecule import Molecule, SHMixin
 from classes.out import Printer, Output
 from classes.trajectory import Trajectory
+from classes.timestep import Timestep
 from electronic.base import ESTMode
 from updaters.composite import CompositeIntegrator
 from updaters.coeff import CoeffUpdater
@@ -123,7 +124,7 @@ class SurfaceHopping(Dynamics):
         pass
 
     def _decoherence_edc(self, mol: Molecule, dt, c = 0.1):
-        kin_en = mol.kinetic_energy
+        kin_en = mol.kinetic_energy()
         for s in range(mol.n_states):
             if s == mol.active:
                 continue
@@ -134,13 +135,9 @@ class SurfaceHopping(Dynamics):
         tot_pop = np.sum(np.abs(mol.coeff_s)**2) - np.abs(mol.coeff_s[mol.active])**2
         mol.coeff_s[mol.active] *= np.sqrt(1 - tot_pop)/np.abs(mol.coeff_s[mol.active])
 
-    def steps_elapsed(self, steps):
-        super().steps_elapsed(steps)
-        HoppingUpdater().elapsed(steps)
-
-    def update_target(self, mols: list[Molecule], dt: float):
+    def update_target(self, mols: list[Molecule], ts: Timestep):
         hop = HoppingUpdater()
-        hop.run(mols, dt)
+        hop.run(mols, ts)
         mols[-1].target = hop.hop.out
 
     # TODO: move to molecule
