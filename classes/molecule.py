@@ -262,6 +262,7 @@ class Molecule:
             "nacdr": "".join([Printer.write(f"NACdr {j}-{i} [au]", "s") for i in range(nst) for j in range(i)]),
             "nacdt": "".join([Printer.write(f"NACdt {j}-{i} [au]", "s") for i in range(nst) for j in range(i)]),
             "coeff": "".join([Printer.write(f"Coeff {i}", f" <{Printer.field_length*2+1}") for i in range(nst)]),
+            "posx": Printer.write("X-Position [aa]", "s")
         }
         return dic
 
@@ -276,6 +277,7 @@ class Molecule:
             "nacdr": "".join([Printer.write(self.nac_norm_ss[i,j], "f") for i in range(nst) for j in range(i)]),
             "nacdt": "".join([Printer.write(self.nacdt_ss[i,j], "f") for i in range(nst) for j in range(i)]),
             "coeff": "".join([Printer.write(self.coeff_s[i], "z") for i in range(nst)]),
+            "posx": Printer.write(convert(self.pos_ad[0,0], "au", "aa"), "f"),
         }
         return dic
 
@@ -319,7 +321,7 @@ class MoleculeMixin(Selector):
     def dat_header(self):
         return super().dat_header()
 
-    def dat_dic(self):
+    def dat_dict(self):
         return super().dat_dict()
 
     def h5_dict(self):
@@ -342,12 +344,60 @@ class SHMixin(MoleculeMixin):
     def nohop(self):
         self.target = self.active
 
+    def dat_header(self):
+        dic = {"act": Printer.write("Active", "s")}
+        return dic | super().dat_header()
+
+    def dat_dict(self):
+        dic = {"act": Printer.write(self.active, "i")}
+        return dic | super().dat_dict()
+
+    def h5_dict(self):
+        dic = {"act": self.active}
+        return dic | super().h5_dict()
+
 class BlochMixin(SHMixin):
     key = "bloch"
 
     def __init__(self, *, n_states, **nuclear):
         super().__init__(n_states=n_states, **nuclear)
         self.bloch_n3 = np.zeros((n_states, 3))
+
+    @property
+    def coeff_s(self):
+        # doi: 10.1063/5.0208575
+        nst = self.n_states
+        out = np.zeros(nst, dtype=np.complex128)
+
+        # active state
+        temp = 1
+        for i in range(nst):
+            if i == self.active:
+                continue
+            temp += (1 - self.bloch_n3[i,2]) / (1 + self.bloch_n3[i,2])
+        out[self.active] = 1 / np.sqrt(temp)
+
+        # other states magnitude
+        for i in range(nst):
+            if i == self.active:
+                continue
+            out[i] = out[self.active] * np.sqrt((1 - self.bloch_n3[i,2]) / (1 + self.bloch_n3[i,2]))
+
+        # other states phase
+        for i in range(nst):
+            if i == self.active:
+                continue
+            arg = 0
+            if np.abs(out[i]) > 1e-12:
+                arg = np.angle(1/2 * (self.bloch_n3[i,0] + 1j*self.bloch_n3[i,1]) * (np.abs(out[self.active])**2 + out[i]**2) / (out[self.active] * out[i]))
+            out[i] *= np.exp(1j*arg)
+
+        return out
+
+    @coeff_s.setter
+    def coeff_s(self, val):
+        # to be consistent with the rest of the code
+        pass
 
     def set_coeff(self):
         self.bloch_n3[:, 2] = 1
@@ -361,6 +411,20 @@ class BlochMixin(SHMixin):
             raise ValueError(f"Invalid bloch input format in {file}")
         self.bloch_n3[:self.active] = data[:self.active]
         self.bloch_n3[self.active + 1:] = data[self.active:]
+
+    def dat_header(self):
+        nst = self.n_states
+        dic = {"bloch": "".join([Printer.write(f"Bloch-{d} {self.active}-{i}", "s") for d in "XYZ" for i in range(nst) if i != self.active])}
+        return dic | super().dat_header()
+
+    def dat_dict(self):
+        nst = self.n_states
+        dic = {"bloch": "".join([Printer.write(self.bloch_n3[i,d], "f") for d in range(3) for i in range(nst) if i != self.active])}
+        return dic | super().dat_dict()
+
+    def h5_dict(self):
+        dic = {"bloch": self.bloch_n3}
+        return dic | super().h5_dict()
 
 class MMSTMixin(MoleculeMixin):
     key = "mmst"

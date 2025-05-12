@@ -19,6 +19,9 @@ class MultiEhrenfest(SimpleEhrenfest):
         self._dnac = dynamics.get("dnac", 2e-3)
         self._maxspawn = dynamics.get("maxspawn", 3)
 
+        self._clone = None
+        self._trans = 0
+
     def _calculate_breaking(self, mol: Molecule):
         nst = mol.n_states
         accbr = np.zeros(nst)
@@ -31,24 +34,26 @@ class MultiEhrenfest(SimpleEhrenfest):
     def step_bundle(self, bundle: Bundle):
         super().step_bundle(bundle)
 
-        mol = bundle.active.mol
-        if mol.split:
+        if self._clone:
             shutil.copytree(f"{bundle.iactive}", f"{bundle.n_traj}", dirs_exist_ok=True)
             with open("events.log", "a") as f:
-                temp = np.sum(np.abs(mol.coeff_s[mol.split])**2)
-                f.write(f"CLONE {bundle.iactive} {np.sqrt(temp)} {bundle.n_traj} {np.sqrt(1-temp)} {bundle.active.timestep.step} {bundle.active.timestep.time:.4f}\n")
-            clone = self.split_traj(bundle.active)
-            os.chdir(f"{bundle.n_traj}")
-            clone.write_outputs()
-            os.chdir("..")
-            bundle.add_trajectory(clone)
+                f.write(f"CLONE {bundle.iactive} {np.sqrt(self._trans)} {bundle.n_traj} {np.sqrt(1-self._trans)} {bundle.active.timestep.step} {bundle.active.timestep.time:.4f}\n")
 
-    def split_traj(self, traj: Trajectory):
+
+            os.chdir(f"{bundle.n_traj}")
+            self._clone.next_step()
+            self._clone.write_outputs()
+            os.chdir("..")
+            bundle.add_trajectory(self._clone)
+            self._clone = None
+
+    def spawn_traj(self, traj: Trajectory, state: int):
         clone = deepcopy(traj)
-        traj.mols[-1], clone.mols[-1] = self.split_mol(traj.mol)
-        traj.mol.split = None
-        clone.mol.split = None
-        return clone
+        print(np.abs(traj.mol.coeff_s)**2)
+        traj.mols[-1], clone.mols[-1] = self.spawn_mol(traj.mol, state)
+        print(np.abs(traj.mol.coeff_s)**2)
+        print(np.abs(clone.mol.coeff_s)**2)
+        self._clone = clone
 
     def update_traj(self, traj: Trajectory):
         ts = traj.timestep
@@ -67,19 +72,21 @@ class MultiEhrenfest(SimpleEhrenfest):
             nac = np.sqrt(np.sum(mol.nacdt_ss[s]**2))
             print(f"{s} {accbr[s]} {nac}")
             if accbr[s] > self._dclone and nac < self._dnac and mol.nspawn < self._maxspawn:
-                mol.split = [s]
                 mol.nspawn += 1
+                self.spawn_traj(traj, s)
                 break
 
-    def split_mol(self, mol: Molecule):
+    def spawn_mol(self, mol: Molecule, state: int):
+        self._trans = np.sum(np.abs(mol.coeff_s[state])**2)
+
         out1 = deepcopy(mol)
         out1.coeff_s[:] = 0
-        out1.coeff_s[mol.split] = mol.coeff_s[mol.split]
+        out1.coeff_s[state] = mol.coeff_s[state]
         out1.coeff_s /= np.sqrt(np.sum(np.abs(out1.coeff_s)**2))
         self.calculate_acceleration(out1)
 
         out2 = deepcopy(mol)
-        out2.coeff_s[mol.split] = 0
+        out2.coeff_s[state] = 0
         out2.coeff_s /= np.sqrt(np.sum(np.abs(out2.coeff_s)**2))
         self.calculate_acceleration(out2)
         return out1, out2
@@ -91,15 +98,14 @@ class MCEMixin(EhrMixin):
         super().__init__(**kwargs)
         self.nspawn = 0
         self.phase = 0
-        self.split = None
 
     def dat_header(self):
         dic = {"phs": Printer.write("Phase", "s")}
         return dic | super().dat_header()
 
-    def dat_dic(self):
+    def dat_dict(self):
         dic = {"phs": Printer.write(self.phase, "f")}
-        return dic | super().dat_dic()
+        return dic | super().dat_dict()
 
     def h5_dict(self):
         dic = {"phase": self.phase}

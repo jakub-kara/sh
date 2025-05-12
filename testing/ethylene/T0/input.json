@@ -1,14 +1,17 @@
 {
     "dynamics": {
         "name": "model",
-        "tmax": 1000,
+        "tmax": 2000,
         "dt": 20,
+	"timestep": "tdc",
+	"enthresh": "0.00003 ev",
         "method": "mash",
-	"prob": "tdc",
+	"prob": "none",
         "initstate": 1,
 	"backup": false
     },
     "nuclear": {
+	"keep": 4,
         "input": "geom.xyz",
         "nuc_upd": "vv"
     },
@@ -24,7 +27,7 @@
     },
     "output": {
         "file": "out",
-        "record": ["act", "pop", "pes", "pen", "ken", "ten", "nacdt", "posx"],
+        "record": ["act", "pop", "bloch", "pes", "pen", "ken", "ten", "nacdt", "posx"],
         "timer": ["est", "coe", "tdc", "tot", "sav", "wrt"]
     }
 }

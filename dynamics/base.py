@@ -48,6 +48,9 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     def step_mode(self, mol: Molecule):
         pass
 
+    def remake_molecule(self, **config):
+        Factory.update_methods(Molecule, **self._mol_methods())
+
     # === Bundle methods ===
 
     def prepare_bundle(self, bundle: Bundle):
@@ -87,7 +90,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
         os.chdir(f"{bundle.iactive}")
         out.open_log()
         self.step_traj(bundle.active)
-        bundle.active.write_outputs()
+        # bundle.active.write_outputs()
         out.close_log()
         os.chdir("..")
 
@@ -124,7 +127,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
         self.update_traj(traj)
 
-        if not self._success:
+        if not traj.timestep.success:
             return
 
         self.adjust_nuclear(traj)
@@ -142,11 +145,10 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
         traj.report_energy()
 
-        ts.validate(traj.energy_diff(temp, traj.mol))
+        ts.validate(traj.mols + [temp])
         if not ts.success:
             ts.step_fail()
             ESTProgram().recover_wf()
-            self._success = False
             return
 
         traj.add_molecule(temp)
@@ -220,11 +222,15 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     def create_molecule(self, mixins, coeff = None, **config):
         fac = Factory(Molecule, MoleculeMixin)
         fac.add_mixins(mixins)
-        fac.add_methods(
-            potential_energy = lambda x: self.potential_energy(x),
-            total_energy = lambda x: self.total_energy(x),
-            population = lambda x, s: self.population(x, s))
+        fac.add_methods(**self._mol_methods())
 
         mol = fac.create()(n_states=ESTProgram().n_states, **config)
         mol.get_coeff(coeff)
         return mol
+
+    def _mol_methods(self):
+        return {
+            "potential_energy": lambda x: self.potential_energy(x),
+            "total_energy": lambda x: self.total_energy(x),
+            "population": lambda x, s: self.population(x, s)
+        }

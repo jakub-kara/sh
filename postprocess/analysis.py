@@ -14,6 +14,12 @@ def get_pos(pos, *idxs):
             out.append(pos[int(idx)])
     return out
 
+def get_atom(atoms, idx):
+    if idx == "o":
+        return ""
+    else:
+        return atoms[idx]
+
 def get_file(dir, ext):
     files = [i for i in os.listdir(dir) if i.endswith(ext)]
     if len(files) == 0:
@@ -22,7 +28,7 @@ def get_file(dir, ext):
     elif len(files) > 1:
         print(f"More than one {ext} file found in {dir}.")
         exit()
-    return files[0]
+    return dir + files[0]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--active", action="store_true", default=False)
@@ -74,7 +80,7 @@ nout = len(bonds) + len(angles) + len(dihs) + do_active*n_states + do_pops*n_sta
 data = np.zeros((n_traj, n_steps, nout))
 for itraj, traj in enumerate(trajs):
     print(itraj, traj)
-    f = h5py.File(traj, "r")
+    f = h5py.File(get_file(traj + "/data/", ".h5"), "r")
     for key in f.keys():
         if key == "info":
             continue
@@ -145,15 +151,17 @@ if args.show:
 
     for (b1,b2) in bonds:
         ax = plt.figure().add_subplot()
-        ax.plot(times, data[:, :, idx].T, c="r", alpha=5/n_traj)
+        # ax.plot(times, data[:, :, idx].T, c="r", alpha=5/n_traj)
+        ax.plot(times, data[:, :, idx].T, c="r")
         if args.mean:
             ax.plot(times, mean[:, idx], c="k")
-        ax.set_title(f"{atoms[b1]}{b1}-{atoms[b2]}{b2} Bond Length")
+        # ax.set_title(f"{get_atom(atoms, b1)}{b1}-{get_atom(atoms, b2)}{b2} Bond Length")
         idx += 1
 
     for (a1,a2,a3) in angles:
         ax = plt.figure().add_subplot()
-        ax.plot(times, data[:, :, idx].T, c="r", alpha=5/n_traj)
+        # ax.plot(times, data[:, :, idx].T, c="r", alpha=5/n_traj)
+        ax.plot(times, data[:, :, idx].T, c="r")
         if args.mean:
             ax.plot(times, mean[:, idx], c="k")
         ax.set_title(f"{atoms[a1]}{a1}-{atoms[a2]}{a2}-{atoms[a3]}{a3} Bond Angle")

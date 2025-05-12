@@ -70,13 +70,46 @@ class SYAMBase(NuclearUpdater):
 
         # calculate new acceleration
         dyn.run_est(out, ref = mols[-1], mode = dyn.step_mode(out))
-        dyn.update_quantum(mols + [out], ts.dt)
+        dyn.update_quantum(mols + [out], ts)
         dyn.calculate_acceleration(out)
 
         # calculate new velocity from new acceleration, previous velocities, and previous accelerations
         out.vel_ad += ts.dt*np.einsum("j,j...->...", self.am.b[:-1], np.array([mol.acc_ad for mol in temp])[1:]) + ts.dt*self.am.b[-1]*out.acc_ad
 
         self.out.out = out
+
+def am4_coeffs(h0, h1, h2):
+    t1 = h0
+    t2 = h0+h1
+    t3 = h0+h1+h2
+
+    b0 = -(t2-t3)**3 * (2*t1-t2-t3)/((-t1)*(-t2)*(-t3))/12
+    b1 = (t2-t3)**3 * (t2+t3)/(t1*(t1-t2)*(t1-t3))/12
+    b2 = -(t3-t2)**2 * (t3**2 + 2*t2*t3 + 3*t2**2 - 2*t1*(t3+2*t2))/(t2*(t2-t1)*(t2-t3))/12
+    b3 = (t2-t3)**2 * (t2**2 + 2*t2*t3 + 3*t3**2 - 2*t1*(t2+2*t3))/(t3*(t3-t1)*(t3-t2))/12
+
+    return np.array([b3,b2,b1,b0])
+
+def sy4_coeffs(h0, h1, h2, h3):
+    def T(h3, h2, h1, h0):
+        return 2*h0*h3*(bt[1]*(h0-2*h1-h2-h3) + bt[2]*(h0+h1-h2-h3) + bt[3]*(h0+h1+2*h2-h3))
+
+    def C(h3, h2, h1, h0):
+        return 0.5*T(h3,h2,h1,h0) + SY4.a[1]*3*h0*np.sqrt(h1*h2)*h3
+
+    bt = SY4.b
+    a1 = C(h3,h2,h1,h0)/(h0*h1*(h1+h2+h3))
+    a3 = C(h0,h1,h2,h3)/(h3*h2*(h0+h1+h2))
+
+    a2 = - (2*h0*h3*(bt[1]+bt[2]+bt[3]) + a1*h0*(h1+h2+h3) + a3*(h0+h1+h2)*h3)
+    a2 /= (h0+h1)*(h2+h3)
+
+    a4 = - (a1*h0 + a2*(h0+h1) + a3*(h0+h1+h2))
+    a4 /= h0+h1+h2+h3
+
+    a0 = - (a1+a2+a3+a4)
+
+    return np.array([a0,a1,a2,a3,a4]), h0/h3*SY4.b[:]
 
 class SYAM4(SYAMBase):
     key = "syam4"

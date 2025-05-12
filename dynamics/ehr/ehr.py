@@ -7,7 +7,7 @@ from electronic.base import ESTMode
 
 class SimpleEhrenfest(Dynamics):
     key = "ehr"
-    mode = ESTMode("gn")
+    mode = ESTMode("g")
 
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
@@ -19,6 +19,8 @@ class SimpleEhrenfest(Dynamics):
         }
 
         self._nactype = dynamics.get("force", "nac")
+        if self._nactype == "nac":
+            self.__class__.mode = ESTMode("gn")
         self._force_tensor = nactypes[self._nactype]
 
     def step_mode(self, mol):

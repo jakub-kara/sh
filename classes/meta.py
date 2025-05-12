@@ -59,6 +59,15 @@ class Factory:
     def add_methods(self, **kwargs):
         for key, val in kwargs.items():
             self._methods[key] = val
+        return self
+
+    @classmethod
+    def update_methods(cls, base, **methods):
+        for name, bases in cls._products.items():
+            if base not in bases:
+                continue
+            fac = Factory(bases[0]).add_mixins(*bases[1:]).add_methods(**methods)
+            setattr(cls, name, fac.create())
 
     def create(self):
         # remove duplicates
@@ -148,6 +157,18 @@ class Decorator(ABC):
     @abstractmethod
     def run(self, func, instance, *args, **kwargs):
         pass
+
+class Counter(Decorator):
+    counters = {}
+
+    def __init__(self, id):
+        super().__init__(id)
+        self.counters[id] = 0
+
+    def run(self, func, instance, *args, **kwargs):
+        self.counters[self.id] += 1
+        res = func(instance, *args, **kwargs)
+        return res
 
 class DecoratorDistributor:
     def __init_subclass__(cls):

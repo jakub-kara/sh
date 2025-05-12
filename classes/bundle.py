@@ -14,15 +14,17 @@ class Bundle:
 
         self.config = config
 
+    @property
+    def n_traj(self):
+        return len(self.trajs)
+
     def save_setup(self):
-        print(self.config)
         with open("single.pkl", "wb") as pkl:
             pickle.dump(Singleton.save(), pkl)
 
         with open("out.pkl", "wb") as pkl:
             pickle.dump(out.save(), pkl)
 
-        print(Factory.__dict__)
         with open("fact.pkl", "wb") as pkl:
             pickle.dump(Factory.save(), pkl)
 
@@ -40,7 +42,6 @@ class Bundle:
     @staticmethod
     def restart(**config):
         bundle = Bundle(**config)
-        Bundle.load_setup()
         traj_dirs = [d for d in os.listdir() if (os.path.isdir(d) and d.isdigit())]
         for d in traj_dirs:
             os.chdir(d)
@@ -48,10 +49,6 @@ class Bundle:
             bundle.add_trajectory(traj)
             os.chdir("..")
         return bundle
-
-    @property
-    def n_traj(self):
-        return len(self.trajs)
 
     def add_trajectory(self, traj: Trajectory):
         traj.index = self.n_traj

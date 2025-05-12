@@ -2,13 +2,11 @@
     "dynamics": {
         "name": "ethylene",
         "tunit": "au",
-        "tmax": 30,
-        "dt": 0.05,
+        "tmax": 70,
+        "dt": 0.2,
         "enthresh": 1,
-        "method": "fssh",
-        "prob": "tdc",
-        "decoherence": "edc",
-        "initstate": 0,
+        "method": "mce",
+	"initstate": 0,
 	"backup": true
     },
     "nuclear": {
@@ -23,7 +21,7 @@
     "electronic": {
         "program": "model",
         "path": "",
-        "type": "sub_1",
+        "method": "sub_1",
         "states": [2,0,0],
         "options": {
             "basis": "6-31g**",

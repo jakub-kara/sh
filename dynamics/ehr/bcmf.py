@@ -2,6 +2,8 @@ import numpy as np
 from .ehr import SimpleEhrenfest
 from classes.molecule import Molecule
 from classes.out import Output as out, Printer
+from classes.timestep import Timestep
+from classes.trajectory import Trajectory
 
 class BCMF(SimpleEhrenfest):
     key = "bcmf"
@@ -19,9 +21,10 @@ class BCMF(SimpleEhrenfest):
             out.write_log("Chose non-reflected group")
         return r < tot
 
-    def adjust_nuclear(self, mols: list[Molecule], dt: float):
-        mol = mols[-1]
+    def adjust_nuclear(self, traj: Trajectory):
+        mol = traj.mols[-1]
         nst = mol.n_states
+        dt = traj.timestep.dt
         eta = np.zeros(nst)
         allow = np.zeros(nst, dtype=bool)
         refl = np.zeros(nst, dtype=bool)

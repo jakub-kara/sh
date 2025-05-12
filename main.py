@@ -44,6 +44,8 @@ def run_icond(args, config):
 def run_dynamics(args, config: dict):
     bundle: Bundle
     if args.restart:
+        Bundle.load_setup()
+        Dynamics().remake_molecule(**config)
         bundle = Bundle.restart(**config)
     else:
         Dynamics.set_dynamics(**config)

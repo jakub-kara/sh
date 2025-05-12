@@ -6,30 +6,35 @@ from classes.constants import units
 def make_dirs(nsamp, root = "."):
     os.chdir(root)
     for i in range(nsamp):
-        os.mkdir(f"T{i}")
-        os.mkdir(f"T{i}/0")
-        os.mkdir(f"T{i}/0/backup")
-        os.mkdir(f"T{i}/0/data")
-        os.mkdir(f"T{i}/0/est")
+        os.makedirs(f"T{i}/0/backup", exist_ok=True)
+        os.makedirs(f"T{i}/0/data", exist_ok=True)
+        os.makedirs(f"T{i}/0/est", exist_ok=True)
 
 def get_dirs(loc=".", cond=lambda x : True):
     return [d for d in os.listdir(loc) if (os.path.isdir(d) and not d.startswith(".") and cond(d))]
 
 def sample_nuclear(nsamp):
-    gamma = 2
-    q0 = np.array([-2.,0])
-    v0 = np.array([0., 0])
     m = 1 / units["amu"]
-    p0 = m * v0
+    q0 = np.array([-4,-1])
+    # v0 = np.array([0.005])
+    # p0 = m * v0
+    # E0 = 0.04
+    # p0 = np.array([np.sqrt(2*m*E0)])
+    p0 = np.array([10,0])
+    sigq = 0.5
 
-    q = np.random.normal(q0, 1/np.sqrt(2*gamma), (nsamp, q0.shape[0]))
-    p = np.random.normal(p0, np.sqrt(2*gamma), (nsamp, q0.shape[0]))
+    # q = np.random.normal(q0, sigq, (nsamp, q0.shape[0]))
+    # p = np.random.normal(p0, 1/sigq, (nsamp, q0.shape[0]))
+    q = np.random.normal(q0, 0.5, (nsamp, q0.shape[0]))
+    p = np.random.normal(p0, 1, (nsamp, q0.shape[0]))
+
     v = p / m
 
     for i in range(nsamp):
         os.chdir(f"T{i}")
         with open("geom.xyz", "w") as f:
             f.write("1\n\n")
+            # f.write(f"H {q[i,0]} 0 0 {v[i,0]} 0 0")
             f.write(f"H {q[i,0]} {q[i,1]} {v[i,0]} {v[i,1]}")
             # f.write(f"H {q[i,0]} {v[i,0]}")
         os.chdir("..")

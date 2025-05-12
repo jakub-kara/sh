@@ -1,7 +1,7 @@
 import numpy as np
-from scipy.linalg import expm, fractional_matrix_power
+from scipy.linalg import expm, fractional_matrix_power, solve
 from scipy.sparse.linalg import expm_multiply
-from scipy.optimize import linear_sum_assignment
+from scipy.optimize import linear_sum_assignment, minimize_scalar
 from functools import cache
 import h5py
 import os, sys
@@ -185,7 +185,8 @@ class MCE:
             self.n_states = f["info/nst"][()]
 
             atoms = f["info/ats"][:].astype("<U2")
-            self.wid = np.array([atomic_widths[at] for at in atoms])
+            # self.wid = np.array([atomic_widths[at] for at in atoms])
+            self.wid = np.array([1e-33 for at in atoms])
             self.mass = f["info/mass"][:]
 
             time = []
@@ -222,10 +223,11 @@ class MCE:
             for istep, step in enumerate(steps):
                 if istep > self.n_step - 1:
                     return
-                if not self.act[istep, self.itraj]:
-                    continue
 
                 itraj = self.itraj
+                if not self.act[istep, itraj]:
+                    continue
+
                 self.pos[step, itraj] = f[f"{step}/pos"][:]
                 self.vel[step, itraj] = f[f"{step}/vel"][:]
                 self.acc[step, itraj] = f[f"{step}/acc"][:]
@@ -272,7 +274,7 @@ class MCE:
         self.step = 0
         self.vie_old = self.get_views(0)
         self.ovl_old, self.ham_old, self.ddt_old = self.get_matrices(self.vie_old)
-        self.hef_old = np.linalg.inv(self.ovl_old) @ (self.ham_old - 1.j*self.ddt_old)
+        self.hef_old = self.get_ham(self.ovl_old, self.ham_old - 1.j*self.ddt_old)
 
         n_act = np.sum(self.act[0])
         wei = np.ones(n_act) / n_act
@@ -323,9 +325,11 @@ class MCE:
         return ovl, ham, ddt
 
     def write_pops(self, time, wei, amp, ovl):
-        self.pops.write(f"{time}")
-        for state in range(self.n_states):
-            self.pops.write(f" {np.real(np.einsum('n,m,n,m,nm->', wei.conj(), wei, amp.conj()[:,state], amp[:,state], ovl))}")
+        self.pops.write(f"{time} ")
+        pops = np.real(np.einsum('n,m,ns,ms,nm->s', wei.conj(), wei, amp.conj(), amp, ovl))
+        # pops /= np.sum(pops)
+        self.pops.write(" ".join(str(pop) for pop in pops))
+        self.pops.write(f" {np.sum(pops)}")
         self.pops.write("\n")
 
     def write_coeffs(self, step):
@@ -333,6 +337,48 @@ class MCE:
         for itraj in range(self.n_traj):
             self.out.write(f" {self.wei[step, itraj].real} {self.wei[step, itraj].imag}")
         self.out.write("\n")
+
+    @staticmethod
+    def _gcv(lam, A, B):
+        U, s, Vt = np.linalg.svd(A, full_matrices=False)
+        filt = s**2 / (s**2 + lam)
+
+        residuals = 0
+        for i in range(B.shape[1]):
+            bi = B[:, i]
+            numerator = np.sum((filt * (U.T @ bi))**2)
+            residuals += (np.linalg.norm(bi)**2 - numerator)
+
+        denominator = np.sum(filt)**2
+        return residuals / denominator
+
+    @staticmethod
+    def _opt_lam(A, B, lam_bounds=(1e-10, 1e-1)):
+        result = minimize_scalar(
+            MCE._gcv,
+            bounds=lam_bounds,
+            args=(A, B),
+            method='bounded'
+        )
+        return result.x
+
+    @staticmethod
+    def _tikhonov(A, lam):
+        U, s, Vt = np.linalg.svd(A, full_matrices=False)
+        s_inv = s / (s**2 + lam)
+        return Vt.T @ np.diag(s_inv) @ U.T
+
+    def get_ham(self, A, B):
+        U, S, VT = np.linalg.svd(A)
+        eps = S[0] * 1e-6
+        S[S < eps] = eps
+        Anew = U @ np.diag(S) @ VT
+        for i in range(Anew.shape[0]):
+            Anew[i,i] = 1
+        return solve(Anew, B)
+        lam = MCE._opt_lam(A, B)
+        Ainv = MCE._tikhonov(A, lam)
+        return Ainv @ B
 
     def run_step(self):
         st = self.step
@@ -345,7 +391,7 @@ class MCE:
         if cloned:
             vie_old = self.get_views(self.step)
             ovl_old, ham_old, ddt_old = self.get_matrices(vie_old)
-            hef_old = np.linalg.inv(ovl_old) @ (ham_old - 1.j*ddt_old)
+            hef_old = self.get_ham(ovl_old, ham_old - 1.j*ddt_old)
         else:
             vie_old = self.vie_old
             ovl_old = self.ovl_old
@@ -361,11 +407,14 @@ class MCE:
         ovl_new, ham_new, ddt_new = self.get_matrices(vie_new)
         print("Matrices: ", time.time() - t, " s")
 
-        t = time.time()
-        temp = np.linalg.inv(ovl_new)
-        print("Inverse: ", time.time() - t, " s")
 
-        hef_new = temp @ (ham_new - 1.j*ddt_new)
+        # if np.sum(self.act[st]) > 1:
+            # breakpoint()
+
+        print(ovl_old)
+        t = time.time()
+        hef_new = self.get_ham(ovl_new, ham_new - 1.j*ddt_new)
+        print("Inverse: ", time.time() - t, " s")
 
         dt = self.time[st + 1] - self.time[st]
         wei = self.wei[st, self.act[st]]
@@ -401,11 +450,13 @@ class MCE:
         for i in range(n_substep):
             frac = (i + 0.5) / n_substep
             heff = linint(hef_old, hef_new, frac)
-            wei = expm_multiply(-1.j* heff * dt/n_substep, wei)
-            # wei = expm(-1.j* heff * dt/n_substep) @ wei
+            # wei = expm_multiply(-1.j* heff * dt/n_substep, wei)
+            wei = expm(-1.j* heff * dt/n_substep) @ wei
         print("Propagation: ", time.time() - t, " s")
 
         # wei = tr_fin @ wei
+        if np.real(np.einsum("a, ab, b ->", wei.conj(), ovl_new, wei)) > 1.1:
+            breakpoint()
         print("after:  ", np.real(np.einsum("a, ab, b ->", wei.conj(), ovl_new, wei)))
         wei = wei / np.sqrt((wei.conj() @ ovl_new @ wei))
         print(np.abs(wei)**2)
@@ -464,8 +515,6 @@ class Transform:
         else:
             tr_ini = self.tr_ini.copy()
 
-
-        breakpoint()
         # tr_fin = self.permute(tr_fin, tr_ini)
         # tr_fin = self.procrustes(tr_fin, tr_ini)
         # tr_fin = self.phase(tr_fin, tr_ini)
@@ -517,5 +566,5 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         mce = MCE.load("mce.pkl")
     else:
-        mce = MCE(300)
+        mce = MCE(2000)
     mce()

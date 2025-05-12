@@ -1,6 +1,7 @@
 import numpy as np
 import sys, pickle
 from copy import deepcopy
+from .meta import Counter
 from .molecule import Molecule
 from .out import Output as out, Timer, Printer
 from .constants import convert
@@ -35,7 +36,10 @@ class Trajectory:
         self.timestep.step_success()
         self.timestep.save_nupd()
 
+        self.write_outputs()
+
         if self.is_finished:
+            print("EST run", Counter.counters["est"], "times")
             self.save_step()
 
     def add_molecule(self, mol: Molecule):

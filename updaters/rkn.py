@@ -27,7 +27,10 @@ class RKNBase(NuclearUpdater):
             out.inter[i].pos_ad += ts.dt * self.c[i] * mol.vel_ad + ts.dt**2 * np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], [m.acc_ad for m in out.inter[:i]])
 
             dyn.run_est(out.inter[i], ref = mol, mode = dyn.step_mode(out.inter[i]))
-            dyn.update_quantum(mols + [out.inter[i]], ts.dt * self.c[i])
+            orig = ts.dt
+            ts.dt *= self.c[i]
+            dyn.update_quantum(mols + [out.inter[i]], ts)
+            ts.dt = orig
             dyn.calculate_acceleration(out.inter[i])
 
         # find new position and velocity from all the substeps
@@ -37,7 +40,7 @@ class RKNBase(NuclearUpdater):
 
         # calculate new acceleration
         dyn.run_est(temp, ref = mol, mode = dyn.step_mode(temp))
-        dyn.update_quantum(mols + [temp], ts.dt)
+        dyn.update_quantum(mols + [temp], ts)
         dyn.calculate_acceleration(temp)
 
         out.inter[:-1] = out.inter[1:]
