@@ -33,16 +33,17 @@ def update_sy(xin: np.ndarray, vin: np.ndarray, ain: np.ndarray, fun, dt: float)
 
     return xout, vout, aout
 
-def update_vv(xin: np.ndarray, vin: np.ndarray, ain: np.ndarray, fun, dt: float):
-    xin = xin[-1]
-    vin = vin[-1]
-    ain = ain[-1]
+def update_vv(xin: np.ndarray, vin: np.ndarray, ain: np.ndarray, fun, rin: float):
+    fact = 1 + eps * ctrl(xin, vin, ain) / rin
+    fact = max(min(fact, 2), 0.5)
+    rout = rin * fact
 
-    xout = xin + vin*dt + 0.5*ain*dt**2
+    vout = vin + 0.5 * eps * ain / rout
+    xout = xin + eps * vout / rout
     aout = fun(xout)
-    vout = vin + 0.5*(ain + aout)*dt
+    vout = vout + 0.5 * eps * aout / rout
 
-    return xout, vout, aout
+    return xout, vout, aout, rout
 
 def kin(v):
     return 0.5 * v**2
@@ -53,26 +54,39 @@ def pot(x):
 def func(x):
     return -x
 
-dt = 0.1
+def ctrl(x, v, a):
+    delta = 1e-8
+    return alpha * v * a / (v**2 + delta)
+
+def report():
+    print(step, t)
+    print(np.cos(t), x)
+    print(-np.sin(t), v)
+    print(pot(x) + kin(v))
+    print()
+
+def write():
+    file.write(f"{t} {x} {v} {a} {np.abs(pot(x) + kin(v) - 1/2)}\n")
+
+alpha = 1
+eps = 0.1
+r0 = 1
 tmax = 10
-t = 3*dt
-x = np.array([np.cos(i*dt) for i in range(4)])
+step = 0
+t = 0
+x = 1
 a = func(x)
-v = np.array([-np.sin(i*dt) for i in range(4)])
-# breakpoint()
+v = 0
+r = r0 - eps*ctrl(x, v, a) / 2
+file = open("out.dat", "w")
 
 while t <= tmax:
-    print(t)
-    print(np.cos(t), x[-1])
-    print(-np.sin(t), v[-1])
-    print(pot(x[-1]) + kin(v[-1]))
-    print()
-    xout, vout, aout = update_sy(x, v, a, func, dt)
-    x[:-1] = x[1:]
-    x[-1] = xout
-    v[:-1] = v[1:]
-    v[-1] = vout
-    a[:-1] = a[1:]
-    a[-1] = aout
+    report()
+    write()
+    x, v, a, r = update_vv(x, v, a, func, r)
+    t += eps / r
+    step += 1
 
-    t += dt
+report()
+write()
+file.close()

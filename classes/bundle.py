@@ -18,6 +18,7 @@ class Bundle:
     def n_traj(self):
         return len(self.trajs)
 
+    # probably could be moved
     def save_setup(self):
         with open("single.pkl", "wb") as pkl:
             pickle.dump(Singleton.save(), pkl)

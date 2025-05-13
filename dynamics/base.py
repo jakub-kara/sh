@@ -48,7 +48,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     def step_mode(self, mol: Molecule):
         pass
 
-    def remake_molecule(self, **config):
+    def remake_molecule(self):
         Factory.update_methods(Molecule, **self._mol_methods())
 
     # === Bundle methods ===

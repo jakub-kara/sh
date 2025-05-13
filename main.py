@@ -45,7 +45,7 @@ def run_dynamics(args, config: dict):
     bundle: Bundle
     if args.restart:
         Bundle.load_setup()
-        Dynamics().remake_molecule(**config)
+        Dynamics().remake_molecule()
         bundle = Bundle.restart(**config)
     else:
         Dynamics.set_dynamics(**config)

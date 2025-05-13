@@ -1,10 +1,9 @@
 {
     "dynamics": {
         "name": "model",
-        "tmax": 2000,
+        "tmax": 1000,
         "dt": 20,
-	"timestep": "tdc",
-	"enthresh": "0.00003 ev",
+	"timestep": "hairer",
         "method": "mash",
 	"prob": "none",
         "initstate": 1,

@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.linalg import expm
+from scipy.interpolate import lagrange
 from .meta import Selector
 from .constants import convert
 from .molecule import Molecule
@@ -7,13 +8,18 @@ from .out import Output as out
 
 
 class Timestep(Selector):
-    def __init__(self, *, dt, steps, tmax, **kwargs):
+    def __init__(self, *, dt, steps, tmax, **config):
         self._end = convert(tmax, "au")
         self.time = 0
         self.step = 0
         self.dts = np.zeros(steps)
         self.dts[:] = convert(dt, "au")
-
+        self._maxdt = config.get("maxdt", self.dt)
+        self._mindt = config.get("mindt", 0)
+        self._fact = 1
+        self._lim = config.get("lim", 2)
+        if self._lim < 1:
+            self._lim = 1 / self._lim
         self.success = False
 
         self._nupd: dict = None
@@ -32,7 +38,12 @@ class Timestep(Selector):
 
     def _push_dt(self, dt: float):
         self.dts[:-1] = self.dts[1:]
-        self.dt = dt
+        self.dt = max(min(dt, self._maxdt), self._mindt)
+
+        # TODO: negative timesteps?
+
+    def _minmax(self):
+        self._fact = min(max(self._fact, 1/self._lim), self._lim)
 
     def validate(self, mols: list[Molecule]):
         self.success = True
@@ -46,13 +57,6 @@ class Timestep(Selector):
     def next_step(self):
         self.time += self.dt
         self.step += 1
-
-    # def adjust(self, *, tmax, **kwargs):
-    #     self._end = convert(tmax, "au")
-    #     CompositeIntegrator().set_state(**self._nupd)
-
-    # def save_nupd(self):
-    #     self._nupd = CompositeIntegrator().get_state()
 
     def adjust(self, *args, **kwargs):
         pass
@@ -68,7 +72,6 @@ class Half(Timestep):
 
     def __init__(self, **config):
         super().__init__(**config)
-        self._maxdt = self.dt
         self._maxit = config.get("max_depth", 10)
         self._enthresh = convert(config.get("enthresh", 1000), "au")
         self._it = 0
@@ -105,21 +108,14 @@ class Half(Timestep):
         print("ITER: ", self._it)
         print("DT:   ", self.dt)
 
-class TDC(Timestep):
-    key = "tdc"
+class Proportional(Timestep):
+    key = "prop"
 
     def __init__(self, **config):
         super().__init__(**config)
-        self._maxdt = self.dt
-        self._eps = config.get("eps", 1e-5)
-        self._eta = config.get("eta", 1e-3)
-        self._tmpdt = self.dt
-
-        self._past = np.full(3, np.nan)
-
-    def _shift(self, arr, val):
-        arr[:-1] = arr[1:]
-        arr[-1] = val
+        self._alpha = config.get("alpha", 1)
+        self._delta = config.get("eps", 1e-8)
+        self._eta = config.get("eta", 1e-2)
 
     def validate(self, mols: list[Molecule]):
         self.success = True
@@ -129,83 +125,49 @@ class TDC(Timestep):
         for i in range(mol.n_states):
             for j in range(i):
                 diff += (np.abs(mol.coeff_s[i])**2 + np.abs(mol.coeff_s[j])**2) * np.abs(mol.nacdt_ss[i,j])
-        self._shift(self._past, diff)
 
-        der2 = 0
-        self._tmpdt = self.dt
-        if not np.isnan(self._past).any():
-            h1 = self.dts[-1]
-            h2 = self.dts[-2]
-            der2 = self._past[-3] / (h1 * (h1 + h2))
-            der2 -= self._past[-2] / (h1 * h2)
-            der2 += self._past[-1] / (h2 * (h1 + h2))
-            der2 *= 2 / (h1 + h2)
-
-            self._tmpdt = self._eta / np.cbrt(np.abs(der2)) * self._maxdt
-            print(self._eta / np.cbrt(np.abs(der2)) * self._maxdt)
-
-        # print(np.arccos(np.abs(np.vdot(mol.coeff_s, mols[-2].coeff_s))))
-        # self._tmpdt = self._eta / (diff + self._eps)
-        # self._tmpdt = self._eta / np.log(diff / self._eps + 1)
-
-        with open("ts.dat", "a") as f:
-            f.write(f"{self.time + self.dt} {np.real(diff)} {der2}")
-
-    def step_success(self):
-        ratio = self._tmpdt / self.dt
-        ratio = min(ratio, 2)
-        ratio = max(ratio, 0.5)
-        self._push_dt(min(self._maxdt, self.dt * ratio))
-
-        with open("ts.dat", "a") as f:
-            f.write(f" {self.dt}\n")
-
-class PID(Timestep):
-    key = "pid"
-
-    def __init__(self, **config):
-        super().__init__(**config)
-        self._maxdt = self.dt
-        self._alpha = config.get("alpha", 0.2)
-        self._beta = config.get("beta", 0.1)
-        self._delta = config.get("delta", 5e-3)
-        self._eps = config.get("eps", 1e-8)
-        self._prev = self._eps
-
-        self._fact = 1
-
-    def validate(self, mols: list[Molecule]):
-        self.success = True
-
-        def flux(mol: Molecule):
-            tot = 0
-            mol = mols[-1]
-            for i in range(mol.n_states):
-                for j in range(i):
-                    tot += np.abs(np.real(mol.coeff_s[i].conj() * mol.coeff_s[j] * mol.nacdt_ss[i,j]))
-            return tot
-
-        def dist(mol1: Molecule, mol2: Molecule):
-            return np.arccos(np.abs(np.vdot(mol1.coeff_s, mol2.coeff_s)))
-
-        # diff = dist(mols[-1], mols[-2])
-        mol = mols[-1]
-        diff = self.dt * np.abs(np.einsum("i,j,ij->", mol.coeff_s.conj(), mol.coeff_s, -1j*mol.nacdt_ss).real)
-        print(diff)
-        curr = diff / self._delta + self._eps
-
-        # self._fact = curr**self._alpha
-        self._fact = 1 / curr**self._alpha * (self._prev / curr)**self._beta
-        self._fact = min(max(self._fact, 0.5), 2)
-        self._prev = curr
+        self._fact = self._eta / (diff**self._alpha + self._delta) / self.dt
 
         with open("ts.dat", "a") as f:
             f.write(f"{self.time + self.dt} {np.real(diff)} {self._fact}")
 
     def step_success(self):
-        self.dt = min(self._fact * self.dt, self._maxdt)
-        if self.time + self.dt > self._end:
-            self.dt = self._end - self.time
+        self._minmax()
+        self._push_dt(self.dt * self._fact)
+
+        with open("ts.dat", "a") as f:
+            f.write(f" {self.dt}\n")
+
+class Hairer(Timestep):
+    # doi: 10.1137/040606995
+    key = "hairer"
+
+    def __init__(self, **config):
+        super().__init__(**config)
+        self._alpha = config.get("alpha", 0.5)
+        self._delta = config.get("delta", 1e-8)
+        self._eps = config.get("eps", self.dt)
+        self._rho = 1
+
+    def _ctrl(self, mols: list[Molecule]):
+        tdc = lambda mol: np.abs(mol.nacdt_ss[0,1])
+        mol = mols[-1]
+        res = self._alpha * (tdc(mol) - tdc(mols[-2])) / self.dt * tdc(mol)
+        res /= tdc(mol)**2 + self._delta
+        return res
+
+    def validate(self, mols):
+        self.success = True
+
+        self._fact = 1 + self._eps * self._ctrl(mols) / self._rho
+        self._minmax()
+        self._rho *= self._fact
+
+        with open("ts.dat", "a") as f:
+            f.write(f"{self.time + self._eps / self._rho} {mols[-1].nacdt_ss[0,1]} {self._ctrl(mols)}")
+
+    def step_success(self):
+        self._push_dt(self._eps / self._rho)
 
         with open("ts.dat", "a") as f:
             f.write(f" {self.dt}\n")
