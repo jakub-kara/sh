@@ -5,7 +5,7 @@ from .meta import Counter
 from .molecule import Molecule
 from .out import Output as out, Timer, Printer
 from .constants import convert
-from .timestep import Timestep
+from .timestep import Timestep, StateTracker
 from electronic.base import ESTProgram
 from updaters.composite import CompositeIntegrator
 from updaters.coeff import CoeffUpdater
@@ -18,6 +18,8 @@ class Trajectory:
         self.mols: list[Molecule] = []
         self.timestep = None
         self.ref_en = None
+
+        self.track = StateTracker(**dynamics)
 
     @property
     def n_steps(self):
@@ -33,6 +35,7 @@ class Trajectory:
 
     def next_step(self):
         self.timestep.next_step()
+        self.track.count(self.mol, self.timestep.dt)
         self.timestep.step_success()
         self.timestep.save_nupd()
 

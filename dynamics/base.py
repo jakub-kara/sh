@@ -127,7 +127,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
         self.update_traj(traj)
 
-        if not traj.timestep.success:
+        if not traj.timestep.success or not CompositeIntegrator().success:
             return
 
         self.adjust_nuclear(traj)
@@ -140,10 +140,12 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     def update_traj(self, traj: Trajectory):
         nupd = CompositeIntegrator()
         ts = traj.timestep
-        nupd.run(traj.mols, ts)
-        temp = nupd.active.out.out
 
-        traj.report_energy()
+        nupd.run(traj.mols, ts)
+        if not nupd.success:
+            ESTProgram().recover_wf()
+            return
+        temp = nupd.active.out.out
 
         ts.validate(traj.mols + [temp])
         if not ts.success:
@@ -153,6 +155,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
         traj.add_molecule(temp)
         traj.pop_molecule(0)
+        traj.report_energy()
 
     # === Molecule methods ===
 
@@ -206,7 +209,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
     def set_nuclear(self, **nuclear):
         CompositeIntegrator.reset()
-        CompositeIntegrator(nuc_upd = nuclear.get("nuc_upd", "vv"))
+        CompositeIntegrator(**nuclear)
 
     def set_tdc_updater(self, **quantum):
         TDCUpdater.reset()

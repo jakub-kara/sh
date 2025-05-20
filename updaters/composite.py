@@ -4,17 +4,23 @@ from .nuclear import NuclearUpdater
 from classes.constants import convert
 from classes.meta import Singleton
 from classes.molecule import Molecule
+from classes.out import Output as out
 
 class CompositeIntegrator(Updater, metaclass = Singleton):
-    def __init__(self, *, nuc_upd, **kwargs):
+    def __init__(self, *, nuc_upd = "vv", **kwargs):
         self._iactive = 0
         self._count = 0
         self._success = False
         self._thresh = convert(kwargs.get("thresh", 1e10), "au")
         self._upds: dict[int, NuclearUpdater] = {}
 
-        base = NuclearUpdater.select(nuc_upd)()
-        self._upds[0] = base
+        if not isinstance(nuc_upd, (list, tuple)):
+            nuc_upd = [nuc_upd]
+
+        for i, upd in enumerate(nuc_upd):
+            self._upds[i] = NuclearUpdater.select(upd)()
+
+        base = self._upds[0]
         if base.steps > 1:
             self._upds[-1] = NuclearUpdater.select(f"rkn{base.steps}")()
 
@@ -56,5 +62,18 @@ class CompositeIntegrator(Updater, metaclass = Singleton):
         self._count += 1
         self.active.run(mols, dt)
 
-    def validate(self, val: float):
+        temp: Molecule = self.active.out.out
+        self.validate(np.abs(temp.total_energy() - mols[-1].total_energy()))
+
+    def validate(self, val):
         self._success = val < self._thresh
+        print("DIFF", convert(val, "au", "ev"))
+        if self._success:
+            self._iactive = 0
+        else:
+            self._iactive += 1
+
+        if self._iactive not in self._upds.keys():
+            print(val, self._thresh)
+            out.write_log("Maximum energy difference exceeded at highest level of nuclear integrator.\nTerminating.")
+            exit()

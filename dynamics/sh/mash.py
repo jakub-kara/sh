@@ -37,8 +37,9 @@ class MASH(SurfaceHopping):
         print(mol.bloch_n3)
 
         if mol.hop_ready():
-            if self._has_energy(mol, self._get_delta(mol)):
-                self._adjust_velocity(mol, self._get_delta(mol))
+            delta = self._get_delta(mol)
+            if self._has_energy(mol, delta):
+                self._adjust_velocity(mol, delta)
                 self._swap_bloch(mol)
                 CompositeIntegrator().to_init()
                 mol.hop()
@@ -50,7 +51,7 @@ class MASH(SurfaceHopping):
                 self.calculate_acceleration(mol)
                 est.reset_calc()
             else:
-                self._reverse_velocity(mol, self._get_delta(mol))
+                self._reverse_velocity(mol, delta)
                 self._reverse_bloch(mol)
                 mol.nohop()
 

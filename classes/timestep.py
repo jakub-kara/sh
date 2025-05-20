@@ -7,6 +7,33 @@ from .molecule import Molecule
 from .out import Output as out
 
 
+class StateTracker:
+    def __init__(self, **config):
+        temp = config.get("killafter", 1e10)
+        if isinstance(temp, dict):
+            temp = {int(k): convert(v, "au") for k, v in temp.items()}
+        elif isinstance(temp, list):
+            temp = {iv: convert(v, "au") for iv, v in enumerate(temp)}
+        else:
+            temp = {0: convert(temp, "au")}
+        self._killafter = temp
+        self._elapsed = 0
+        self._state = -1
+
+    def count(self, mol: Molecule, dt):
+        if not hasattr(mol, "active"):
+            return
+
+        if mol.active == self._state:
+            self._elapsed += dt
+        else:
+            self._elapsed = 0
+            self._state = mol.active
+
+        if self._elapsed > self._killafter.get(self._state, 1e10):
+            out.write_log(f"Time on state {self._state} exceeded limits.\nTerminating.")
+            exit()
+
 class Timestep(Selector):
     def __init__(self, *, dt, steps, tmax, **config):
         self._end = convert(tmax, "au")
@@ -77,25 +104,28 @@ class Half(Timestep):
         self._it = 0
         self._cumdt = 0
 
+        self._diff = 0
+
     def validate(self, mols: list[Molecule]):
-        self.success = np.abs(mols[-1].total_energy() - mols[-2].total_energy()) < self._enthresh
+        self._diff = np.abs(mols[-1].total_energy() - mols[-2].total_energy())
+        self.success = self._diff < self._enthresh
 
     def _iter_to_dt(self):
         self.dt = self._maxdt / 2**self._it
 
     def step_success(self):
         super().step_success()
-        if self.dt < self._maxdt:
+        if self._it > 0:
             self._it -= 1
         self._iter_to_dt()
 
-        self._cumdt += self.dt
-        if self._cumdt >= self._maxdt:
-            self.dt -= self._cumdt - self._maxdt
-            self._cumdt = 0
+        # self._cumdt += self.dt
+        # if self._cumdt >= self._maxdt:
+        #     self.dt -= self._cumdt - self._maxdt
+        #     self._cumdt = 0
 
-        print("ITER: ", self._it)
-        print("DT:   ", self.dt)
+        # print("ITER: ", self._it)
+        # print("DT:   ", self.dt)
 
     def step_fail(self):
         if self._it >= self._maxit:
@@ -104,9 +134,45 @@ class Half(Timestep):
             raise RuntimeError(msg)
         self._it += 1
 
+        out.write_log(f"Step rejected with energy difference {convert(self._diff, 'ev'):.6f} eV")
+
+
         self._iter_to_dt()
-        print("ITER: ", self._it)
-        print("DT:   ", self.dt)
+        # print("ITER: ", self._it)
+        # print("DT:   ", self.dt)
+
+def _tdc(mol: Molecule):
+    tot = 0
+    for i in range(mol.n_states):
+        for j in range(i):
+            tot += (np.abs(mol.coeff_s[i])**2 + np.abs(mol.coeff_s[j])**2) * np.abs(mol.nacdt_ss[i,j])
+    return tot
+
+def _acc(mol: Molecule):
+    return np.sqrt(np.max(np.linalg.norm(mol.acc_ad, axis=1)))
+
+def _vel(mol: Molecule):
+    return np.max(np.linalg.norm(mol.vel_ad, axis=1))
+
+def _pos(mol: Molecule):
+    return np.abs(mol.pos_ad[0,0])
+
+def _eff(mol: Molecule):
+    return np.linalg.norm(mol.eff_nac())
+
+def _grad(mol: Molecule):
+    return np.linalg.norm(mol.force_ad)
+
+def _select_func(val):
+    return {
+        "pos": _pos,
+        "vel": _vel,
+        "acc": _acc,
+        "tdc": _tdc,
+        "eff": _eff,
+        "grad": _grad,
+    }[val]
+
 
 class Proportional(Timestep):
     key = "prop"
@@ -117,26 +183,24 @@ class Proportional(Timestep):
         self._delta = config.get("eps", 1e-8)
         self._eta = config.get("eta", 1e-2)
 
+        self._val = config.get("val", "tdc")
+        self._func = _select_func(self._val)
+
+        with open("ts.dat", "w") as f:
+            pass
+
     def validate(self, mols: list[Molecule]):
         self.success = True
 
         mol = mols[-1]
-        diff = 0
-        for i in range(mol.n_states):
-            for j in range(i):
-                diff += (np.abs(mol.coeff_s[i])**2 + np.abs(mol.coeff_s[j])**2) * np.abs(mol.nacdt_ss[i,j])
-
-        self._fact = self._eta / (diff**self._alpha + self._delta) / self.dt
-
-        with open("ts.dat", "a") as f:
-            f.write(f"{self.time + self.dt} {np.real(diff)} {self._fact}")
+        self._fact = self._maxdt * (self._eta / (self._func(mol) + self._delta))**self._alpha / self.dt
 
     def step_success(self):
         self._minmax()
         self._push_dt(self.dt * self._fact)
 
         with open("ts.dat", "a") as f:
-            f.write(f" {self.dt}\n")
+            f.write(f"{self.time + self.dt} {self.dt}\n")
 
 class Hairer(Timestep):
     # doi: 10.1137/040606995
@@ -149,11 +213,30 @@ class Hairer(Timestep):
         self._eps = config.get("eps", self.dt)
         self._rho = 1
 
+        self._val = config.get("val", "tdc")
+        self._func = _select_func(self._val)
+
+        with open("ts.dat", "w") as f:
+            pass
+
     def _ctrl(self, mols: list[Molecule]):
-        tdc = lambda mol: np.abs(mol.nacdt_ss[0,1])
+        # TDC
         mol = mols[-1]
-        res = self._alpha * (tdc(mol) - tdc(mols[-2])) / self.dt * tdc(mol)
-        res /= tdc(mol)**2 + self._delta
+        temp = self._func(mol)
+        res = self._alpha * (temp - self._func(mols[-2])) / self.dt * temp
+        res /= temp**2 + self._delta
+
+        # res = self._alpha / self.dt * np.log(self._func(mols[-1]) / self._func(mols[-2]))
+
+        # VEL
+        # res = self._alpha * np.sum(mols[-1].mom_ad * mols[-1].force_ad)
+
+        # GRAD
+        # mol = mols[-1]
+        # res = self._alpha / self.dt * np.sum(mol.force_ad * (mol.force_ad - mols[-2].force_ad)) / (np.sum(mol.force_ad**2) + self._delta)
+
+        print("FUNC: ", np.linalg.norm(mol.force_ad))
+        print("CTRL: ", res)
         return res
 
     def validate(self, mols):
@@ -163,11 +246,8 @@ class Hairer(Timestep):
         self._minmax()
         self._rho *= self._fact
 
-        with open("ts.dat", "a") as f:
-            f.write(f"{self.time + self._eps / self._rho} {mols[-1].nacdt_ss[0,1]} {self._ctrl(mols)}")
-
     def step_success(self):
         self._push_dt(self._eps / self._rho)
 
         with open("ts.dat", "a") as f:
-            f.write(f" {self.dt}\n")
+            f.write(f"{self.time + self.dt} {self.dt}\n")

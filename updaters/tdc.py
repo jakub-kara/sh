@@ -20,15 +20,11 @@ class TDCUpdater(Updater, Selector, metaclass = Singleton):
         self.tdc.fill()
 
     def _validate_overlap(self, ovl):
-        if np.any(np.abs(ovl)) > 1:
-            out.write_log("WARNING: overlap entry bigger than 1.")
-            out.write_log("Old overlap:")
-            out.write_log(ovl)
-
-            out.write_log("Renormalising")
-            out.write_log("New overlap")
-            ovl /= np.linalg.norm(ovl, axis=0)
-            out.write_log(ovl)
+        eps = 1e-12
+        ovl[ovl > 1 - eps] = 1 - eps
+        # ovl[ovl > 1] = 1
+        # ovl /= np.linalg.norm(ovl, axis=0)
+        print(ovl)
 
 class BlankTDCUpdater(TDCUpdater):
     key = "none"
@@ -126,6 +122,7 @@ class NPI(Multistage, TDCUpdater):
 
             Utot = np.matmul(U.T, dU)
             self.tdc.inter[i] = Utot * (1 - np.eye(nst))
+        print(self.tdc.out)
 
 class NPISharc(Multistage, TDCUpdater):
     # NPI sharc mid-point averaged

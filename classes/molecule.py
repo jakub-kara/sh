@@ -292,6 +292,9 @@ class Molecule:
             "nacdr": self.nacdr_ssad,
             "nacdt": self.nacdt_ss,
             "coeff": self.coeff_s,
+            "kinen": self.kinetic_energy(),
+            "poten": self.potential_energy(),
+            "toten": self.total_energy(),
         }
         return dic
 

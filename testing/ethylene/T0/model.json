@@ -1,13 +1,18 @@
 {
     "dynamics": {
-        "name": "ethylene",
-        "tunit": "au",
-        "tmax": 70,
-        "dt": 0.2,
-        "enthresh": 1,
-        "method": "mce",
+        "tmax": 150,
+        "dt": 4,
+        "method": "fssh",
+	"prob": "none",
+	"timestep": "hairer",
+	"enthresh": "0.00002 ev",
+	"val": "tdc",
+	"alpha": 0.5,
+	"lim": 1.5,
+	"eta": 0.01,
 	"initstate": 0,
-	"backup": true
+	"seed": 0,
+	"backup": false
     },
     "nuclear": {
         "input": "model.xyz",
@@ -16,7 +21,7 @@
     "quantum": {
         "tdc_upd": "nacme",
         "coeff_upd": "tdc",
-        "n_substeps": 50
+        "n_substeps": 20
     },
     "electronic": {
         "program": "model",
@@ -35,8 +40,11 @@
         }
     },
     "output": {
+	"h5": false,
+	"log": false,
+	"xyz": false,
         "file": "out",
-        "record": ["act", "pop", "pes", "pen", "ken", "ten", "nacdt"],
+        "record": ["act", "pop", "pes", "pen", "ken", "ten", "nacdt", "posx"],
         "timer": ["est", "coe", "tdc", "tot", "sav", "wrt"]
     }
 }

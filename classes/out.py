@@ -46,9 +46,9 @@ class OutMeta(type):
     def write_log(self, msg = "", mode = "a"):
         if msg is None:
             return
+        print(msg)
         if not self._log:
             return
-        print(msg)
         with open(f"data/{self._file}.log", mode) as file:
             file.write(f"{msg}\n")
 

@@ -90,6 +90,9 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         self.grad       = np.zeros((self.no_s,self.no_f))
         self.nacdr      = np.zeros((self.no_s,self.no_s,self.no_f))
 
+    def _select_method(self, key):
+        pass
+
     def _get_grad_nac(self):
         temp = np.einsum("si, dij, jr -> srd", self.trans.T, self.ddr, self.trans)
         self.nacdr = -temp * (1 - np.eye(self.no_s)[:, :, None])
