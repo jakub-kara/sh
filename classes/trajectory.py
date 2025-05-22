@@ -39,8 +39,6 @@ class Trajectory:
         self.timestep.step_success()
         self.timestep.save_nupd()
 
-        self.write_outputs()
-
         if self.is_finished:
             print("EST run", Counter.counters["est"], "times")
             self.save_step()

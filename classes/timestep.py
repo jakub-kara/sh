@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.linalg import expm
-from scipy.interpolate import lagrange
+from scipy.interpolate import CubicSpline
 from .meta import Selector
 from .constants import convert
 from .molecule import Molecule
@@ -41,8 +41,8 @@ class Timestep(Selector):
         self.step = 0
         self.dts = np.zeros(steps)
         self.dts[:] = convert(dt, "au")
-        self._maxdt = config.get("maxdt", self.dt)
-        self._mindt = config.get("mindt", 0)
+        self._maxdt = convert(config.get("maxdt", self.dt), "au")
+        self._mindt = convert(config.get("mindt", 0), "au")
         self._fact = 1
         self._lim = config.get("lim", 2)
         if self._lim < 1:
@@ -142,6 +142,7 @@ class Half(Timestep):
         # print("DT:   ", self.dt)
 
 def _tdc(mol: Molecule):
+    return 0.5*np.sum(np.abs(mol.nacdt_ss))
     tot = 0
     for i in range(mol.n_states):
         for j in range(i):
@@ -202,6 +203,28 @@ class Proportional(Timestep):
         with open("ts.dat", "a") as f:
             f.write(f"{self.time + self.dt} {self.dt}\n")
 
+class Curvature(Proportional):
+    key = "curv"
+
+    def __init__(self, **config):
+        super().__init__(**config)
+        self._past = [None]*3
+
+    def validate(self, mols):
+        self.success = True
+
+        self._past[:-1] = self._past[1:]
+        self._past[-1] = self._func(mols[-1])
+        if None in self._past:
+            self._fact = 1
+            return
+
+        times = np.cumsum(self.dts[-3:])
+        times -= times[-1]
+        spl = CubicSpline(times, self._past)
+        der2 = spl(0, 2)
+        self._fact = self._maxdt * (self._eta / (np.cbrt(der2) + self._delta))**self._alpha / self.dt
+
 class Hairer(Timestep):
     # doi: 10.1137/040606995
     key = "hairer"
@@ -221,10 +244,10 @@ class Hairer(Timestep):
 
     def _ctrl(self, mols: list[Molecule]):
         # TDC
-        mol = mols[-1]
-        temp = self._func(mol)
-        res = self._alpha * (temp - self._func(mols[-2])) / self.dt * temp
-        res /= temp**2 + self._delta
+        # mol = mols[-1]
+        # temp = self._func(mol)
+        # res = self._alpha * (temp - self._func(mols[-2])) / self.dt * temp
+        # res /= temp**2 + self._delta
 
         # res = self._alpha / self.dt * np.log(self._func(mols[-1]) / self._func(mols[-2]))
 
@@ -235,7 +258,10 @@ class Hairer(Timestep):
         # mol = mols[-1]
         # res = self._alpha / self.dt * np.sum(mol.force_ad * (mol.force_ad - mols[-2].force_ad)) / (np.sum(mol.force_ad**2) + self._delta)
 
-        print("FUNC: ", np.linalg.norm(mol.force_ad))
+        temp = self._func(mols[-1])
+        res = self._alpha / self.dt * np.sum(temp * (temp - self._func(mols[-2]))) / (np.sum(temp**2) + self._delta)
+
+        print("FUNC: ", temp)
         print("CTRL: ", res)
         return res
 

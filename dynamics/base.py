@@ -83,14 +83,11 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
     def step_bundle(self, bundle: Bundle):
         bundle.set_active()
-        print()
-        if bundle.n_traj > 1:
-            print(bundle.iactive, bundle.n_traj)
 
         os.chdir(f"{bundle.iactive}")
         out.open_log()
         self.step_traj(bundle.active)
-        # bundle.active.write_outputs()
+        bundle.active.write_outputs()
         out.close_log()
         os.chdir("..")
 

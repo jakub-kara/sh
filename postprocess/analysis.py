@@ -164,6 +164,9 @@ for itraj, traj in enumerate(trajs):
     progress_bar(itraj+1, n_traj, suffix=traj)
 
     if noh5:
+        # temp = np.genfromtxt(get_file(traj + "/data/", ".xyz"), skip_header=2, invalid_raise=False, usecols=[i+1 for i in range(n_dim)])
+        # pos = temp.reshape((-1,n_atoms,n_dim))
+
         with open(get_file(traj + "/data/", ".xyz"), "r") as f:
             lines = f.readlines()
             dur = len(lines) // (n_atoms + 2)
@@ -222,6 +225,8 @@ for itraj, traj in enumerate(trajs):
             if do_energy:
                 en[step] = f[f"{key}/toten"]
 
+    if pos.ndim == 1:
+        pos = pos.reshape((-1,1))
     pos = CubicSpline(val, pos, axis=0, extrapolate=False)
 
     if do_active:
@@ -349,7 +354,7 @@ if args.show:
         ax.plot(times, data[:, :, idx].T, c="r", alpha=get_alpha(n_traj))
         if args.mean:
             ax.plot(times, mean[:, idx], c="k")
-        ax.set_title(f"{atoms[a1]}{a1}-{atoms[a2]}{a2}-{atoms[a3]}{a3}-{atoms[a4]}{a4} Dihedral Angle")
+        ax.set_title(f"{get_atom(atoms, a1)}{a1}-{get_atom(atoms, a2)}{a2}-{get_atom(atoms, a3)}{a3}-{get_atom(atoms, a4)}{a4} Dihedral Angle")
         idx += 1
 
     plt.show()

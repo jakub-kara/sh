@@ -5,7 +5,7 @@ import os
 from .ehr import SimpleEhrenfest, EhrMixin
 from classes.bundle import Bundle
 from classes.molecule import Molecule
-from classes.out import Printer
+from classes.out import Printer, Output as out
 from classes.trajectory import Trajectory
 
 class MultiEhrenfest(SimpleEhrenfest):
@@ -32,13 +32,22 @@ class MultiEhrenfest(SimpleEhrenfest):
         return accbr
 
     def step_bundle(self, bundle: Bundle):
-        super().step_bundle(bundle)
+        bundle.set_active()
+
+        print()
+        if bundle.n_traj > 1:
+            print(bundle.iactive, bundle.n_traj)
+
+        os.chdir(f"{bundle.iactive}")
+        out.open_log()
+        self.step_traj(bundle.active)
+        out.close_log()
+        os.chdir("..")
 
         if self._clone:
             shutil.copytree(f"{bundle.iactive}", f"{bundle.n_traj}", dirs_exist_ok=True)
             with open("events.log", "a") as f:
                 f.write(f"CLONE {bundle.iactive} {np.sqrt(self._trans)} {bundle.n_traj} {np.sqrt(1-self._trans)} {bundle.active.timestep.step} {bundle.active.timestep.time:.4f}\n")
-
 
             os.chdir(f"{bundle.n_traj}")
             self._clone.next_step()
@@ -47,12 +56,13 @@ class MultiEhrenfest(SimpleEhrenfest):
             bundle.add_trajectory(self._clone)
             self._clone = None
 
-    def spawn_traj(self, traj: Trajectory, state: int):
+        os.chdir(f"{bundle.iactive}")
+        bundle.active.write_outputs()
+        os.chdir("..")
+
+    def clone_traj(self, traj: Trajectory, state: int):
         clone = deepcopy(traj)
-        print(np.abs(traj.mol.coeff_s)**2)
-        traj.mols[-1], clone.mols[-1] = self.spawn_mol(traj.mol, state)
-        print(np.abs(traj.mol.coeff_s)**2)
-        print(np.abs(clone.mol.coeff_s)**2)
+        traj.mols[-1], clone.mols[-1] = self.clone_mol(traj.mol, state)
         self._clone = clone
 
     def update_traj(self, traj: Trajectory):
@@ -70,13 +80,15 @@ class MultiEhrenfest(SimpleEhrenfest):
 
         for s in range(mol.n_states):
             nac = np.sqrt(np.sum(mol.nacdt_ss[s]**2))
-            print(f"{s} {accbr[s]} {nac}")
             if accbr[s] > self._dclone and nac < self._dnac and mol.nspawn < self._maxspawn:
+                out.write_log(f"Cloning conditions satisfied for state {s}.")
+                out.write_log(f"NAC norm: {nac}")
+                out.write_log(f"Breaking: {accbr[s]}")
                 mol.nspawn += 1
-                self.spawn_traj(traj, s)
+                self.clone_traj(traj, s)
                 break
 
-    def spawn_mol(self, mol: Molecule, state: int):
+    def clone_mol(self, mol: Molecule, state: int):
         self._trans = np.sum(np.abs(mol.coeff_s[state])**2)
 
         out1 = deepcopy(mol)
