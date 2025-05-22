@@ -111,6 +111,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
         for i in range(traj.n_steps - 1):
             traj.mols[i] = traj.mol
 
+        traj.save_step()
         traj.write_outputs()
 
     @Timer(
@@ -120,7 +121,6 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
         out = out.write_log)
     def step_traj(self, traj: Trajectory):
         traj.step_header()
-        traj.save_step()
 
         self.update_traj(traj)
 
@@ -129,6 +129,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
         self.adjust_nuclear(traj)
         traj.next_step()
+        traj.save_step()
 
     @Timer(
         id = "nuc",

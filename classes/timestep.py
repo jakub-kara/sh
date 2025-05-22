@@ -223,7 +223,7 @@ class Curvature(Proportional):
         times -= times[-1]
         spl = CubicSpline(times, self._past)
         der2 = spl(0, 2)
-        self._fact = self._maxdt * (self._eta / (np.cbrt(der2) + self._delta))**self._alpha / self.dt
+        self._fact = self._maxdt * (self._eta / (np.cbrt(np.abs(der2)) + self._delta))**self._alpha / self.dt
 
 class Hairer(Timestep):
     # doi: 10.1137/040606995

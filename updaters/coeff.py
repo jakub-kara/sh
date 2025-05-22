@@ -37,8 +37,6 @@ class CoeffTDCUpdater(Multistage, CoeffUpdater):
         coeff = self.coeff.inp
         prop = self.prop.inp
 
-        print("Coeff dt: ", ts.dt)
-
         for i in range(self.substeps):
             frac = (i + 0.5) / self.substeps
             ham = frac * mols[-1].ham_eig_ss + (1 - frac) * mols[-2].ham_eig_ss

@@ -32,6 +32,7 @@ class MultiEhrenfest(SimpleEhrenfest):
         return accbr
 
     def step_bundle(self, bundle: Bundle):
+        breakpoint()
         bundle.set_active()
 
         print()
