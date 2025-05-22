@@ -85,8 +85,14 @@ class Timestep(Selector):
         self.time += self.dt
         self.step += 1
 
-    def adjust(self, *args, **kwargs):
-        pass
+    def adjust(self, **config):
+        end = config.get("tmax", None)
+        if end is not None:
+            self._end = convert(end, "au")
+
+        dt = config.get("dt", None)
+        if end is not None:
+            self.dt = convert(dt, "au")
 
     def save_nupd(self, *args, **kwargs):
         pass
