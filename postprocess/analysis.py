@@ -231,6 +231,7 @@ for itraj, traj in enumerate(trajs):
 
     if do_active:
         act = interp1d(val, np.array(act), kind="previous", bounds_error=False, fill_value=(act[0], act[-1]))
+        # act = interp1d(val, np.array(act), kind="previous", bounds_error=False)
 
     if do_pops:
         pop = interp1d(val, np.array(pop), axis=0, bounds_error=False)

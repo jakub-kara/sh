@@ -5,11 +5,18 @@ from classes.constants import convert, atomic_masses
 from classes.out import Printer
 
 class Molecule:
-    def __init__(self, *, n_states: int = 1, input = "geom.xyz", com = False, vxyz = True, **config):
-        if vxyz:
-            self.from_vxyz(input)
+    def __init__(self, *, n_states: int = 1, n_atoms = None, n_dim = None, input = "geom.xyz", com = False, vxyz = True, **config):
+        if input is None:
+            self.pos_ad = np.zeros((n_atoms, n_dim))
+            self.vel_ad = np.zeros((n_atoms, n_dim))
+            self.acc_ad = np.zeros((n_atoms, n_dim))
+            self.name_a = np.zeros(n_atoms, dtype="S2")
+            self.mass_a = np.zeros(n_atoms)
         else:
-            self.from_xyz(input)
+            if vxyz:
+                self.from_vxyz(input)
+            else:
+                self.from_xyz(input)
 
         if com:
             self.set_com()

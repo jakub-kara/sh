@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import sys, os
-from classes.constants import units
+from classes.constants import units, convert
 
 def make_dirs(nsamp, root = "."):
     os.chdir(root)
@@ -15,18 +15,19 @@ def get_dirs(loc=".", cond=lambda x : True):
 
 def sample_nuclear(nsamp):
     m = 1 / units["amu"]
-    q0 = np.array([-4,-1])
+    q0 = np.array([-15])
     # v0 = np.array([0.005])
-    # p0 = m * v0
-    # E0 = 0.04
+    # p0 = m * v
+    # E0 = 0.08
     # p0 = np.array([np.sqrt(2*m*E0)])
-    p0 = np.array([10,0])
-    sigq = 0.5
+    p0 = np.array([35])
+    # p0 = np.array([10,0])
+    sigq = np.sqrt(2*0.5)
 
-    # q = np.random.normal(q0, sigq, (nsamp, q0.shape[0]))
-    # p = np.random.normal(p0, 1/sigq, (nsamp, q0.shape[0]))
-    q = np.random.normal(q0, 0.5, (nsamp, q0.shape[0]))
-    p = np.random.normal(p0, 1, (nsamp, q0.shape[0]))
+    q = np.random.normal(q0, sigq, (nsamp, q0.shape[0]))
+    p = np.random.normal(p0, 1/sigq, (nsamp, q0.shape[0]))
+    # q = np.random.normal(q0, 0.5, (nsamp, q0.shape[0]))
+    # p = np.random.normal(p0, 1, (nsamp, q0.shape[0]))
 
     v = p / m
 
@@ -35,8 +36,8 @@ def sample_nuclear(nsamp):
         with open("geom.xyz", "w") as f:
             f.write("1\n\n")
             # f.write(f"H {q[i,0]} 0 0 {v[i,0]} 0 0")
-            f.write(f"H {q[i,0]} {q[i,1]} {v[i,0]} {v[i,1]}")
-            # f.write(f"H {q[i,0]} {v[i,0]}")
+            # f.write(f"H {q[i,0]} {q[i,1]} {v[i,0]} {v[i,1]}")
+            f.write(f"H {q[i,0]} {v[i,0]}")
         os.chdir("..")
 
 def sample_quantum(nsamp, nst):

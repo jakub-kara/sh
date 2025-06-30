@@ -35,9 +35,9 @@ class StateTracker:
             exit()
 
 class Timestep(Selector):
-    def __init__(self, *, dt, steps, tmax, **config):
-        self._end = convert(tmax, "au")
-        self.time = 0
+    def __init__(self, *, dt, steps, tfin, **config):
+        self._end = convert(tfin, "au")
+        self.time = convert(config.get("tini", 0))
         self.step = 0
         self.dts = np.zeros(steps)
         self.dts[:] = convert(dt, "au")
@@ -51,9 +51,13 @@ class Timestep(Selector):
 
         self._nupd: dict = None
 
+        with open("0/ts.dat", "w") as f:
+            pass
+
     @property
     def finished(self):
-        return self.time >= self._end
+        # accounts for negative timestep
+        return self.time*self.dt >= self._end*self.dt
 
     @property
     def dt(self):
@@ -106,15 +110,26 @@ class Half(Timestep):
     def __init__(self, **config):
         super().__init__(**config)
         self._maxit = config.get("max_depth", 10)
-        self._enthresh = convert(config.get("enthresh", 1000), "au")
+        self._enthresh = convert(config.get("enthresh", "0.1 ev"), "au")
+        self._ovlthresh = config.get("ovlthresh", 0.95)
         self._it = 0
         self._cumdt = 0
 
         self._diff = 0
+        self._ovl = None
 
     def validate(self, mols: list[Molecule]):
         self._diff = np.abs(mols[-1].total_energy() - mols[-2].total_energy())
-        self.success = self._diff < self._enthresh
+        encond = self._diff <= self._enthresh
+
+        ovlcond = True
+        ovl = mols[-1].ovlp_ss
+        if not np.any(np.isnan(ovl)):
+            temp = np.diag(ovl)
+            ovlcond = np.all(temp >= self._ovlthresh)
+            self._ovl = np.min(temp)
+
+        self.success = encond and ovlcond
 
     def _iter_to_dt(self):
         self.dt = self._maxdt / 2**self._it
@@ -140,15 +155,17 @@ class Half(Timestep):
             raise RuntimeError(msg)
         self._it += 1
 
-        out.write_log(f"Step rejected with energy difference {convert(self._diff, 'ev'):.6f} eV")
-
+        msg = f"Step rejected with energy difference {convert(self._diff, 'ev'):.6f} eV"
+        if self._ovl is not None:
+            msg += f"and overlap {self._ovl}"
+        out.write_log(msg)
 
         self._iter_to_dt()
         # print("ITER: ", self._it)
         # print("DT:   ", self.dt)
 
 def _tdc(mol: Molecule):
-    return 0.5*np.sum(np.abs(mol.nacdt_ss))
+    # return 0.5*np.sum(np.abs(mol.nacdt_ss))
     tot = 0
     for i in range(mol.n_states):
         for j in range(i):
@@ -156,7 +173,7 @@ def _tdc(mol: Molecule):
     return tot
 
 def _acc(mol: Molecule):
-    return np.sqrt(np.max(np.linalg.norm(mol.acc_ad, axis=1)))
+    return np.max(np.linalg.norm(mol.acc_ad, axis=1))
 
 def _vel(mol: Molecule):
     return np.max(np.linalg.norm(mol.vel_ad, axis=1))
@@ -170,6 +187,12 @@ def _eff(mol: Molecule):
 def _grad(mol: Molecule):
     return np.linalg.norm(mol.force_ad)
 
+def _kin(mol: Molecule):
+    tot = 0
+    for at in range(mol.n_atoms):
+        tot += np.abs(np.sum(mol.force_ad[at] * mol.vel_ad[at]))
+    return tot
+
 def _select_func(val):
     return {
         "pos": _pos,
@@ -178,6 +201,7 @@ def _select_func(val):
         "tdc": _tdc,
         "eff": _eff,
         "grad": _grad,
+        "kin": _kin,
     }[val]
 
 
@@ -187,14 +211,10 @@ class Proportional(Timestep):
     def __init__(self, **config):
         super().__init__(**config)
         self._alpha = config.get("alpha", 1)
-        self._delta = config.get("eps", 1e-8)
-        self._eta = config.get("eta", 1e-2)
+        self._delta = config.get("delta", 1e-8)
+        self._eta = convert(config.get("eta", 1e-2), "au")
 
-        self._val = config.get("val", "tdc")
-        self._func = _select_func(self._val)
-
-        with open("ts.dat", "w") as f:
-            pass
+        self._func = _select_func(config.get("val", "tdc"))
 
     def validate(self, mols: list[Molecule]):
         self.success = True
@@ -214,22 +234,24 @@ class Curvature(Proportional):
 
     def __init__(self, **config):
         super().__init__(**config)
-        self._past = [None]*3
+        self._vals = np.full((3,2), np.nan)
 
     def validate(self, mols):
         self.success = True
 
-        self._past[:-1] = self._past[1:]
-        self._past[-1] = self._func(mols[-1])
-        if None in self._past:
+        self._vals[:-1] = self._vals[1:]
+        self._vals[-1,0] = self.dt
+
+        self._vals[-1,1] = self._func(mols[-1])
+        if np.any(np.isnan(self._vals)):
             self._fact = 1
             return
 
-        times = np.cumsum(self.dts[-3:])
+        times = np.cumsum(self._vals[:,0])
         times -= times[-1]
-        spl = CubicSpline(times, self._past)
+        spl = CubicSpline(times, self._vals[:,1])
         der2 = spl(0, 2)
-        self._fact = self._maxdt * (self._eta / (np.cbrt(np.abs(der2)) + self._delta))**self._alpha / self.dt
+        self._fact = self._maxdt * (self._eta / (np.abs(der2) + self._delta))**(self._alpha/3) / self.dt
 
 class Hairer(Timestep):
     # doi: 10.1137/040606995
@@ -242,11 +264,9 @@ class Hairer(Timestep):
         self._eps = config.get("eps", self.dt)
         self._rho = 1
 
-        self._val = config.get("val", "tdc")
-        self._func = _select_func(self._val)
+        self._func = _select_func(config.get("val", "tdc"))
+        self._vals = np.full((3,2), np.nan)
 
-        with open("ts.dat", "w") as f:
-            pass
 
     def _ctrl(self, mols: list[Molecule]):
         # TDC
@@ -264,8 +284,20 @@ class Hairer(Timestep):
         # mol = mols[-1]
         # res = self._alpha / self.dt * np.sum(mol.force_ad * (mol.force_ad - mols[-2].force_ad)) / (np.sum(mol.force_ad**2) + self._delta)
 
+        self._vals[:-1] = self._vals[1:]
+        self._vals[-1,0] = self.dt
+
+        self._vals[-1,1] = self._func(mols[-1])
+        if np.any(np.isnan(self._vals)):
+            return 0
+
+        times = np.cumsum(self._vals[:,0])
+        times -= times[-1]
+        spl = CubicSpline(times, self._vals[:,1])
+
         temp = self._func(mols[-1])
-        res = self._alpha / self.dt * np.sum(temp * (temp - self._func(mols[-2]))) / (np.sum(temp**2) + self._delta)
+        res = self._alpha * np.sum(temp * spl(0, 1)) / (np.sum(temp**2) + self._delta)
+        # res = self._alpha / self.dt * np.sum(temp * (temp - self._func(mols[-2]))) / (np.sum(temp**2) + self._delta)
 
         print("FUNC: ", temp)
         print("CTRL: ", res)

@@ -82,7 +82,7 @@ class NGT(HamTransform):
 class ESTProgram(Selector, DecoratorDistributor, metaclass = Singleton):
     _methods = {}
 
-    def __init__(self, *, states: list, program: str, method, path: str = "", options: dict = None, refen = 0, **config):
+    def __init__(self, *, states: list, program: str, method: str, path: str = "", options: dict = None, refen = 0, **config):
         self._register_methods()
 
         self._path = path

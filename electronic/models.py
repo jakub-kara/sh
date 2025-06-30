@@ -285,19 +285,19 @@ class Model(ESTProgram):
     @est_method
     def hh(self):
         a = 0.005
-        b = -1
+        b = -1.5
         d = 0.5
-        k = 0.3
+        k = 0.75
         x = self._geo[0,0]
         y = self._geo[0,1]
 
         f = lambda x, y: a * (1/2 * (x**2 + y**2) + k * (x*y**2 - 1/3*x**3) + 1/16 * k**2 * (x**2 + y**2)**2)
         self._hamdia[0,0] = f(x - b, y)
         self._hamdia[1,1] = f(-x - b, y)
-        # self._hamdia[0,1] = a*d*y
-        # self._hamdia[1,0] = a*d*y
-        self._hamdia[0,1] = a*d
-        self._hamdia[1,0] = a*d
+        self._hamdia[0,1] = a*d*y
+        self._hamdia[1,0] = a*d*y
+        # self._hamdia[0,1] = a*d
+        # self._hamdia[1,0] = a*d
 
         dfdx = lambda x, y: a * (x + k * (y**2 - x**2) + 1/4 * k**2 * (x**3 + x*y**2))
         dfdy = lambda x, y: a * (y + 2*k*x*y + 1/4 * k**2 * (x**2*y + y**3))
@@ -305,8 +305,8 @@ class Model(ESTProgram):
         self._gradham[0,0,0,1] = dfdy(x - b, y)
         self._gradham[1,1,0,0] = -dfdx(-x - b, y)
         self._gradham[1,1,0,1] = dfdy(-x - b, y)
-        # self._gradham[0,1,0,1] = a*d
-        # self._gradham[1,0,0,1] = a*d
+        self._gradham[0,1,0,1] = a*d
+        self._gradham[1,0,0,1] = a*d
 
     @est_method
     def ho2_2(self):

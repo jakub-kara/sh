@@ -64,7 +64,6 @@ class Trajectory:
         self.timestep: Timestep = Timestep.select(dynamics.get("timestep", "const"))(
             steps = len(self.mols), **dynamics)
 
-
     def step_header(self):
         out.write_border()
         out.write_log(f"Step:           {self.timestep.step}")

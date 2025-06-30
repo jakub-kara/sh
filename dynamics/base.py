@@ -51,6 +51,9 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     def remake_molecule(self):
         Factory.update_methods(Molecule, **self._mol_methods())
 
+    def validate(self, obj):
+        self._success &= obj.success
+
     # === Bundle methods ===
 
     def prepare_bundle(self, bundle: Bundle):
@@ -87,8 +90,17 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
         os.chdir(f"{bundle.iactive}")
         out.open_log()
         self.step_traj(bundle.active)
-        bundle.active.write_outputs()
         out.close_log()
+        os.chdir("..")
+
+        if self._success:
+            self.step_success(bundle)
+
+    def step_success(self, bundle: Bundle):
+        os.chdir(f"{bundle.iactive}")
+        bundle.active.next_step()
+        bundle.active.save_step()
+        bundle.active.write_outputs()
         os.chdir("..")
 
     # === Trajectory methods ===
@@ -124,12 +136,10 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
         self.update_traj(traj)
 
-        if not traj.timestep.success or not CompositeIntegrator().success:
+        if not self._success:
             return
 
         self.adjust_nuclear(traj)
-        traj.next_step()
-        traj.save_step()
 
     @Timer(
         id = "nuc",
@@ -137,16 +147,19 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
         out = out.write_log)
     def update_traj(self, traj: Trajectory):
         nupd = CompositeIntegrator()
+        self._success = True
         ts = traj.timestep
 
         nupd.run(traj.mols, ts)
-        if not nupd.success:
+        self.validate(nupd)
+        if not self._success:
             ESTProgram().recover_wf()
             return
-        temp = nupd.active.out.out
 
+        temp = nupd.active.out.out
         ts.validate(traj.mols + [temp])
-        if not ts.success:
+        self.validate(ts)
+        if not self._success:
             ts.step_fail()
             ESTProgram().recover_wf()
             return
