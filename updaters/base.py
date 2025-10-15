@@ -12,9 +12,12 @@ class Updater:
     def __init__(self, **kwargs):
         pass
 
+    def is_ready(self, step: int):
+        return step >= self.steps - 1
+
     def run(self, mols: list[Molecule], ts: Timestep, *args, **kwargs):
         self.new_result(mols[-1], *args, **kwargs)
-        if ts.step >= self.steps:
+        if self.is_ready(ts.step):
             self.update(mols, ts, *args, **kwargs)
         else:
             self.no_update(mols, ts, *args, **kwargs)
@@ -74,13 +77,14 @@ class UpdateResult:
 
     # janky, maybe rework
     def interpolate(self, frac: float):
-        temp = frac * self.substeps
-        idx = int(temp)
-        if idx >= self.substeps - 1:
-            return self.out
-        upper = (temp - idx) * self.inter[idx + 1]
-        if idx == 0:
-            lower = (1 - temp + idx) * self.inp
-        else:
-            lower = (1 - temp + idx) * self.inter[idx]
-        return lower + upper
+        # temp = frac * self.substeps
+        # idx = int(temp)
+        # if idx >= self.substeps - 1:
+        #     return self.out
+        # upper = (temp - idx) * self.inter[idx + 1]
+        # if idx == 0:
+        #     lower = (1 - temp + idx) * self.inp
+        # else:
+        #     lower = (1 - temp + idx) * self.inter[idx]
+        # return lower + upper
+        return (1 - frac) * self.inp + frac * self.out

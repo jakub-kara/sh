@@ -1,5 +1,5 @@
 import numpy as np
-import sys, pickle
+import os, pickle
 from copy import deepcopy
 from .meta import Counter
 from .molecule import Molecule
@@ -36,7 +36,7 @@ class Trajectory:
     def next_step(self):
         self.timestep.next_step()
         self.track.count(self.mol, self.timestep.dt)
-        self.timestep.step_success()
+        self.timestep.step_success(self.mols)
         self.timestep.save_nupd()
 
         if self.is_finished:
@@ -58,7 +58,7 @@ class Trajectory:
     def set_molecules(self, **nuclear):
         nupd = CompositeIntegrator()
         for _ in range(max(nupd.steps, CoeffUpdater().steps, nuclear.get("keep", 0))):
-            self.add_molecule(self.mol.copy_all())
+            self.add_molecule(self.mol.copy())
 
     def set_timestep(self, **dynamics):
         self.timestep: Timestep = Timestep.select(dynamics.get("timestep", "const"))(
@@ -74,8 +74,10 @@ class Trajectory:
     @Timer(id = "save",
            head = "Saving")
     def save_step(self):
+        os.chdir("est")
         est = ESTProgram()
-        est.backup_wf()
+        est.backup_wf("../backup/")
+        os.chdir("..")
 
         if self._backup:
             with open("backup/traj.pkl", "wb") as pkl:

@@ -33,11 +33,11 @@ class Bagel(ESTProgram):
         self._method(self)
 
 
-    def backup_wf(self):
-        os.system(f"cp est/{self._file}.wf.archive backup/")
+    def backup_wf(self, target):
+        os.system(f"cp {self._file}.wf.archive {target}")
 
-    def recover_wf(self):
-        os.system(f"cp backup/{self._file}.wf.archive est/")
+    def recover_wf(self, source):
+        os.system(f"cp {source}/{self._file}.wf.archive .")
 
     @est_method
     def cas(self):
@@ -255,7 +255,7 @@ class Bagel(ESTProgram):
 
 
         caspt2 = {'method' : 'caspt2'}
-        caspt2['sssr'] : True
+        caspt2['sssr'] = True
         caspt2['ms'] = True
         caspt2['xms'] = True
         if self._options['ms_type'] == 'M':

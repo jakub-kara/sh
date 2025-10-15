@@ -12,7 +12,7 @@ class VelocityVerlet(NuclearUpdater):
         # update position
         dyn = Dynamics()
         mol = mols[-1]
-        out: Molecule = self.out.inp.copy_all()
+        out: Molecule = self.out.inp.copy()
         out.pos_ad = mol.pos_ad + ts.dt * mol.vel_ad + 0.5 * ts.dt**2 * mol.acc_ad
 
         dyn.run_est(out, ref = mol, mode = dyn.step_mode(out))

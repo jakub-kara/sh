@@ -10,9 +10,9 @@ from updaters.composite import CompositeIntegrator
 
 class FSSH(SurfaceHopping):
     key = "fssh"
+    _molmixins = ["sh"]
 
     def __init__(self, *, dynamics, **config):
-        config["nuclear"]["mixins"] = "sh"
         super().__init__(dynamics=dynamics, **config)
         HoppingUpdater.select(dynamics.get("prob", "tdc"))(**dynamics, **config["quantum"])
 

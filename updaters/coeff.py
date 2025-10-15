@@ -5,7 +5,7 @@ from .tdc import TDCUpdater
 from classes.meta import Singleton, Singleton, Selector
 from classes.molecule import Molecule
 from classes.timestep import Timestep
-from electronic.base import ESTMode
+from electronic.base import ESTMode, ESTProgram
 
 class CoeffUpdater(Updater, Selector, metaclass = Singleton):
     mode = ESTMode("")
@@ -13,6 +13,13 @@ class CoeffUpdater(Updater, Selector, metaclass = Singleton):
         super().__init__(**kwargs)
         self.coeff = None
         self.prop = None
+
+    # def run(self, mols, ts, *args, **kwargs):
+    #     tdcupd = TDCUpdater()
+    #     if tdcupd.is_ready(ts.step + 1):
+    #         super().run(mols, ts, *args, **kwargs)
+    #     else:
+    #         self.no_update(mols, ts)
 
     def new_result(self, mol):
         self.coeff = UpdateResult(mol.coeff_s, self.substeps)
@@ -62,7 +69,7 @@ class CoeffLDUpdater(Multistage, CoeffUpdater):
             self.prop.inter[i] = prop
             self.coeff.inter[i] = prop @ coeff
 
-class BlochUpdater(Multistage, Updater, metaclass = Singleton):
+class BlochUpdater(Multistage, CoeffUpdater, metaclass = Singleton):
     steps = 1
 
     def __init__(self, **kwargs):

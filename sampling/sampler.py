@@ -1,13 +1,10 @@
 #!python
 import argparse
 import scipy.special as sps
-import scipy.integrate as spi
-import scipy.signal as spss
-import sys
-
-import matplotlib.pyplot as plt
+from scipy.stats import truncnorm
 import numpy as np
 import scipy.optimize as spo
+from classes.constants import atomic_masses
 
 evtocm = 8065.54429  # (cm eV)^-1
 ehtoev = 27.21138624598
@@ -114,7 +111,7 @@ def get_geom(filename):
                     coord.append([float(q) for q in l.split()[1:]])
                 break
 
-    return atoms, np.array(coord), np.array([mass[i] * amu for i in atoms])
+    return atoms, np.array(coord), np.array([atomic_masses[i] * amu for i in atoms])
 
 def get_modes(filename, no_atoms):
     # read in wavenumbers of vibrations from molden file
@@ -139,8 +136,7 @@ def get_modes(filename, no_atoms):
                 for i in range(no_modes):
                     f.readline()
                     for j in range(no_atoms):
-                        modes[i,
-                              j, :] = [float(q) for q in f.readline().split()]
+                        modes[i,j,:] = [float(q) for q in f.readline().split()]
                 break
     #  print(np.array(freqs)/(ehtoev*evtocm))
 
@@ -227,7 +223,7 @@ def sample(sampling_type, n_samples, coord, temperature, ns, cart_modes, mode_fr
             else:
                 sigma =  1/np.sqrt(2)
 
-            displacements[i,:,:] = np.random.default_rng().normal(scale=sigma, size=(n_samples,2))
+            displacements[i,:,:] = truncnorm.rvs(a=-3, b=3, scale=sigma, size=(n_samples,2))
 
             if analyse:
                 x = np.linspace(-10,10,5000)

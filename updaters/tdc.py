@@ -22,9 +22,6 @@ class TDCUpdater(Updater, Selector, metaclass = Singleton):
     def _validate_overlap(self, ovl):
         eps = 1e-12
         ovl[ovl > 1 - eps] = 1 - eps
-        # ovl[ovl > 1] = 1
-        # ovl /= np.linalg.norm(ovl, axis=0)
-        print(ovl)
 
 class BlankTDCUpdater(TDCUpdater):
     key = "none"
@@ -35,7 +32,7 @@ class BlankTDCUpdater(TDCUpdater):
 class kTDCe(TDCUpdater):
     # curvature-based TDC approximation, energy version
     key = "ktdce"
-    steps = 3
+    steps = 4
 
     def _dh(self, mol: Molecule, i: int, j: int):
         return mol.ham_eig_ss[i,i] - mol.ham_eig_ss[j,j]
@@ -56,7 +53,7 @@ class kTDCg(TDCUpdater):
     # curvature-based TDC approximation, gradient version
     key = "ktdcg"
     mode = ESTMode("g")
-    steps = 1
+    steps = 2
 
     def _dh(self, mol: Molecule, i: int, j: int):
         return mol.ham_eig_ss[i,i] - mol.ham_eig_ss[j,j]
@@ -80,7 +77,7 @@ class HST(TDCUpdater):
     # Classic Hammes-Schiffer-Tully mid point approximation (paper in 1994)
     key = "hst"
     mode = ESTMode("o")
-    steps = 1
+    steps = 2
 
     def update(self, mols: list[Molecule], ts: Timestep):
         self._validate_overlap(mols[-1].ovlp_ss)
@@ -89,7 +86,7 @@ class HST(TDCUpdater):
 class HSTSharc(TDCUpdater):
     key = "hst3"
     mode = ESTMode("o")
-    steps = 2
+    steps = 3
 
     def update(self, mols: list[Molecule], ts: Timestep):
         self._validate_overlap(mols[-1].ovlp_ss)
@@ -99,7 +96,7 @@ class NACME(TDCUpdater):
     # ddt = nacme . velocity (i.e. original Tully 1990 paper model)
     key = "nacme"
     mode = ESTMode("n")
-    steps = 0
+    steps = 1
 
     def update(self, mols: list[Molecule], ts: Timestep):
         temp = np.nan_to_num(mols[-1].nacdr_ssad)
@@ -122,7 +119,6 @@ class NPI(Multistage, TDCUpdater):
 
             Utot = np.matmul(U.T, dU)
             self.tdc.inter[i] = Utot * (1 - np.eye(nst))
-        print(self.tdc.out)
 
 class NPISharc(Multistage, TDCUpdater):
     # NPI sharc mid-point averaged
@@ -147,7 +143,7 @@ class NPIMeek(TDCUpdater):
     # NPI Meek and Levine mid-point averaged
     key = "npimeek"
     mode = ESTMode("o")
-    steps = 1
+    steps = 2
 
     def update(self, mols: list[Molecule], ts: Timestep, **kwargs):
         def sinc(x):

@@ -16,6 +16,9 @@ class Model(ESTProgram):
         self._gradham = None
         self._trans = None
 
+        # TODO: move this elsewhere
+        os.system("rm 0/backup/states.npy")
+
     def write(self, mol: Molecule):
         self._geo = mol.pos_ad
         if self._hamdia is None:
@@ -32,8 +35,8 @@ class Model(ESTProgram):
         self._diagonalise()
         self._get_grad_nac()
 
-    def backup_wf(self):
-        np.save("backup/states.npy", self._trans)
+    def backup_wf(self, target):
+        np.save(f"{target}/states.npy", self._trans)
 
     def _diagonalise(self):
         eval, evec = np.linalg.eigh(self._hamdia)
@@ -46,7 +49,8 @@ class Model(ESTProgram):
         self._nacdr = temp * (1 - np.eye(self._nstates)[:, :, None, None])
         for s1 in range(self._nstates):
             for s2 in range(self._nstates):
-                if s1 == s2: continue
+                if s1 == s2:
+                    continue
                 self._nacdr[s1,s2] /= self._hameig[s2,s2] - self._hameig[s1,s1]
 
     def read_ham(self):
@@ -59,7 +63,10 @@ class Model(ESTProgram):
         return self._nacdr.copy()
 
     def read_ovlp(self, *args, **kwargs):
-        old = np.load("../backup/states.npy")
+        if os.path.exists("../backup/states.npy"):
+            old = np.load("../backup/states.npy")
+        else:
+            old = self._trans
         new = self._trans
 
         ovl = np.zeros((self.n_states, self.n_states))
@@ -185,6 +192,7 @@ class Model(ESTProgram):
 
     @est_method
     def sub_s(self):
+        # a = 0.06
         a = 0.015
         b = 1.0
         c = 0.005
@@ -195,8 +203,8 @@ class Model(ESTProgram):
         self._gradham[0,0,0,0] = a*b*(1 - np.tanh(b*(x - 7))**2 - (1 - np.tanh(b*(x + 7))**2))
         self._hamdia[1,1] = -self._hamdia[0,0]
         self._gradham[1,1,0,0] = -self._gradham[0,0,0,0]
-        self._hamdia[2,2] = 3*a*np.tanh(b/2*x)
-        self._gradham[2,2,0,0] = 3/2*a*b*(1 - np.tanh(b/2*x)**2)
+        self._hamdia[2,2] = 2*a*np.tanh(b/2*x)
+        self._gradham[2,2,0,0] = a*b*(1 - np.tanh(b/2*x)**2)
 
         self._hamdia[0,1] = c*(np.exp(-d*(x - 7)**2) + np.exp(-d*(x + 7)**2))
         self._gradham[0,1,0,0] = -2*c*d*((x - 7)*np.exp(-d*(x - 7)**2) + (x + 7)*np.exp(-d*(x + 7)**2))
@@ -381,3 +389,6 @@ class Model(ESTProgram):
         self._hamdia[1,0] = self._hamdia[0,1]
         self._gradham[0,1,0,0] = -2 * c * d * ((x-3) * np.exp(-d * x**2) + (x+3) * np.exp(-d * (x+3)**2))
         self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
+
+    def read_dipmom(self):
+        return np.full((self._nstates, self._nstates, self._geo.shape[1]), 1e10)

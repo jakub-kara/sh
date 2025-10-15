@@ -30,6 +30,7 @@ def main():
         try:
             en = np.load(f'{i}/energy.npy')
             dm = np.load(f'{i}/dipole.npy')
+            print(convert(en[1,1] - en[0,0], "au", "ev"))
         except FileNotFoundError:
             print(f'File not found, continuing without IC {i}')
 

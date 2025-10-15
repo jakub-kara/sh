@@ -57,13 +57,13 @@ class RK4_ham(HAM_base):
         k[0] = 1*grad
 
         for i in range(1,self.substeps):
-            out.inter[i] = mol.copy_all()
+            out.inter[i] = mol.copy()
             self.y_to_mol(out.inter[i], y + ts.dt*k[i-1]*self.c[i])
             dyn.run_est(out.inter[i], mol, dyn.step_mode(out.inter[i]))
             grad = self.grad(out.inter[i], dyn)
             k[i] = 1*grad
 
-        temp = mol.copy_all()
+        temp = mol.copy()
         self.y_to_mol(temp, y + np.sum(self.b[:,None] * k, axis=0))
 
         # calculate new acceleration

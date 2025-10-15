@@ -7,10 +7,10 @@ from updaters.coeff import CoeffUpdater
 
 class CSDM(SimpleEhrenfest):
     key = "csdm"
+    _molmixins = ["csdm"]
 
     def __init__(self, *, dynamics, **config):
         super().__init__(dynamics=dynamics, **config)
-        config["nuclear"]["mixins"] = "csdm"
         config["nuclear"]["keep"] = 3
         HoppingUpdater[dynamics.get("prob", "tdc")](**dynamics, **config["quantum"])
 

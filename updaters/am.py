@@ -10,7 +10,7 @@ class AMBase(Updater):
     c = None
 
     def update(self, mols: list[Molecule], ts: Timestep):
-        temp = mols[-1].copy_all()
+        temp = mols[-1].copy()
         temp.vel_ad = mols[-1].pos_ad + ts.dt*np.einsum("j,j...->...", self.b, np.array([mol.vel_ad for mol in mols]))
         return temp
 

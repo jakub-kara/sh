@@ -13,11 +13,11 @@ class Molcas(ESTProgram):
         self.clean_dir()
 
 
-    def backup_wf(self):
-        os.system(f"cp est/{self._file}.wf backup/")
+    def backup_wf(self, target):
+        os.system(f"cp {self._file}.wf {target}")
 
-    def recover_wf(self):
-        os.system(f"cp backup/{self._file}.wf est/")
+    def recover_wf(self, source):
+        os.system(f"cp {source}/{self._file}.wf .")
 
     @est_method
     def cas(self):
@@ -288,5 +288,3 @@ class Molcas(ESTProgram):
         for file in os.listdir(os.getcwd()):
             if file not in to_keep:
                 os.remove(file)
-
-

@@ -12,7 +12,6 @@ class MISH(SurfaceHopping):
     mode = ESTMode("a")
 
     def __init__(self, **config):
-        config["nuclear"]["mixins"] = "sh"
         super().__init__(**config)
 
         if self._rescale != "mish":

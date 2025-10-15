@@ -17,6 +17,7 @@ from electronic.base import ESTProgram, ESTMode, HamTransform
 
 class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     mode = ESTMode()
+    _molmixins = []
 
     def __init__(self, **config):
         self._config = config
@@ -58,12 +59,14 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
     def prepare_bundle(self, bundle: Bundle):
         config = bundle.config
-        config["nuclear"].setdefault("mixins", [])
         self.set_components(**config)
 
         # TODO: rework
         traj = Trajectory(**config)
-        mol = self.create_molecule(coeff = config["quantum"].get("input", None), **config["nuclear"], **config["dynamics"])
+        mol = self.create_molecule(
+            mixins = self._molmixins,
+            coeff = config["quantum"].get("input", None),
+            **config["nuclear"], **config["dynamics"])
         traj.add_molecule(mol)
         traj.set_molecules(**config["nuclear"])
         traj.set_timestep(**config["dynamics"])
@@ -114,15 +117,23 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
         mol = traj.mols[-1]
         traj.write_headers()
 
-        self.run_est(mol, mol, mode = self.step_mode(mol))
+        self.run_est(mol, mol, mode = self.mode(mol))
         traj.ref_en = self.total_energy(mol)
         self.calculate_acceleration(mol)
 
+        ts_back = Timestep.select("const")(dt = -traj.timestep.dt)
+        nupd = CompositeIntegrator()
+        nupd.run([mol], ts_back)
+        for i in range(len(traj.mols) - 1):
+            traj.mols[i] = nupd.active.out.out
+
+        self.run_est(mol, traj.mols[-2], mode = self.step_mode(mol))
         self.update_tdc(traj.mols, traj.timestep)
 
         for i in range(traj.n_steps - 1):
             traj.mols[i] = traj.mol
 
+        traj.timestep.step_success(traj.mols)
         traj.save_step()
         traj.write_outputs()
 
@@ -153,15 +164,19 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
         nupd.run(traj.mols, ts)
         self.validate(nupd)
         if not self._success:
-            ESTProgram().recover_wf()
+            os.chdir("est")
+            ESTProgram().recover_wf("../backup")
+            os.chdir("..")
             return
 
         temp = nupd.active.out.out
         ts.validate(traj.mols + [temp])
         self.validate(ts)
         if not self._success:
-            ts.step_fail()
-            ESTProgram().recover_wf()
+            ts.step_fail(traj.mols)
+            os.chdir("est")
+            ESTProgram().recover_wf("../backup")
+            os.chdir("..")
             return
 
         traj.add_molecule(temp)
@@ -193,6 +208,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
         tdcupd = TDCUpdater()
         tdcupd.run(mols, ts)
         mols[-1].nacdt_ss = tdcupd.tdc.out
+        # mols[-1].adjust_tdc(mols[-2])
 
     def update_coeff(self, mols: list[Molecule], ts: Timestep):
         cupd = CoeffUpdater()
@@ -235,7 +251,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
     def create_molecule(self, mixins, coeff = None, **config):
         fac = Factory(Molecule, MoleculeMixin)
-        fac.add_mixins(mixins)
+        fac.add_mixins(*mixins)
         fac.add_methods(**self._mol_methods())
 
         mol = fac.create()(n_states=ESTProgram().n_states, **config)

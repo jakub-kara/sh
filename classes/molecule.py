@@ -5,7 +5,7 @@ from classes.constants import convert, atomic_masses
 from classes.out import Printer
 
 class Molecule:
-    def __init__(self, *, n_states: int = 1, n_atoms = None, n_dim = None, input = "geom.xyz", com = False, vxyz = True, **config):
+    def __init__(self, *, n_states: int = 1, n_atoms = None, n_dim = None, input = None, com = False, vxyz = True, **config):
         if input is None:
             self.pos_ad = np.zeros((n_atoms, n_dim))
             self.vel_ad = np.zeros((n_atoms, n_dim))
@@ -27,7 +27,7 @@ class Molecule:
         self.grad_sad = np.zeros((n_states, self.n_atoms, self.n_dim))
         self.nacdr_ssad = np.zeros((n_states, n_states, self.n_atoms, self.n_dim))
         self.nacdt_ss = np.zeros((n_states, n_states))
-        self.ovlp_ss = np.zeros((n_states, n_states))
+        self.ovlp_ss = np.eye(n_states)
         self.dipmom_ssd = np.zeros((n_states, n_states, self.n_dim))
         self.nacflp_ss = np.zeros((n_states, n_states))
         self.phase_s = np.ones(n_states)
@@ -48,6 +48,10 @@ class Molecule:
     @property
     def n_states(self):
         return self.ham_eig_ss.shape[0]
+
+    @property
+    def denmat_ss(self):
+        return np.outer(self.coeff_s, np.conj(self.coeff_s))
 
     @property
     def mom_ad(self):
@@ -77,7 +81,7 @@ class Molecule:
         pass
 
     # might copy less
-    def copy_all(self):
+    def copy(self):
         return deepcopy(self)
 
     def eff_nac(self):
@@ -211,6 +215,8 @@ class Molecule:
         self.vel_ad -= com_vel
 
         # com rotation
+        if self.n_dim != 3 or self.n_atoms < 3:
+            return
         tot = np.zeros(3)
         for a in range(self.n_atoms):
             mom = self.vel_ad[a] * self.mass_a[a]

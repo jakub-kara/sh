@@ -10,10 +10,10 @@ from classes.trajectory import Trajectory
 
 class MultiEhrenfest(SimpleEhrenfest):
     key = "mce"
+    _molmixins = ["mce"]
 
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
-        config["nuclear"]["mixins"] = "mce"
 
         self._dclone = dynamics.get("dclone", 5e-6)
         self._dnac = dynamics.get("dnac", 2e-3)
@@ -56,9 +56,8 @@ class MultiEhrenfest(SimpleEhrenfest):
             bundle.add_trajectory(self._clone)
             self._clone = None
 
-        os.chdir(f"{bundle.iactive}")
-        bundle.active.write_outputs()
-        os.chdir("..")
+        if self._success:
+            self.step_success(bundle)
 
     def clone_traj(self, traj: Trajectory, state: int):
         clone = deepcopy(traj)

@@ -18,7 +18,7 @@ class Yoshida4(NuclearUpdater):
         out = self.out
 
         for i in range(4):
-            out.inter[i] = mol.copy_all()
+            out.inter[i] = mol.copy()
             if i == 0:
                 out.inter[i].pos_ad = out.inp.pos_ad + dt * self.c[i] * out.inp.vel_ad
             else:

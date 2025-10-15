@@ -14,9 +14,9 @@ class LSCIVR(Dynamics):
     #The key difference is in the propatation of the electronic degrees of freedom, which is performed in a single-excitation basis
     #We store the classical phase space variables of the electron in this basis in the coeff_s variable as z = x + ip
     key = "lscivr"
+    _molmixins = ["mmst"]
 
     def __init__(self, *, dynamics: dict, **config):
-        config["nuclear"]["mixins"] = "mmst"
         super().__init__(dynamics=dynamics, **config)
 
         self.PE: PopulationEstimator = PopulationEstimator[dynamics.get("pop_est", "wigner")]()

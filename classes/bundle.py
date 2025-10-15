@@ -20,6 +20,8 @@ class Bundle:
 
     # probably could be moved
     def save_setup(self):
+        os.makedirs("setup", exist_ok=True)
+        os.chdir("setup")
         with open("single.pkl", "wb") as pkl:
             pickle.dump(Singleton.save(), pkl)
 
@@ -28,9 +30,14 @@ class Bundle:
 
         with open("fact.pkl", "wb") as pkl:
             pickle.dump(Factory.save(), pkl)
+        os.chdir("..")
 
     @staticmethod
     def load_setup():
+        if not os.path.exists("setup"):
+            raise RuntimeError("Restart failed. No setup directory found.")
+
+        os.chdir("setup")
         with open("single.pkl", "rb") as pkl:
             Singleton.restart(pickle.load(pkl))
 
@@ -39,6 +46,7 @@ class Bundle:
 
         with open("fact.pkl", "rb") as pkl:
             Factory.restart(pickle.load(pkl))
+        os.chdir("..")
 
     @staticmethod
     def restart(**config):
@@ -54,6 +62,10 @@ class Bundle:
     def add_trajectory(self, traj: Trajectory):
         traj.index = self.n_traj
         self.trajs.append(traj)
+        return self
+
+    def remove_trajectory(self, traj: Trajectory):
+        self.trajs.remove(traj)
         return self
 
     def set_active(self):

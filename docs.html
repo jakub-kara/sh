@@ -5,6 +5,9 @@
 
 <script src="resources/scripts.js"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+
+
 
 </head>
 
@@ -419,7 +422,8 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
         ></span>
 
         <h4>decoherence</h4>
-        Decoherence correction
+        Decoherence correction <br>
+        Only if method == "fssh"
         <span class="tab"
         data-type="str"
         data-default="none"
@@ -430,92 +434,169 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
         ></span>
 
         <h4>initstate</h4>
-        Electronic state at the start of dynamics
+        Electronic state at the start of dynamics.
         <span class="tab"
         data-type="uint"
         data-default=""
         data-options='{
-            "any": "Initial adiabatic states, starting with 0 for the ground state"
+            "any": "Initial adiabatic state, starting with 0 for the ground state"
         }'
         ></span>
 
         <h4>backup</h4>
-        Save the trajectory after each step
+        Toggle to save the trajectory after each step.
         <span class="tab"
         data-type="bool"
         data-default="true"
         data-options='{
             "true": "Backup trajectory every step",
             "false": "Create no backups"
-            }'
+        }'
         ></span>
 
-        <h4>tmax</h4>
-        Duration of the dynamics
+        <h4>itime</h4>
+        Time associated with the initial step of the simulation.
         <span class="tab"
         data-type="float | str"
-        data-default=""
+        data-default="0"
         data-options='{
-            "any": "Any positive number specifying the duration of the simulation <br> Units can be provided in the string form, otherwise atomic units are assumed"
+            "any": "Any number <br> (Units can be provided in the string form, otherwise atomic units are assumed)"
+        }'
+        ></span>
+
+        <h4>ftime</h4>
+        Time associated with the final step of the simulation. <br>
+        The simulation is terminated if the current time of the simulation exceeds ftime, which is checked at the end of each step. <br>
+        (The opposite check is performed if the timestep is negative.)
+        <span class="tab"
+        data-type="float | str"
+        data-default="none"
+        data-options='{
+            "none": "The trajectory never terminates based on simulation time.",
+            "any": "Any number <br> (Units can be provided in the string form, otherwise atomic units are assumed)"
+        }'
+        ></span>
+
+        <h4>istep</h4>
+        Index associated with the initial step of the simulation.
+        <span class="tab"
+        data-type="int"
+        data-default="0"
+        data-options='{
+            "any": "Any integer"
+        }'
+        ></span>
+
+        <h4>fstep</h4>
+        Index associated with the final step of the simulation. <br>
+        The simulation is terminated if the current step of the simulation exceeds fstep, which is checked at the end of each step. <br>
+        (The opposite check is performed if the timestep is negative.)
+        <span class="tab"
+        data-type="int | str"
+        data-default="none"
+        data-options='{
+            "none": "The trajectory never terminates based on simulation steps.",
+            "any": "Any integer"
         }'
         ></span>
 
         <h4>dt</h4>
-        Maximum timestep size
+        Stepsize of the propagation in the simulation. <br>
+        Providing a single value gives fixed timesteps of that size. <br>
+        Providing a list of two values specifies the stepsize bounds for adaptive timesteps. <br>
+        (Negative timesteps are allowed.)
         <span class="tab"
-        data-type="float | str"
+        data-type="float | str | list[float | str]"
         data-default=""
         data-options='{
-            "any": "Any positive number specifying the maximum stepsize in the simulation <br> Units can be provided in the string form, otherwise atomic units are assumed"
+            "any": "A value of a list of two values <br> Units can be provided in the string form, otherwise atomic units are assumed"
         }'
         ></span>
 
         <h4>timestep</h4>
-        Scheme for determining the stepsize
+        Scheme for determining the stepsize.
         <span class="tab"
         data-type="str"
         data-default="const"
         data-options='{
             "const": "Stepsize fixed at dt",
-            "half": "Step halving procedure based on energy conservation [Thiel]"
+            "half": "Step halving procedure based on energy conservation [Thiel]",
+            "prop": "Stepsize adapted proportionally to a monitor function",
+            "symp": "Stepsize adapted according to a symplectic scheme [Hairer]"
         }'
         ></span>
 
         <h4>enthresh</h4>
-        Total energy change threshold for rejecting step <br>
-        Only if timestep == "half"
+        Threshold for total energy difference between two successive steps. <br>
+        Only if timestep == "half".
         <span class="tab"
         data-type="float | string"
-        data-default=""
+        data-default="0.1 ev"
         data-options='{
             "any": "Any positive number specifying the maximum fluctuation in total energy in one timestep; <br> step is rejected otherwise and re-run with half of the initial size <br> Units can be provided in the string form, otherwise atomic units are assumed"
         }'
         ></span>
 
+        <h4>ovlthresh</h4>
+        Threshold for wavefunction overlaps between two successive steps. <br>
+        Only if timestep == "half".
+        <span class="tab"
+        data-type="float"
+        data-default="0.95"
+        data-options='{
+            "any": "Any positive number specifying the minimum wavefunction overlap; <br> step is rejected otherwise and re-run with half of the initial size; <br> this check can be disabled by setting it to 0"
+        }'
+        ></span>
+
         <h4>max_depth</h4>
-        Number of maximum step-halvings, simulation terminates if exceeded <br>
-        Only if timestep == "half"
+        Number of maximum step-halvings, simulation terminates if exceeded. <br>
+        Only if timestep == "half".
         <span class="tab"
         data-type="uint"
-        data-default=""
+        data-default="10"
         data-options='{
             "any": "Maximum depth of timestep halvings with respect to the maximum stepsize"
         }'
         ></span>
 
-        <h4>transform</h4>
-        Scheme to transform the Hamiltonian from EST outputs to dynamics representation
-        Only if timestep == "half"
+        <h4>monitor</h4>
+        Monitor function for adaptive timesteps. <br>
+        Only if timestep == "prop" or "symp".
         <span class="tab"
         data-type="str"
-        data-default="none"
+        data-default=""
         data-options='{
-            "none": "Do not perform any transformation",
-            "tdm": "Time-derivative matrix [TODO]",
-            "ngt": "Nuclear gradient tensor"
+            "pop": "Estimates the population flow within a step",
+            "pos": "Estimates the position displacement within a step <br> TODO",
+            "phs": "Estimates the phase-space displacement within a step <br> TODO"
         }'
         ></span>
 
+        \( y = \frac{a}{b} + c^2 + d \)
+
+        <h4>vals</h4>
+        Monitor function values that yield the two stepsize values specified in dt. <br>
+        Practically, this means that no adaptation will occur for monitor function values below the lower bound (treating such changes as not significant enough) <br>
+        nor above the upper bound (as that would result in stepsizes out of the preset bounds). <br>
+        Only if timestep == "prop".
+        <span class="tab"
+        data-type="list[float | str]"
+        data-default=""
+        data-options='{
+            "any": "Specifies the upper and lower bounds on monitor function."
+        }'
+        ></span>
+
+        <h4>lim</h4>
+        Two successive stepsizes can at maximum differ by a factor of lim or 1/lim. <br>
+        Only if timestep == "prop" or "symp".
+        <span class="tab"
+        data-type="float"
+        data-default="2"
+        data-options='{
+            "any": "Any positive number."
+        }'
+        ></span>
     </div>
 
     <h4>nuclear</h4>
@@ -545,9 +626,10 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
         </pre>
 
         <h4>nuc_upd</h4>
-        Numerical scheme for integrating nuclear equations of motion
+        Numerical scheme for integrating nuclear equations of motion. <br>
+        If multiple are provided, this should be done in an ascending accuracy, so that whenever a step fails, the next integrator is attempted.
         <span class="tab"
-        data-type="str"
+        data-type="str | list[str]"
         data-default="vv"
         data-options='{
             "vv": "Velocity Verlet",
@@ -556,6 +638,30 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
             "y4": "4th order symplectic Yoshida integrator"
         }'
         ></span>
+
+        <h4>eshift</h4>
+        The maximum energy shift tolerance to accept a step. <br>
+        If failed and another integrator is available, the step is re-attempted with that integrator; <br>
+        otherwise, the simulation is terminated.
+        <span class="tab"
+        data-type="float | str"
+        data-default="0.1 ev"
+        data-options='{
+            "any": "Any positive value specifies the maximum energy shift."
+        }'
+        ></span>
+
+        <h4>edrift</h4>
+        The maximum energy drift tolerance to accept a step. <br>
+        If failed, the simulation is terminated.
+        <span class="tab"
+        data-type="float | str"
+        data-default="0.2 ev"
+        data-options='{
+            "any": "Any positive value specifies the maximum energy drift."
+        }'
+        ></span>
+
     </div>
 
     <h4>quantum</h4>
@@ -752,6 +858,19 @@ Examples: 10.1, "10.1", "10.1 ev", "10.1 amu aa^2 fs^-2"
             }'
             ></span>
         </div>
+
+        <h4>transform</h4>
+        Scheme to transform the Hamiltonian from EST outputs to dynamics representation
+        Only if timestep == "half"
+        <span class="tab"
+        data-type="str"
+        data-default="none"
+        data-options='{
+            "none": "Do not perform any transformation",
+            "tdm": "Time-derivative matrix [TODO]",
+            "ngt": "Nuclear gradient tensor"
+        }'
+        ></span>
     </div>
 
     <h4>output</h4>

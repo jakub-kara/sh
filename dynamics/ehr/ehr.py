@@ -8,10 +8,10 @@ from electronic.base import ESTMode
 class SimpleEhrenfest(Dynamics):
     key = "ehr"
     mode = ESTMode("g")
+    _molmixins = ["ehr"]
 
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
-        config["nuclear"]["mixins"] = "ehr"
 
         nactypes = {
             "nac": self._nac,

@@ -19,44 +19,23 @@ class Molpro(ESTProgram):
         if err > 0:
             raise InterruptedError(f"Error in MOLPRO, exit code {err}")
 
-    def backup_wf(self):
-        os.system(f"cp est/{self._file}.wf backup/")
+    def backup_wf(self, target):
+        os.system(f"cp {self._file}.wf {target}")
         # if self.any_ovlp():
-        os.system(f"cp est/dets_a backup/")
-        os.system(f"cp est/lumorb_a backup/")
+        if os.path.exists("dets_a"):
+            os.system(f"cp dets_a {target}")
+            os.system(f"cp lumorb_a {target}")
 
-    def recover_wf(self):
-        os.system(f"cp backup/{self._file}.wf est/")
+    def recover_wf(self, source):
+        os.system(f"cp {source}/{self._file}.wf .")
+
+        if os.path.exists(f"{source}/dets_a"):
+            os.system(f"cp {source}/dets_a .")
+            os.system(f"cp {source}/lumorb_a .")
+
 
     @est_method
     def cas(self):
-        """
-        Writes an input file for a molpro calculation for nonadiabatic molecular dynamics.
-
-        Parameters
-        ----------
-        states: np.ndarray
-            number of states in each spin multiplicity to be included in the calculation
-        file_root: str
-            name that all the input/output files will share in their root
-        config: dict
-            specifics of the calculation
-        nacs: nda
-            which gradients/nacmes to calculate
-        skip: int
-            how many states should be skipped in indexing
-        mld: bool
-            should a molden file be created
-
-        Returns
-        -------
-        None
-
-        Modifies
-        --------
-        None
-        """
-
         # check if soc elements should be calculated
         soc = self._states.shape[0] > 1
 
@@ -201,33 +180,6 @@ class Molpro(ESTProgram):
             f.write("---")
 
     def read_ham(self):
-        """
-        Reads a molpro output file and searches it for hamiltonian elements.
-        Results are yielded one by one.
-
-        Parameters
-        ----------
-        file_root: str
-            name that all the input/output files will share in their root
-
-        Returns
-        -------
-        spin1: int
-            spin multiplicity of the ket
-        spin2: int
-            spin multiplicity of the bra
-        state1: int
-            total index of the ket
-        state2: int
-            total index of the bra
-        float | complex
-            value of the element
-
-        Modifies
-        --------
-        None
-        """
-
         ham = np.zeros((self._nstates, self._nstates), dtype=np.complex128)
         # read output file
         with open(f"{self._file}.out", "r") as file:
@@ -298,25 +250,7 @@ class Molpro(ESTProgram):
         return ham
 
     def read_grad(self):
-        """
-        Reads a molpro output file and searches it for nonadiabatic coupling matrix elements.
-        Results are yielded one by one.
-
-        Parameters
-        ----------
-        file_root: str
-            name that all the input/output files will share in their root
-
-        Returns
-        -------
-        None
-
-        Modifies
-        --------
-        None
-        """
-
-        grad = np.full((self._nstates, self._natoms, 3), np.nan)
+        grad = np.zeros((self._nstates, self._natoms, 3))
         # read output file
         with open(f"{self._file}.out", "r") as file:
             while True:
@@ -348,24 +282,7 @@ class Molpro(ESTProgram):
         return grad
 
     def read_nac(self):
-        """
-        Reads a molpro output file and searches it for nonadiabatic coupling matrix elements.
-
-        Parameters
-        ----------
-        file_root: str
-            name that all the input/output files will share in their root
-
-        Returns
-        -------
-        None
-
-        Modifies
-        --------
-        None
-        """
-
-        nac = np.full((self._nstates, self._nstates, self._natoms, 3), np.nan)
+        nac = np.zeros((self._nstates, self._nstates, self._natoms, 3))
         # read output file
         with open(f"{self._file}.out", "r") as file:
             while True:
@@ -398,7 +315,7 @@ class Molpro(ESTProgram):
         return nac
 
     def read_dipmom(self):
-        dipmom = np.full((self._nstates, self._nstates, 3), np.nan)
+        dipmom = np.zeros((self._nstates, self._nstates, 3))
         with open(f"{self._file}.out", "r") as f:
             for line in f:
                 if 'Expectation values' in line:
@@ -610,14 +527,19 @@ class Molpro(ESTProgram):
     # TODO: this is a temporary patch, requires more systematic fix
     def _move_old_files(self):
         """shifts files from previous calculation to new calculation"""
-        os.system('cp ../backup/dets_a dets_a.old')
-        os.system('cp ../backup/lumorb_a lumorb_a.old')
+        os.system('mv dets_a dets_a.old')
+        os.system('mv lumorb_a lumorb_a.old')
 
     # probably change args
     def read_ovlp(self, atoms, geom1, geom2):
         """wrapper function to run all calculations from given inputs"""
+
         self._move_old_files()
         self._get_ci_and_orb_molpro('lumorb_a', 'dets_a')
+        if not os.path.exists("dets_a.old"):
+            # return np.eye(self.n_states)
+            os.system('cp dets_a dets_a.old')
+            os.system('cp lumorb_a lumorb_a.old')
 
         input_file_string = '''
     a_mo=lumorb_a.old

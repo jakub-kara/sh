@@ -11,9 +11,9 @@ from updaters.coeff import BlochUpdater
 class MASH(SurfaceHopping):
     ''' Lawrence and Richardson's "unSMASH". Reduces to Mannouch and Richardson's "MASH" for two state case '''
     key = "mash"
+    _molmixins = ["bloch"]
 
     def __init__(self, **config):
-        config["nuclear"]["mixins"] = "bloch"
         super().__init__(**config)
         BlochUpdater(**config["quantum"])
 

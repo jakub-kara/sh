@@ -93,6 +93,8 @@ parser.add_argument("-c", "--active", action="store_true", default=False)
 parser.add_argument("-d", "--dihedral", action="append", nargs=4, default=[])
 parser.add_argument("-e", "--energy", action="store_true", default=False)
 parser.add_argument("-p", "--pop", action="store_true", default=False)
+parser.add_argument("--order-bonds", action="store", nargs="*", default=[])
+
 
 parser.add_argument("-s", "--show", action="store_true", default=False)
 parser.add_argument("-m", "--mean", action="store_true", default=False)
@@ -100,6 +102,9 @@ parser.add_argument("-m", "--mean", action="store_true", default=False)
 args = parser.parse_args()
 
 validate_exclusive(vars(args), 2, "tmax", "nsteps", "dt")
+if len(args.order_bonds) % 2 != 0:
+    raise IndexError("Please provide an even number of arguments to --order-bonds")
+
 
 trajs = args.trajs
 if len(trajs) == 0:
@@ -109,6 +114,8 @@ if len(trajs) == 0:
 bonds = args.bond
 angles = args.angle
 dihs = args.dihedral
+obonds = args.order_bonds
+obonds = [[obonds[2*i], obonds[2*i+1]] for i in range(len(obonds)//2)]
 
 do_active = args.active
 do_pops = args.pop
@@ -149,17 +156,19 @@ else:
     f = h5py.File(get_file(trajs[0] + "/data/", ".h5"), "r")
     n_states = f["info/nst"][()]
     atoms = f["info/ats"][:].astype("<U2")
-    n_atoms = len(atoms)
-    n_dim = 3
+
+n_atoms = len(atoms)
+n_dim = 1
 
 times = np.arange(n_steps) * dt
 
-nout = len(bonds) + len(angles) + len(dihs) + do_active*n_states + do_pops*n_states + do_energy
+nout = len(bonds) + len(obonds) + len(angles) + len(dihs) + do_active*n_states + do_pops*n_states + do_energy
 if nout == 0:
     print("Please request at least one value to analyse.")
     exit()
 
-data = np.zeros((n_traj, n_steps, nout))
+ttot = 0
+data = np.full((n_traj, n_steps, nout), np.nan)
 for itraj, traj in enumerate(trajs):
     progress_bar(itraj+1, n_traj, suffix=traj)
 
@@ -225,13 +234,15 @@ for itraj, traj in enumerate(trajs):
             if do_energy:
                 en[step] = f[f"{key}/toten"]
 
+    ttot += val[-1]
+
     if pos.ndim == 1:
         pos = pos.reshape((-1,1))
     pos = CubicSpline(val, pos, axis=0, extrapolate=False)
 
     if do_active:
-        act = interp1d(val, np.array(act), kind="previous", bounds_error=False, fill_value=(act[0], act[-1]))
-        # act = interp1d(val, np.array(act), kind="previous", bounds_error=False)
+        # act = interp1d(val, np.array(act), kind="previous", bounds_error=False, fill_value=(act[0], act[-1]))
+        act = interp1d(val, np.array(act), kind="previous", bounds_error=False)
 
     if do_pops:
         pop = interp1d(val, np.array(pop), axis=0, bounds_error=False)
@@ -251,6 +262,7 @@ for itraj, traj in enumerate(trajs):
             if np.isnan(temp):
                 data[itraj, step, idx:idx+n_states] = np.nan
             else:
+                data[itraj, step, idx:idx+n_states] = 0
                 data[itraj, step, idx + int(temp)] = 1
             idx += n_states
 
@@ -258,11 +270,12 @@ for itraj, traj in enumerate(trajs):
             data[itraj, step, idx:idx+n_states] = pop(time)
             idx += n_states
 
-        for bond in bonds:
+        for bond in bonds + obonds:
             r1, r2 = get_pos(pos(time), *bond)
             res = convert(np.linalg.norm(r1 - r2), "au", "aa")
             data[itraj, step, idx] = res
             idx += 1
+        data[itraj, step, idx-len(obonds):idx] = np.sort(data[itraj, step, idx-len(obonds):idx])
 
         for ang in angles:
             r1, r2, r3 = get_pos(pos(time), *ang)
@@ -283,6 +296,18 @@ for itraj, traj in enumerate(trajs):
             data[itraj, step, idx] = res
             idx += 1
 
+with open("est.dat", "w") as f:
+    f.write("Total simulated time " + str(ttot) + "\n")
+    os.system("grep -i 'electronic calculation' " + " ".join([traj + '/data/out.log' for traj in trajs]) + " > tmp")
+    with open("tmp", "r") as tmp:
+        est = len(tmp.readlines())
+    os.system("rm tmp")
+    f.write("EST evaluations      " + str(est) + "\n")
+    f.write("EST / fs             " + str(est / ttot))
+
+os.system("cat est.dat")
+print()
+
 alive = np.sum(1 - np.isnan(data[:,:,0]), axis=0)
 
 if args.output:
@@ -291,6 +316,7 @@ if args.output:
     keys.extend([f"popcl_{i}" for i in range(n_states)]*do_active)
     keys.extend([f"popqua_{i}" for i in range(n_states)]*do_pops)
     keys.extend([f"bond_{bond[0]}_{bond[1]}" for bond in bonds])
+    keys.extend([f"obond_{bond[0]}_{bond[1]}" for bond in obonds])
     keys.extend([f"angle_{angle[0]}_{angle[1]}_{angle[2]}" for angle in angles])
     keys.extend([f"dih_{angle[0]}_{angle[1]}_{angle[2]}_{angle[3]}" for angle in dihs])
     np.savez_compressed(args.output, time = times, trajs = alive, **{keys[i]: data[:,:,i] for i in range(nout)})

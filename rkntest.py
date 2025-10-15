@@ -1,92 +1,44 @@
 import numpy as np
 
-class sy:
-    key = "sy4"
-    steps = 4
-    a = np.array([1, -1, 0, -1, 1])
-    b = np.array([0, 5/4, 1/2, 5/4, 0])
+from classes.molecule import Molecule, MoleculeMixin
+from classes.meta import Factory
+from classes.timestep import Timestep
+from updaters.coeff import BlochUpdater
+from updaters.tdc import BlankTDCUpdater
 
+fac = Factory(Molecule, MoleculeMixin)
+fac.add_mixins("bloch")
+mol = fac.create()(n_states = 3, n_atoms = 1, n_dim = 1, initstate = 1)
 
-class am:
-    name = "am4"
-    steps = 4
-    order = 4
-    b = np.array([1/24, -5/24, 19/24, 3/8])
-    c = -19/720
+mol.bloch_n3[0,0] = 0.6
+mol.bloch_n3[0,2] = 0.8
+mol.bloch_n3[2,0] = 0.6
+mol.bloch_n3[2,2] = 0.8
+mol.nacdt_ss[0,1] = 1e-4
+mol.nacdt_ss[1,2] = 1e-4
+mol.nacdt_ss[1,0] = -mol.nacdt_ss[0,1]
+mol.nacdt_ss[2,1] = -mol.nacdt_ss[1,2]
 
-steps = 4
+mols = [mol, mol.copy()]
+ts = Timestep.select("const")(dt = 1)
+ts.step = 10
 
-def update_sy(xin: np.ndarray, vin: np.ndarray, ain: np.ndarray, fun, dt: float):
-    xin = xin[-steps:]
-    vin = vin[-steps:]
-    ain = ain[-steps:]
+tdcupd = BlankTDCUpdater()
+cupd = BlochUpdater(n_substep = 10)
+tdcupd.run(mols, ts)
+cupd.run(mols, ts)
+mols[-1].bloch_n3 = cupd.bloch.out
 
-    # find new position as a weighted sum of previous positions and accelerations
-    xout = -np.einsum("j,j...->...", sy.a[:-1], xin) + dt**2*np.einsum("j,j...->...", sy.b[:-1], ain)
-    xout /= sy.a[-1]
-
-    # calculate new acceleration
-    aout = fun(xout)
-
-    # calculate new velocity from new acceleration, previous velocities, and previous accelerations
-    vout = vin[-1] + dt*np.einsum("j,j...->...", am.b[:-1], ain[1:]) + dt*am.b[-1]*aout
-
-    return xout, vout, aout
-
-def update_vv(xin: np.ndarray, vin: np.ndarray, ain: np.ndarray, fun, rin: float):
-    fact = 1 + eps * ctrl(xin, vin, ain) / rin
-    fact = max(min(fact, 2), 0.5)
-    rout = rin * fact
-
-    vout = vin + 0.5 * eps * ain / rout
-    xout = xin + eps * vout / rout
-    aout = fun(xout)
-    vout = vout + 0.5 * eps * aout / rout
-
-    return xout, vout, aout, rout
-
-def kin(v):
-    return 0.5 * v**2
-
-def pot(x):
-    return 0.5 * x**2
-
-def func(x):
-    return -x
-
-def ctrl(x, v, a):
-    delta = 1e-8
-    return alpha * v * a / (v**2 + delta)
-
-def report():
-    print(step, t)
-    print(np.cos(t), x)
-    print(-np.sin(t), v)
-    print(pot(x) + kin(v))
-    print()
-
-def write():
-    file.write(f"{t} {x} {v} {a} {np.abs(pot(x) + kin(v) - 1/2)}\n")
-
-alpha = 1
-eps = 0.1
-r0 = 1
-tmax = 10
-step = 0
-t = 0
-x = 1
-a = func(x)
-v = 0
-r = r0 - eps*ctrl(x, v, a) / 2
-file = open("out.dat", "w")
-
-while t <= tmax:
-    report()
-    write()
-    x, v, a, r = update_vv(x, v, a, func, r)
-    t += eps / r
-    step += 1
-
-report()
-write()
-file.close()
+print(0.5 * np.sum(np.abs(np.abs(mols[-1].coeff_s)**2 - np.abs(mols[-2].coeff_s)**2)))
+def func(mols: list[Molecule]):
+    mol = mols[-1]
+    tot = 0
+    for i in range(mol.n_states):
+        for j in range(i):
+            f1 = np.abs(mols[-2].nacdt_ss[i,j])
+            f2 = np.abs(mols[-1].nacdt_ss[i,j])
+            tdc = max(f2, 2*f2 - f1)
+            tot += np.abs(tdc) * np.sqrt(1 - (np.abs(mol.coeff_s[i])**2 - np.abs(mol.coeff_s[j])**2)**2)
+    return tot
+print(func(mols))
+breakpoint()

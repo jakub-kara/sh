@@ -67,7 +67,7 @@ class CompositeIntegrator(Updater, metaclass = Singleton):
 
     def validate(self, val):
         self._success = val < self._thresh
-        print("DIFF", convert(val, "au", "ev"))
+        print("Energy diff", convert(val, "au", "ev"))
         if self._success:
             self._iactive = 0
         else:

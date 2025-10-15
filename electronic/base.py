@@ -64,7 +64,7 @@ class NGT(HamTransform):
     def transform(self, mol):
         # need to transform gradient for non-diagonal hamiltonian
         # for details, see https://doi.org/10.1002/qua.2489
-        self.diagonalise_ham()
+        self.diagonalise_ham(mol)
         g_dia = np.zeros_like(mol.nacdr_ssad, dtype=np.complex128)
         for i in range(mol.n_states):
             for j in range(mol.n_states):
@@ -198,12 +198,12 @@ class ESTProgram(Selector, DecoratorDistributor, metaclass = Singleton):
         self._natoms = mol.n_atoms
         with open(f"{self._file}.xyz", "w") as file:
             file.write(mol.to_xyz())
-        self._method(self)
+        self._method(self, mol)
 
-    def backup_wf(self):
+    def backup_wf(self, target: str):
         pass
 
-    def recover_wf(self):
+    def recover_wf(self, source: str):
         pass
 
     def initiate(self): pass

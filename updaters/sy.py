@@ -62,7 +62,7 @@ class SYAMBase(NuclearUpdater):
 
     def update(self, mols: list[Molecule], ts: Timestep):
         dyn = Dynamics()
-        out = mols[-1].copy_all()
+        out = mols[-1].copy()
         temp = mols[-self.steps:]
         # find new position as a weighted sum of previous positions and accelerations
         out.pos_ad = -np.einsum("j,j...->...", self.sy.a[:-1], np.array([mol.pos_ad for mol in temp])) + ts.dt**2*np.einsum("j,j...->...", self.sy.b[:-1], np.array([mol.acc_ad for mol in temp]))
