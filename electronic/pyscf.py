@@ -16,8 +16,6 @@ class PySCF(ESTProgram):
     def __init__(self, **config):
         super().__init__(**config)
 
-        self._options.setdefault("spin", 0)
-        # self._options.setdefault("sa", self.n_states)
         self._ham = None
         self._grad = None
         self._nac = None
@@ -27,7 +25,7 @@ class PySCF(ESTProgram):
         names = mol.name_a.astype("U2")
         geom = [(names[i], mol.pos_ad[i,:]) for i in range(mol.n_atoms)]
 
-        return gto.M(atom=geom,
+        out = gto.M(atom=geom,
                     basis = self._options['basis'],
                     output = 'pyscf.out',
                     verbose = 4,
@@ -35,6 +33,13 @@ class PySCF(ESTProgram):
                     spin=self._options["spin"],
                     symmetry=False,
                     unit="Bohr")
+
+        if (temp := self._options.get("spin", None)) is not None:
+            out.spin = temp
+        if (temp := self._options.get("nel", None)) is not None:
+            out.nelectron = temp
+
+        return out
 
     def write(self, mol):
         self._method(self, mol)
@@ -170,7 +175,10 @@ class PySCF(ESTProgram):
     def mp2(self, inp: Molecule):
         mol = self._get_mol(inp)
 
-        mf = mol.RHF().run()
+        if mol.spin == 0:
+            mf = mol.RHF().run()
+        else:
+            mf = mol.UHF().run()
         mymp = mf.MP2().run()
 
         self._ham = self._ham_mp2(mymp)
