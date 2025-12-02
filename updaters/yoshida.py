@@ -1,11 +1,11 @@
 import numpy as np
 from .nuclear import NuclearUpdater
+from classes.config import Config
 from classes.molecule import Molecule
 from dynamics.base import Dynamics
-from electronic.base import ESTProgram
 
+@Config.Option("y4", "nuc")
 class Yoshida4(NuclearUpdater):
-    key = "y4"
     substeps = 4
     w0 = -np.cbrt(2) / (2 - np.cbrt(2))
     w1 = 1 / (2 - np.cbrt(2))

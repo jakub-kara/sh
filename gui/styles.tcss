@@ -1,0 +1,45 @@
+Button {
+    width: 100%;
+    content-align: center middle;
+    margin: 1
+}
+
+.valid {
+    border: heavy $success;
+}
+
+.default {
+    border: heavy $warning;
+}
+
+.invalid {
+    border: heavy $error;
+}
+
+PopupScreen {
+    align: center middle;
+}
+
+.title {
+    margin: 1;
+    width: 100%;
+    text-align: center;
+}
+
+.InputDesc {
+    margin: 1;
+    width: 100%
+}
+
+.OptionDesc {
+    margin: 1;
+    width: 100%;
+}
+
+PopupBody {
+    width: 50%;
+    height: 50%;
+    align: center middle;
+    border: heavy $warning;
+    padding: 1 2
+}

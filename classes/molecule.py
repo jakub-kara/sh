@@ -1,26 +1,42 @@
 import numpy as np
 from copy import deepcopy
-from classes.meta import Selector
+from classes.config import Config, get_cfg
 from classes.constants import convert, atomic_masses
-from classes.out import Printer
+from classes.format import fmt, cfmt
 
+@Config("n_states", default=1)
+@Config("n_atoms", default=None, valid=Config.NONE | Config.POSITIVE(Config.INT))
+@Config("n_dim", default=None, valid=Config.NONE | Config.POSITIVE(Config.INT))
+@Config("geom", path=Config.NUCLEAR, valid=Config.STR)
+@Config("com", default=False, path=Config.NUCLEAR, valid=Config.BOOL)
+@Config("vxyz", default=True, path=Config.NUCLEAR, valid=Config.BOOL)
+@Config("active", default=None, path=Config.NUCLEAR, valid=Config.NONE | Config.LIST[Config.POSITIVE(Config.INT)])
+@Config("inactive", default=None, path=Config.NUCLEAR, valid=Config.NONE | Config.LIST[Config.POSITIVE(Config.INT)])
 class Molecule:
-    def __init__(self, *, n_states: int = 1, n_atoms = None, n_dim = None, input = None, com = False, vxyz = True, **config):
-        if input is None:
+    def __init__(self, **config):
+        inp = get_cfg(self, "geom", config)
+        if inp is None:
+            n_atoms, n_dim = get_cfg(self, ("n_atoms", "n_dim"), config)
+            if n_atoms is None or n_dim is None:
+                raise RuntimeError("Molecule requires *geom*, or *n_dim* and *n_atoms* to be specified.")
+
             self.pos_ad = np.zeros((n_atoms, n_dim))
             self.vel_ad = np.zeros((n_atoms, n_dim))
             self.acc_ad = np.zeros((n_atoms, n_dim))
             self.name_a = np.zeros(n_atoms, dtype="S2")
             self.mass_a = np.zeros(n_atoms)
         else:
+            vxyz = get_cfg(self, "vxyz", config)
             if vxyz:
-                self.from_vxyz(input)
+                self.from_vxyz(inp)
             else:
-                self.from_xyz(input)
+                self.from_xyz(inp)
 
+        com = get_cfg(self, "com", config)
         if com:
             self.set_com()
 
+        n_states = get_cfg(self, "n_states", config)
         self.ham_eig_ss = np.zeros((n_states, n_states))
         self.ham_dia_ss = np.zeros((n_states, n_states), dtype=np.complex128)
         self.trans_ss = np.eye(n_states, dtype=np.complex128)
@@ -33,6 +49,36 @@ class Molecule:
         self.phase_s = np.ones(n_states)
         self.coeff_s = np.zeros(n_states, dtype=np.complex128)
 
+        act = get_cfg(self, "active", config)
+        inact = get_cfg(self, "inactive", config)
+
+        if act is not None and inact is not None:
+            raise LookupError("Both active and inactive modes provided.\nRemove one to proceed.")
+
+        rev = False
+        if inact is not None:
+            act = inact
+            rev = True
+        if act is None:
+            act = []
+
+        if len(act) != self.n_dof:
+            # assume a list of indices
+            # check for duplicates
+            if len(act) != len(set(act)):
+                raise LookupError(f"Invalid format for {rev*'in'}active modes.\nUse a list of booleans a list of indices of {rev*'in'}active modes.")
+            temp = np.zeros(self.n_dof)
+            temp[act] = 1
+            act = temp
+        act = np.array(act)
+
+        if rev:
+            act = 1 - act
+
+        self.act_dof = act.astype(bool).reshape((self.n_atoms, self.n_dim))
+        if not np.any(self.act_dof):
+            self.act_dof = np.logical_not(self.act_dof)
+
     @property
     def n_atoms(self):
         return self.pos_ad.shape[0]
@@ -44,6 +90,10 @@ class Molecule:
     @property
     def n_dof(self):
         return self.n_dim * self.n_atoms
+
+    @property
+    def inact_dof(self):
+        return np.logical_not(self.act_dof)
 
     @property
     def n_states(self):
@@ -267,31 +317,33 @@ class Molecule:
     def dat_header(self):
         nst = self.n_states
         dic = {
-            "pop": "".join([Printer.write(f"Population {i}", "s") for i in range(nst)]),
-            "pes": "".join([Printer.write(f"Pot En {i} [eV]", "s") for i in range(nst)]),
-            "ken": Printer.write("Total Kin En [eV]", "s"),
-            "pen": Printer.write("Total Pot En [eV]", "s"),
-            "ten": Printer.write("Total En [eV]", "s"),
-            "nacdr": "".join([Printer.write(f"NACdr {j}-{i} [au]", "s") for i in range(nst) for j in range(i)]),
-            "nacdt": "".join([Printer.write(f"NACdt {j}-{i} [au]", "s") for i in range(nst) for j in range(i)]),
-            "coeff": "".join([Printer.write(f"Coeff {i}", f" <{Printer.field_length*2+1}") for i in range(nst)]),
-            "posx": Printer.write("X-Position [aa]", "s")
+            "pop": "".join([fmt(f"Population {i}") for i in range(nst)]),
+            "pes": "".join([fmt(f"Pot En {i} [eV]") for i in range(nst)]),
+            "ken": fmt("Total Kin En [eV]"),
+            "pen": fmt("Total Pot En [eV]"),
+            "ten": fmt("Total En [eV]"),
+            "nacdr": "".join([fmt(f"NACdr {j}-{i} [au]") for i in range(nst) for j in range(i)]),
+            "nacdt": "".join([fmt(f"NACdt {j}-{i} [au]") for i in range(nst) for j in range(i)]),
+            "coeff": "".join([s for i in range(nst) for s in [fmt(f"Re Coeff {i}"), fmt(f"Im Coeff {i}")]]),
         }
+        dic |= {f"x-{i}": fmt(f"Position {i} [au]") for i in range(self.n_dof) if self.act_dof.flatten()[i]}
+        dic |= {f"p-{i}": fmt(f"Momentum {i} [au]") for i in range(self.n_dof) if self.act_dof.flatten()[i]}
         return dic
 
     def dat_dict(self):
         nst = self.n_states
         dic = {
-            "pop": "".join([Printer.write(self.population(i), "f") for i in range(nst)]),
-            "pes": "".join([Printer.write(convert(self.ham_eig_ss[i,i], "au", "ev"), "f") for i in range(nst)]),
-            "ken": Printer.write(convert(self.kinetic_energy(), "au", "ev"), "f"),
-            "pen": Printer.write(convert(self.potential_energy(), "au", "ev"), "f"),
-            "ten": Printer.write(convert(self.total_energy(), "au", "ev"), "f"),
-            "nacdr": "".join([Printer.write(self.nac_norm_ss[i,j], "f") for i in range(nst) for j in range(i)]),
-            "nacdt": "".join([Printer.write(self.nacdt_ss[i,j], "f") for i in range(nst) for j in range(i)]),
-            "coeff": "".join([Printer.write(self.coeff_s[i], "z") for i in range(nst)]),
-            "posx": Printer.write(convert(self.pos_ad[0,0], "au", "aa"), "f"),
+            "pop": "".join([fmt(self.population(i)) for i in range(nst)]),
+            "pes": "".join([cfmt(self.ham_eig_ss[i,i], "au", "ev") for i in range(nst)]),
+            "ken": cfmt(self.kinetic_energy(), "au", "ev"),
+            "pen": cfmt(self.potential_energy(), "au", "ev"),
+            "ten": cfmt(self.total_energy(), "au", "ev"),
+            "nacdr": "".join([fmt(self.nac_norm_ss[i,j]) for i in range(nst) for j in range(i)]),
+            "nacdt": "".join([fmt(self.nacdt_ss[i,j]) for i in range(nst) for j in range(i)]),
+            "coeff": "".join([fmt(self.coeff_s[i]) for i in range(nst)]),
         }
+        dic |= {f"x-{i}": fmt(x) for i, x in enumerate(self.pos_ad.flatten()) if self.act_dof.flatten()[i]}
+        dic |= {f"p-{i}": fmt(x) for i, x in enumerate(self.mom_ad.flatten()) if self.act_dof.flatten()[i]}
         return dic
 
     def h5_dict(self):
@@ -311,18 +363,23 @@ class Molecule:
         }
         return dic
 
-class MoleculeMixin(Selector):
-    def __init__(self, *, initstate: int, **kwargs):
-        super().__init__(**kwargs)
-        self._state = initstate
 
-    def get_coeff(self, input: str = None):
-        if input is None:
-            self.set_coeff()
-        else:
-            self.read_coeff(input)
+@Config("mixin", valid = Config.LIST[Config.STR])
+@Config("initstate", path=Config.DYNAMICS, valid=Config.POSITIVE(Config.INT))
+@Config("qinit", default=None, path=Config.QUANTUM, valid=Config.STR | Config.NONE)
+class MoleculeMixin:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._state = get_cfg(self, "initstate", kwargs)
+        self._inp = get_cfg(self, "qinit", kwargs)
 
     def set_coeff(self):
+        if self._inp is None:
+            self.default_coeff()
+        else:
+            self.read_coeff(self._inp)
+
+    def default_coeff(self):
         self.coeff_s[self._state] = 1.
 
     def read_coeff(self, file):
@@ -343,9 +400,8 @@ class MoleculeMixin(Selector):
     def h5_dict(self):
         return super().h5_dict()
 
+@Config.Option("sh", "mixin")
 class SHMixin(MoleculeMixin):
-    key = "sh"
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.active = self._state
@@ -361,23 +417,22 @@ class SHMixin(MoleculeMixin):
         self.target = self.active
 
     def dat_header(self):
-        dic = {"act": Printer.write("Active", "s")}
+        dic = {"act": fmt("Active")}
         return dic | super().dat_header()
 
     def dat_dict(self):
-        dic = {"act": Printer.write(self.active, "i")}
+        dic = {"act": fmt(self.active)}
         return dic | super().dat_dict()
 
     def h5_dict(self):
         dic = {"act": self.active}
         return dic | super().h5_dict()
 
+@Config.Option("bloch", "mixin")
 class BlochMixin(SHMixin):
-    key = "bloch"
-
-    def __init__(self, *, n_states, **nuclear):
-        super().__init__(n_states=n_states, **nuclear)
-        self.bloch_n3 = np.zeros((n_states, 3))
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bloch_n3 = np.zeros((self.n_states, 3))
 
     @property
     def coeff_s(self):
@@ -415,7 +470,7 @@ class BlochMixin(SHMixin):
         # to be consistent with the rest of the code
         pass
 
-    def set_coeff(self):
+    def default_coeff(self):
         self.bloch_n3[:, 2] = 1
         self.bloch_n3[self.active, :] = None
 
@@ -428,29 +483,20 @@ class BlochMixin(SHMixin):
         self.bloch_n3[:self.active] = data[:self.active]
         self.bloch_n3[self.active + 1:] = data[self.active:]
 
-    def dat_header(self):
-        nst = self.n_states
-        dic = {"bloch": "".join([Printer.write(f"Bloch-{d} {self.active}-{i}", "s") for d in "XYZ" for i in range(nst) if i != self.active])}
-        return dic | super().dat_header()
-
-    def dat_dict(self):
-        nst = self.n_states
-        dic = {"bloch": "".join([Printer.write(self.bloch_n3[i,d], "f") for d in range(3) for i in range(nst) if i != self.active])}
-        return dic | super().dat_dict()
-
     def h5_dict(self):
         dic = {"bloch": self.bloch_n3}
         return dic | super().h5_dict()
 
+@Config.Option("mmst", "mixin")
+@Config("qinit", fix=None)
 class MMSTMixin(MoleculeMixin):
-    key = "mmst"
-
-    def __init__(self, *, n_states, **nuclear):
-        super().__init__(n_states=n_states, **nuclear)
-        self.x_s = np.zeros(n_states)
-        self.p_s = np.zeros(n_states)
-        self.dxdt_s = np.zeros(n_states)
-        self.dpdt_s = np.zeros(n_states)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        nst = self.n_states
+        self.x_s = np.zeros(nst)
+        self.p_s = np.zeros(nst)
+        self.dxdt_s = np.zeros(nst)
+        self.dpdt_s = np.zeros(nst)
         self.dRdt_s = np.zeros((self.n_atoms,3))
         self.dPkindt_s = np.zeros((self.n_atoms,3))
 
@@ -458,7 +504,7 @@ class MMSTMixin(MoleculeMixin):
     def r2(self):
         return self.x_s**2 + self.p_s**2
 
-    def read_coeff(self, file = None):
+    def read_coeff(self, file):
         data = np.genfromtxt(file)
         if data.ndim == 1:
             data = data[None, :]
@@ -467,13 +513,12 @@ class MMSTMixin(MoleculeMixin):
         self.x_s[:] = data[:,0]
         self.p_s[:] = data[:,1]
 
+@Config.Option("csdm", "mixin")
 class CSDMMixin(MoleculeMixin):
-    key = "csdm"
-
-    def __init__(self, *, n_states: int, **nuclear):
-        super().__init__(n_states=n_states, **nuclear)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.active = self._state
-        self.coeff_co_s = np.zeros(n_states, dtype=np.complex128)
+        self.coeff_co_s = np.zeros(self.n_states, dtype=np.complex128)
         self.coeff_co_s[:] = self.coeff_s
 
     @property

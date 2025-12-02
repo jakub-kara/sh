@@ -1,15 +1,16 @@
 {
     "dynamics": {
         "name": "model",
-        "tmax": 1000,
+        "ftime": 1000,
         "dt": 20,
-        "method": "mash",
-	"prob": "tdc",
+        "method": "fssh",
+        "prob": "none",
         "initstate": 1,
-	"backup": false
+        "backup": false,
+	"backstep": true
     },
     "nuclear": {
-        "input": "geom.xyz",
+        "geom": "geom.xyz",
         "nuc_upd": "vv"
     },
     "quantum": {
@@ -19,12 +20,16 @@
     },
     "electronic": {
         "program": "model",
-        "method": "ho2",
+        "method": "sub_1",
         "states": 2
     },
     "output": {
+	"log": false,
         "file": "out",
-        "record": ["act", "pop", "pes", "pen", "ken", "ten", "nacdt", "posx"],
-        "timer": ["est", "coe", "tdc", "tot", "sav", "wrt"]
+        "record": [
+            "act",
+            "dof"
+        ]
     }
 }
+

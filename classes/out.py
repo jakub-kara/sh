@@ -1,109 +1,192 @@
-import numpy as np
+from pathlib import Path
 import h5py
 import time
-import atexit
-import os
-from classes.meta import Decorator
+import numpy as np
+from classes.config import Config, get_cfg
+from classes.constants import convert
+from classes.meta import Singleton, Decorator
 
-class OutMeta(type):
-    border = "="*40
+@Config("filetype")
+class BaseWriter:
+    """Common functionality for all file writers."""
 
-    def setup(self, *, file: str = "out", record: list = "", **config):
-        if not isinstance(record, list):
+    def __init__(self, path: Path, **config):
+        self.path = path
+        self._file = None
+
+    @property
+    def is_open(self):
+        return self._file is not None
+
+    @property
+    def is_closed(self):
+        return self._file is None
+
+    def init_file(self):
+        self.open(mode = "w")
+        self.close()
+
+    def open(self, mode = "a"):
+        if self.is_closed:
+            self._file = open(self.path, mode = mode)
+
+    def close(self):
+        if self.is_open:
+            self._file.flush()
+            self._file.close()
+            self._file = None
+
+    def write(self, *args, **kwargs) -> None:
+        raise NotImplementedError
+
+@Config.Option("xyz", "filetype")
+class XYZWriter(BaseWriter):
+    def write(self, xyzstr: str) -> None:
+        self.open()
+        self._file.write(xyzstr)
+
+@Config.Option("dat", "filetype")
+@Config("record", default=None, options=["ten"], path=Config.OUTPUT, valid=Config.LIST[Config.STR] | Config.NONE)
+class DatWriter(BaseWriter):
+    def __init__(self, path, **config):
+        super().__init__(path)
+
+        record = get_cfg(self, "record", config)
+        if isinstance(record, str):
             record = record.split()
         self._record = record
-        self._file = file
-        self._dist = config.get("dist", False)
+
+
+    def write(self, data: dict) -> None:
+        self.open()
+        file = self._file
+        file.write(data["time"])
+        for rec in self._record:
+            if rec in data.keys():
+                file.write(data[rec])
+            if rec == "dof":
+                for key in data.keys():
+                    if key.startswith("x-") or key.startswith("p-"):
+                        file.write(data[key])
+        file.write("\n")
+
+@Config.Option("log", "filetype")
+class LogWriter(BaseWriter):
+    def write(self, msg: str = "", newline = True):
+        self.open()
+        if msg is None:
+            return
+        self._file.write(f"{msg}" + newline*"\n")
+
+    def pipe(self, filename):
+        with open(filename, "r") as f:
+            self.write(f.read())
+
+@Config.Option("h5", "filetype")
+class H5Writer(BaseWriter):
+    def __init__(self, path, **config):
+        super().__init__(path)
         self._options = {
             "compression": config.get("compression", "gzip"),
             "compression_opts": config.get("compression_opts", 9),
         }
 
-        self._log = config.get("log", True)
-        self._logfile = None
-        self._xyz = config.get("xyz", True)
-        self._dist = config.get("dist", False)
-        self._h5 = config.get("h5", True)
-        self._dat = config.get("dat", True)
-        if self._record == []:
-            self._dat = False
+    def open(self, mode = "a"):
+        if self.is_closed:
+            self._file = h5py.File(self.path, mode = mode)
 
-    def to_log(self, filename):
-        with open(filename, "r") as f:
-            self.write_log(f.read())
-
-    def open_log(self, mode = "a"):
-        self._logfile = open(f"data/{self._file}.log", mode = mode)
-
-    def close_log(self):
-        if self._logfile:
-            self._logfile.close()
-        self._logfile = None
-
-    def write_border(self):
-        self.write_log(self.border)
-
-    def write_log(self, msg = "", mode = "a"):
-        if msg is None:
+    def write(self, data: dict):
+        self.open()
+        file = self._file
+        if data is None:
             return
-        print(msg)
-        if not self._log:
-            return
-        with open(f"data/{self._file}.log", mode) as file:
-            file.write(f"{msg}\n")
+        key = str(data.pop("step"))
+        if key in file:
+            del file[key]
 
-    def write_dat(self, data: dict, mode="a"):
-        if not self._dat:
-            return
-        with open(f"data/{self._file}.dat", mode) as file:
-            file.write(data["time"])
-            for rec in self._record:
-                if rec in data.keys():
-                    file.write(data[rec])
-            file.write("\n")
+        grp = file.create_group(key)
+        for key, val in data.items():
+            if isinstance(val, np.ndarray):
+                grp.create_dataset(key, data=val, **self._options)
+            else:
+                grp.create_dataset(key, data=val)
 
-    def write_dist(self, msg, mode="a"):
-        if not self._dist:
-            return
-        with open(f"data/{self._file}.dist", mode) as file:
-            file.write(msg)
+# class OutMeta(type):
+#     def save(self):
+#         return {
+#             key: val for key, val in self.__dict__.items()
+#             if not (key.startswith("__") and key.endswith("__"))
+#             and not callable(val)
+#         }
 
-    def write_xyz(self, msg, mode="a"):
-        if not self._xyz:
-            return
-        with open(f"data/{self._file}.xyz", mode) as file:
-            file.write(msg)
+#     def restart(self, dic: dict):
+#         for key, val in dic.items():
+#             setattr(self, key, val)
 
-    def write_h5(self, to_write: dict, mode="a"):
-        if not self._h5:
-            return
-        with h5py.File(f"data/{self._file}.h5", mode) as file:
-            if to_write is None:
-                return
-            key = str(to_write["step"])
-            if key in file.keys():
-                del file[key]
-            grp = file.create_group(key)
-            to_write.pop("step")
-            for key, val in to_write.items():
-                if isinstance(val, np.ndarray):
-                    grp.create_dataset(key, data=val, **self._options)
-                else:
-                    grp.create_dataset(key, data=val)
+
+@Config("file", default="out", path=Config.OUTPUT, valid=Config.STR)
+@Config("log", default=True, path=Config.OUTPUT, valid=Config.BOOL)
+@Config("xyz", default=True, path=Config.OUTPUT, valid=Config.BOOL)
+@Config("dat", default=True, path=Config.OUTPUT, valid=Config.BOOL)
+@Config("h5", default=False, path=Config.OUTPUT, valid=Config.BOOL)
+class FileManager:
+    files: dict[str, BaseWriter] = {}
+    base_dir = Path(".")
+
+    def __init__(self, **config):
+        root = get_cfg(self, "file", config)
+        for key in ["log", "xyz", "dat", "h5"]:
+            if get_cfg(self, key, config):
+                self.files[key] = get_cfg(BaseWriter, "filetype", {"filetype": key})(path = self.path_for(root, key), **config)
+
+    @classmethod
+    def init_all(cls):
+        for file in cls.files.values():
+            file.init_file()
+
+
+    @classmethod
+    def open_all(cls):
+        for file in cls.files.values():
+            file.open()
+
+    @classmethod
+    def open(cls, *keys):
+        for key in keys:
+            if key in cls.files:
+                cls.files[key].open()
+
+    @classmethod
+    def close(cls, *keys):
+        for key in keys:
+            if key in cls.files:
+                cls.files[key].close()
+
+    @classmethod
+    def close_all(cls):
+        for file in cls.files.values():
+            file.close()
+
+    @classmethod
+    def write(cls, key, *args, **kwargs):
+        if key in cls.files:
+            cls.files[key].write(*args, **kwargs)
+
+    @classmethod
+    def log(cls, msg: str = None):
+        if msg is not None:
+            print(msg)
+        cls.write("log", msg)
+
+    @classmethod
+    def path_for(cls, name: str, ext: str) -> Path:
+        return cls.base_dir / "data" / f"{name}.{ext}"
 
     def save(self):
-        return {
-            key: val for key, val in self.__dict__.items()
-            if not (key.startswith("__") and key.endswith("__"))
-            and not callable(val)
-        }
+        pass
 
-    def restart(self, dic: dict):
-        for key, val in dic.items():
-            setattr(self, key, val)
-
-class Output(metaclass = OutMeta):
-    pass
+    def restart(self):
+        pass
 
 class Timer(Decorator):
     def __init__(self, id, head = "", msg = "Wall time: ", foot = "", out = lambda x: None):
@@ -121,42 +204,16 @@ class Timer(Decorator):
         self._out(f"{self._foot}")
         return res
 
-class DirChange(Decorator):
-    def __init__(self, id, before, after = None):
-        super().__init__(id)
-        self._before = before
-        if after is None:
-            after = "/".join(".." for i in before.split("/"))
-        self._after = after
+# class DirChange(Decorator):
+#     def __init__(self, id, before, after = None):
+#         super().__init__(id)
+#         self._before = before
+#         if after is None:
+#             after = "/".join(".." for i in before.split("/"))
+#         self._after = after
 
-    def run(self, func, instance, *args, **kwargs):
-        os.chdir(self._before)
-        res = func(instance, *args, **kwargs)
-        os.chdir(self._after)
-        return res
-
-class Logger(Decorator):
-    def run(self, func, instance, *args, **kwargs):
-        Output.open_log()
-        res = func(instance, *args, **kwargs)
-        Output.close_log()
-        return res
-
-class Printer:
-    field_length = 20
-    tdict = {
-        "f" : (fform := f" < {field_length}.10e"),
-        "p" : (pform := f" < {field_length}.4%"),
-        "b" : (bform := f" < 6"),
-        "s" : (sform := f" <{field_length}"),
-        "i" : (iform := f" < {field_length}.0f"),
-    }
-
-    @staticmethod
-    def write(val, form):
-        if form in Printer.tdict.keys():
-            return f"{val:{Printer.tdict[form]}}"
-        elif form == "z":
-            return f"{val.real:{Printer.tdict['f']}}" + f"{val.imag:< {Printer.field_length-1}.10e}" + "j "
-        else:
-            return f"{val:{form}}"
+#     def run(self, func, instance, *args, **kwargs):
+#         os.chdir(self._before)
+#         res = func(instance, *args, **kwargs)
+#         os.chdir(self._after)
+#         return res

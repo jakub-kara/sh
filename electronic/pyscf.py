@@ -4,15 +4,15 @@ import os
 
 from .base import ESTProgram, est_method
 from classes.constants import convert
+from classes.config import Config
 from classes.molecule import Molecule
 try:
     from pyscf import gto, scf, mcscf, lib, tools, ci, grad
 except ImportError:
     print("Warning: pyscf module not found")
 
+@Config.Option("pyscf", "program")
 class PySCF(ESTProgram):
-    key = "pyscf"
-
     def __init__(self, **config):
         super().__init__(**config)
 
@@ -22,21 +22,20 @@ class PySCF(ESTProgram):
         self._ovl = None
 
     def _get_mol(self, mol: Molecule):
+        assert mol.n_dim == 3, "PySCF only allows 3D molecules."
         names = mol.name_a.astype("U2")
         geom = [(names[i], mol.pos_ad[i,:]) for i in range(mol.n_atoms)]
-
         out = gto.M(atom=geom,
                     basis = self._options['basis'],
                     output = 'pyscf.out',
                     verbose = 4,
                     cart = False,
-                    spin=self._options["spin"],
                     symmetry=False,
                     unit="Bohr")
 
-        if (temp := self._options.get("spin", None)) is not None:
+        if (temp := self._options.get("spin")) is not None:
             out.spin = temp
-        if (temp := self._options.get("nel", None)) is not None:
+        if (temp := self._options.get("nel")) is not None:
             out.nelectron = temp
 
         return out
@@ -126,7 +125,7 @@ class PySCF(ESTProgram):
         nelecas = self._options['nel'] - 2*self._options['closed']
         nst = self._options['sa']
 
-        if self._options['df']:
+        if self._options.get("df"):
             mc = mcscf.DFCASSCF(mol, ncas, nelecas)
         else:
             mc = mcscf.CASSCF(mol, ncas, nelecas)
@@ -135,15 +134,11 @@ class PySCF(ESTProgram):
 
         mc = mc.state_average(np.ones(nst)/nst)
 
-        mc.chkfile = 'chk.chk'
-
-        if os.path.exists("chk.chk"):
-            coeff = scf.RHF(mol).run().mo_coeff
+        if not os.path.exists("ci.npy"):
+            mc.kernel()
         else:
-            mc2 = lib.chkfile.load_mcscf('chk.chk')
-            coeff = mcscf.project__init__guess(mc, mc2.mo_coeff)
-
-        mc.kernel(coeff)
+            ci0 = np.load('ci.npy')
+            mc.kernel(ci0=ci0)
 
         if self._options["mld"]:
             tools.molden.from_mcscf(mc, 'molden.molden')
@@ -151,6 +146,9 @@ class PySCF(ESTProgram):
         self._ham = self._ham_mcscf(mc)
         self._grad = self._grad_mcscf(mc)
         self._nac = self._nac_mcscf(mc)
+
+        np.save("ci.npy", mc.ci)
+
 
     def _ham_mcscf(self, obj):
         return np.diag(obj.e_states)

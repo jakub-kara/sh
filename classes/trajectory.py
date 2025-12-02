@@ -1,19 +1,21 @@
 import numpy as np
 import os, pickle
 from copy import deepcopy
+from .config import Config, get_cfg
+from .format import *
 from .meta import Counter
 from .molecule import Molecule
-from .out import Output as out, Timer, Printer
-from .constants import convert
+from .out import FileManager as fm, Timer
 from .timestep import Timestep, StateTracker
 from electronic.base import ESTProgram
-from updaters.composite import CompositeIntegrator
+from updaters.nuclear import CompositeIntegrator
 from updaters.coeff import CoeffUpdater
 
+@Config("backup", default=True, path=Config.DYNAMICS, valid=Config.BOOL)
 class Trajectory:
     def __init__(self, *, dynamics: dict, nuclear: dict, quantum: dict, **config):
         self.index = None
-        self._backup = dynamics.get("backup", True)
+        self._backup = get_cfg(self, "backup", dynamics)
 
         self.mols: list[Molecule] = []
         self.timestep = None
@@ -57,23 +59,24 @@ class Trajectory:
 
     def set_molecules(self, **nuclear):
         nupd = CompositeIntegrator()
-        for _ in range(max(nupd.steps, CoeffUpdater().steps, nuclear.get("keep", 0))):
+        for _ in range(max(nupd.steps, CoeffUpdater().steps, nuclear.get("keep", 2))):
             self.add_molecule(self.mol.copy())
 
     def set_timestep(self, **dynamics):
-        self.timestep: Timestep = Timestep.select(dynamics.get("timestep", "const"))(
-            steps = len(self.mols), **dynamics)
+        self.timestep: Timestep = get_cfg(Timestep, "timestep", dynamics)(
+            keep = self.n_steps, **dynamics)
 
     def step_header(self):
-        out.write_border()
-        out.write_log(f"Step:           {self.timestep.step}")
-        out.write_log(f"Time:           {convert(self.timestep.time, 'au', 'fs'):.6f} fs")
-        out.write_log(f"Stepsize:       {convert(self.timestep.dt, 'au', 'fs'):.6f} fs")
-        out.write_log()
+        fm.log(BORDER)
+        fm.log(f"Step:           {fmt(self.timestep.step)}")
+        fm.log(f"Time:           {cfmtu(self.timestep.time, 'au', 'fs', Size.S)}")
+        fm.log(f"Stepsize:       {cfmtu(self.timestep.dt, 'au', 'fs', Size.S)}")
+        fm.log()
 
     @Timer(id = "save",
            head = "Saving")
     def save_step(self):
+        fm.close_all()
         os.chdir("est")
         est = ESTProgram()
         est.backup_wf("../backup/")
@@ -89,11 +92,11 @@ class Trajectory:
             traj: Trajectory = pickle.load(pkl)
         traj.restart_components(**config)
 
-        out.write_log()
-        out.write_border()
-        out.write_log("Succesfully restarted from backups.")
-        out.write_border()
-        out.write_log()
+        fm.log()
+        fm.log(BORDER)
+        fm.log("Succesfully restarted from backups.")
+        fm.log(BORDER)
+        fm.log()
         return traj
 
     def restart_components(self, *, dynamics: dict, **kwargs):
@@ -108,34 +111,32 @@ class Trajectory:
 
     def report_energy(self):
         tot = self.mol.total_energy()
-        out.write_log(f"Total energy:   {convert(tot, 'au', 'ev'):.6f} eV")
-        out.write_log(f"Energy shift:   {convert(self.energy_diff(self.mol, self.mols[-2]), 'au', 'ev'):.6f} eV")
-        out.write_log(f"Energy drift:   {convert(tot - self.ref_en, 'au', 'ev'):.6f} eV")
-        out.write_log()
+        fm.log(f"Total energy:   {cfmtu(tot, 'au', 'ev', Size.M)}")
+        fm.log(f"Energy shift:   {cfmtu(self.energy_diff(self.mol, self.mols[-2]), 'au', 'ev', Size.M)}")
+        fm.log(f"Energy drift:   {cfmtu(tot - self.ref_en, 'au', 'ev', Size.M)}")
+        fm.log()
 
     def write_headers(self):
-        out.write_dat(self.dat_header(), "w")
-        out.write_h5(self.h5_info(), "w")
-        out.write_xyz("", "w")
-        out.write_dist("", "w")
+        fm.write("dat", self.dat_header())
+        fm.write("h5", self.h5_info())
 
     @Timer(id = "out",
            head = "Outputs")
     def write_outputs(self):
-        out.write_dat(self.dat_dict())
-        out.write_h5(self.h5_dict())
-        out.write_xyz(self.vxyz_string())
-        out.write_dist(self.dist_string())
+        fm.write("dat", self.dat_dict())
+        fm.write("h5", self.h5_dict())
+        fm.write("xyz", self.vxyz_string())
+        fm.write("dist", self.dist_string())
 
     def dat_header(self):
         dic = {
-            "time": "#" + Printer.write("Time [fs]", "s")
+            "time": "#" + fmt("Time [fs]")
         }
         return dic | self.mol.dat_header()
 
     def dat_dict(self):
         dic = {
-            "time": Printer.write(convert(self.timestep.time, "au", "fs"), "f")
+            "time": cfmt(self.timestep.time, "au", "fs")
         }
         return dic | self.mol.dat_dict()
 

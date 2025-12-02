@@ -2,11 +2,11 @@ import numpy as np
 import os, sys
 
 from .base import ESTProgram, est_method
+from classes.config import Config
 from classes.constants import multiplets, convert
 
+@Config.Option("molpro", "program")
 class Molpro(ESTProgram):
-    key = "molpro"
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -35,7 +35,7 @@ class Molpro(ESTProgram):
 
 
     @est_method
-    def cas(self):
+    def cas(self, mol):
         # check if soc elements should be calculated
         soc = self._states.shape[0] > 1
 

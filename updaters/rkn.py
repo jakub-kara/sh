@@ -1,6 +1,7 @@
 import numpy as np
 from .nuclear import NuclearUpdater
 from .base import UpdateResult
+from classes.config import Config
 from classes.molecule import Molecule
 from classes.timestep import Timestep
 from dynamics.base import Dynamics
@@ -18,36 +19,37 @@ class RKNBase(NuclearUpdater):
 
         dyn = Dynamics()
         mol = mols[-1]
-        out = self.out
-        out.inter[0] = mol
+        res = self.result
+
         # RKN integration substep-by-substep
         for i in range(1, self.substeps):
             # evaluate intermediate position and acceleration
-            out.inter[i] = mol.copy()
-            out.inter[i].pos_ad += ts.dt * self.c[i] * mol.vel_ad + ts.dt**2 * np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], [m.acc_ad for m in out.inter[:i]])
+            temp = mol.copy()
+            acc = np.einsum("j,j...->...", self.a[tri(i-1):tri(i)], [res.get(j).acc_ad for j in range(i)])
+            temp.pos_ad += ts.dt * self.c[i] * mol.vel_ad + ts.dt**2 * acc
 
-            dyn.run_est(out.inter[i], ref = mol, mode = dyn.step_mode(out.inter[i]))
+            dyn.run_est(temp, mol)
             orig = ts.dt
             ts.dt *= self.c[i]
-            dyn.update_quantum(mols + [out.inter[i]], ts)
+            dyn.update_quantum(mols + [temp], ts)
             ts.dt = orig
-            dyn.calculate_acceleration(out.inter[i])
+            dyn.calculate_acceleration(temp)
+            res.push(temp)
 
         # find new position and velocity from all the substeps
         temp = mol.copy()
-        temp.pos_ad += ts.dt * mol.vel_ad + ts.dt**2 * np.einsum("j,j...->...", self.b, [m.acc_ad for m in out.inter])
-        temp.vel_ad += ts.dt * np.einsum("j,j...->...", self.d, [m.acc_ad for m in out.inter])
+        acc = np.einsum("j,j...->...", self.b, [res.get(j).acc_ad for j in range(self.substeps)])
+        temp.pos_ad += ts.dt * mol.vel_ad + ts.dt**2 * acc
+        temp.vel_ad += ts.dt * np.einsum("j,j...->...", self.d, [res.get(j).vel_ad for j in range(self.substeps)])
 
         # calculate new acceleration
-        dyn.run_est(temp, ref = mol, mode = dyn.step_mode(temp))
+        dyn.run_est(temp, mol)
         dyn.update_quantum(mols + [temp], ts)
         dyn.calculate_acceleration(temp)
+        res.push(temp)
 
-        out.inter[:-1] = out.inter[1:]
-        out.inter[-1] = temp
-
+@Config.Option("rkn4", "nuc")
 class RKN4(RKNBase):
-    key = "rkn4"
     substeps = 4
     a = np.array([
         1/18,
@@ -61,8 +63,8 @@ class RKN4(RKNBase):
     b = np.array([13/120,   3/10,   3/40,   1/60])
     d = np.array([1/8,      3/8,    3/8,    1/8])
 
+@Config.Option("rkn4b", "nuc")
 class RKN4b(RKNBase):
-    key = "rkn4b"
     substeps = 3
     a = np.array([
         1/8,
@@ -73,8 +75,8 @@ class RKN4b(RKNBase):
     b = np.array([1/6, 1/3, 0])
     d = np.array([1/6, 2/3, 1/6])
 
-class RKN6(RKNBase, ):
-    key = "rkn6"
+@Config.Option("rkn6", "nuc")
+class RKN6(RKNBase):
     substeps = 7
     a = np.array([
         1/200,
@@ -103,8 +105,8 @@ class RKN6(RKNBase, ):
     b = np.array([61/1008,  0,  475/2016,   25/504, 125/1008, 25/1008, 11/2016])
     d = np.array([19/288,   0,  25/96,      25/144, 25/144,   25/96,   19/288])
 
+@Config.Option("rkn8", "nuc")
 class RKN8(RKNBase):
-    key = "rkn8"
     substeps = 11
     a = np.array([
         49/12800,

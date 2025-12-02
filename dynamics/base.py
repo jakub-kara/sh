@@ -1,27 +1,30 @@
 import numpy as np
 from abc import abstractmethod
-from copy import deepcopy
-import os, json
+import os, time, json
 
 from classes.bundle import Bundle
-from classes.constants import convert
-from classes.meta import Singleton, Selector, DecoratorDistributor, Factory
+from classes.config import Config, get_cfg
+from classes.format import *
+from classes.meta import Singleton, DecoratorDistributor, Factory
 from classes.molecule import Molecule, MoleculeMixin
-from classes.out import Output as out, Timer, Logger, DirChange
+from classes.out import FileManager as fm, Timer
 from classes.timestep import Timestep
 from classes.trajectory import Trajectory
-from updaters.composite import CompositeIntegrator
+from updaters.nuclear import CompositeIntegrator
 from updaters.tdc import TDCUpdater
 from updaters.coeff import CoeffUpdater
-from electronic.base import ESTProgram, ESTMode, HamTransform
+from electronic.base import ESTProgram, ESTMode, HamTransform, ESTRequest
 
-class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
+@Config("method", path=Config.DYNAMICS, valid=Config.STR)
+@Config("backstep", default=False, path=Config.DYNAMICS, valid=Config.BOOL)
+@Config.Init(Config.Init.THIS, TDCUpdater, CoeffUpdater, CompositeIntegrator, ESTProgram, fm, Timestep)
+class Dynamics(DecoratorDistributor, metaclass = Singleton):
     mode = ESTMode()
     _molmixins = []
 
     def __init__(self, **config):
-        self._config = config
         self._success = True
+        self._backstep = get_cfg(self, "backstep", config)
 
     # === Dynamics methods ===
 
@@ -56,48 +59,69 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
         self._success &= obj.success
 
     # === Bundle methods ===
-
     def prepare_bundle(self, bundle: Bundle):
         config = bundle.config
         self.set_components(**config)
 
         # TODO: rework
         traj = Trajectory(**config)
-        mol = self.create_molecule(
-            mixins = self._molmixins,
-            coeff = config["quantum"].get("input", None),
-            **config["nuclear"], **config["dynamics"])
+        mol = self.create_molecule(mixins = self._molmixins, **config)
         traj.add_molecule(mol)
-        traj.set_molecules(**config["nuclear"])
-        traj.set_timestep(**config["dynamics"])
+        traj.set_molecules(**config)
+        traj.set_timestep(**config)
         bundle.add_trajectory(traj)
         bundle.save_setup()
 
-        with open("events.log", "w") as f:
-            f.write(f"INIT 0\n")
+        self._write_event("INIT 0", "w")
         self.prepare_trajs(bundle)
 
     def prepare_trajs(self, bundle: Bundle):
         for itraj, traj in enumerate(bundle.trajs):
             os.chdir(f"{itraj}")
-            out.open_log()
-            out.write_log(json.dumps(bundle.config, indent=4), "w")
-            out.write_log()
+            fm.init_all()
+            fm.log(BORDER)
+            fm.log(json.dumps(bundle.config, indent=4))
+            fm.log()
             self.prepare_traj(traj)
-            out.close_log()
             os.chdir("..")
 
     def step_bundle(self, bundle: Bundle):
-        bundle.set_active()
+        self._check_stop(bundle)
+        self._check_pause(bundle)
 
+        bundle.set_active()
         os.chdir(f"{bundle.iactive}")
-        out.open_log()
         self.step_traj(bundle.active)
-        out.close_log()
         os.chdir("..")
 
         if self._success:
             self.step_success(bundle)
+
+    def _check_stop(self, bundle: Bundle):
+        if os.path.exists("STOP"):
+            for itraj, traj in enumerate(bundle.trajs):
+                os.chdir(f"{itraj}")
+                fm.log("STOP directive detected. Terminating.")
+                os.chdir("..")
+            self._write_event("STOP")
+            exit()
+
+    def _check_pause(self, bundle: Bundle):
+        if os.path.exists("PAUSE"):
+            self._write_event("PAUSE", newline=False)
+
+            count = 0
+            while not os.path.exists("RESUME"):
+                time.sleep(60)
+                count += 1
+            self._write_event(count*60)
+            self._write_event("RESUME")
+
+            os.system("rm PAUSE RESUME")
+
+    def _write_event(self, msg, mode = "a", newline = True):
+        with open("events.log", mode) as f:
+            f.write(str(msg) + "\n"*newline)
 
     def step_success(self, bundle: Bundle):
         os.chdir(f"{bundle.iactive}")
@@ -110,38 +134,47 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
 
     @Timer(
         id = "init",
-        head = f"{out.border}\nTrajectory Initialisation",
+        head = f"{BORDER}\nTrajectory Initialisation",
         msg = "Total time",
-        out = out.write_log)
+        out = fm.log)
+    @ESTRequest()
     def prepare_traj(self, traj: Trajectory):
         mol = traj.mols[-1]
         traj.write_headers()
 
-        self.run_est(mol, mol, mode = self.mode(mol))
+        self.run_est(mol, mol)
         traj.ref_en = self.total_energy(mol)
         self.calculate_acceleration(mol)
 
-        ts_back = Timestep.select("const")(dt = -traj.timestep.dt)
-        nupd = CompositeIntegrator()
-        nupd.run([mol], ts_back)
-        for i in range(len(traj.mols) - 1):
-            traj.mols[i] = nupd.active.out.out
-
-        self.run_est(mol, traj.mols[-2], mode = self.step_mode(mol))
-        self.update_tdc(traj.mols, traj.timestep)
-
-        for i in range(traj.n_steps - 1):
-            traj.mols[i] = traj.mol
+        if self._backstep:
+            self.run_backstep(traj.mols, traj.timestep)
 
         traj.timestep.step_success(traj.mols)
         traj.save_step()
         traj.write_outputs()
 
+
+    @ESTRequest(TDCUpdater, CoeffUpdater)
+    def run_backstep(self, mols: list[Molecule], ts: Timestep):
+        ts_back = get_cfg(Timestep, "timestep", {"timestep": "const"})(dt = -ts.dt)
+        nupd = CompositeIntegrator()
+        mol = mols[-1]
+
+        nupd.run([mol], ts_back)
+        for i in range(len(mols) - 1):
+            mols[i] = nupd.result.out
+
+        self.run_est(mol, mols[-2])
+        self.update_tdc(mols, ts)
+
+        for i in range(len(mols) - 1):
+            mols[i] = mol.copy()
+
     @Timer(
         id = "tot",
         msg = "Total time",
-        foot = out.border,
-        out = out.write_log)
+        foot = BORDER,
+        out = fm.log)
     def step_traj(self, traj: Trajectory):
         traj.step_header()
 
@@ -155,7 +188,8 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     @Timer(
         id = "nuc",
         head = "Nuclear",
-        out = out.write_log)
+        out = fm.log)
+    @ESTRequest(CoeffUpdater, TDCUpdater)
     def update_traj(self, traj: Trajectory):
         nupd = CompositeIntegrator()
         self._success = True
@@ -169,7 +203,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
             os.chdir("..")
             return
 
-        temp = nupd.active.out.out
+        temp = nupd.result.out
         ts.validate(traj.mols + [temp])
         self.validate(ts)
         if not self._success:
@@ -188,10 +222,9 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     @Timer(
         id = "est",
         head = "Electronic Calculation",
-        out = out.write_log)
-    def run_est(self, mol: Molecule, ref = None, mode = ""):
+        out = fm.log)
+    def run_est(self, mol: Molecule, ref = None):
         est = ESTProgram()
-        est.request(*mode)
         est.run(mol)
         est.read(mol, ref)
         est.reset_calc()
@@ -199,7 +232,7 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     @Timer(
         id = "qua",
         head = "Quantum Propagation",
-        out = out.write_log)
+        out = fm.log)
     def update_quantum(self, mols: list[Molecule], ts: Timestep):
         self.update_tdc(mols, ts)
         self.update_coeff(mols, ts)
@@ -207,55 +240,55 @@ class Dynamics(Selector, DecoratorDistributor, metaclass = Singleton):
     def update_tdc(self, mols: list[Molecule], ts: Timestep):
         tdcupd = TDCUpdater()
         tdcupd.run(mols, ts)
-        mols[-1].nacdt_ss = tdcupd.tdc.out
+        mols[-1].nacdt_ss = tdcupd.result.out
         # mols[-1].adjust_tdc(mols[-2])
 
     def update_coeff(self, mols: list[Molecule], ts: Timestep):
         cupd = CoeffUpdater()
         cupd.run(mols, ts)
-        mols[-1].coeff_s = cupd.coeff.out
+        mols[-1].coeff_s = cupd.result.out
 
     # === Setup ===
 
-    def set_components(self, *, electronic, nuclear, quantum, output, **kwargs):
-        self.set_est(**electronic)
-        self.set_nuclear(**nuclear)
-        self.set_tdc_updater(**quantum)
-        self.set_coeff_updater(**quantum)
-        self.set_io(**output)
+    def set_components(self, **config):
+        self.set_io(**config)
+        self.set_est(**config)
+        self.set_nuclear(**config)
+        self.set_tdc_updater(**config)
+        self.set_coeff_updater(**config)
 
     @staticmethod
-    def set_dynamics(dynamics, **config):
+    def set_dynamics(**config):
         Dynamics.reset()
-        Dynamics.select(dynamics["method"])(dynamics=dynamics, **config)
+        get_cfg(Dynamics, "method", config)(**config)
 
-    def set_est(self, **electronic):
-        HamTransform.select(electronic.get("transform", "none"))()
+    def set_est(self, **config):
+        get_cfg(HamTransform, "transform", config)()
         ESTProgram.reset()
-        ESTProgram.select(electronic["program"])(**electronic)
+        get_cfg(ESTProgram, "program", config)(**config)
 
-    def set_nuclear(self, **nuclear):
+    def set_nuclear(self, **config):
         CompositeIntegrator.reset()
-        CompositeIntegrator(**nuclear)
+        CompositeIntegrator(**config)
 
-    def set_tdc_updater(self, **quantum):
+    def set_tdc_updater(self, **config):
         TDCUpdater.reset()
-        TDCUpdater.select(quantum.get("tdc_upd", "npi"))(**quantum)
+        get_cfg(TDCUpdater, "tdc_upd", config)(**config)
 
-    def set_coeff_updater(self, **quantum):
+    def set_coeff_updater(self, **config):
         CoeffUpdater.reset()
-        CoeffUpdater.select(quantum.get("coeff_upd", "tdc"))(**quantum)
+        get_cfg(CoeffUpdater, "coeff_upd", config)(**config)
 
-    def set_io(self, **output):
-        out.setup(**output)
+    def set_io(self, **config):
+        fm(**config)
 
-    def create_molecule(self, mixins, coeff = None, **config):
+    def create_molecule(self, mixins, **config):
         fac = Factory(Molecule, MoleculeMixin)
         fac.add_mixins(*mixins)
         fac.add_methods(**self._mol_methods())
 
         mol = fac.create()(n_states=ESTProgram().n_states, **config)
-        mol.get_coeff(coeff)
+        mol.set_coeff()
         return mol
 
     def _mol_methods(self):

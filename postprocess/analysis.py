@@ -158,7 +158,7 @@ else:
     atoms = f["info/ats"][:].astype("<U2")
 
 n_atoms = len(atoms)
-n_dim = 1
+# n_dim = 1
 
 times = np.arange(n_steps) * dt
 
@@ -190,7 +190,7 @@ for itraj, traj in enumerate(trajs):
                     step = int(i // (n_atoms + 2))
                     continue
                 temp = line.split()
-                pos[step, at] = [float(x) for x in temp[1:n_dim+1]]
+                pos[step, at] = [convert(float(x), "aa", "au") for x in temp[1:n_dim+1]]
                 at += 1
 
         temp = np.genfromtxt(get_file(traj + "/data/", ".dat"), skip_header=1)

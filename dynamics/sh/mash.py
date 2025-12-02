@@ -1,33 +1,34 @@
 import numpy as np
 from .sh import SurfaceHopping
 from .checker import HoppingUpdater
+from classes.config import Config, get_cfg
 from classes.molecule import Molecule
 from classes.timestep import Timestep
 from classes.trajectory import Trajectory
 from electronic.base import ESTProgram
-from updaters.composite import CompositeIntegrator
+from updaters.nuclear import CompositeIntegrator
 from updaters.coeff import BlochUpdater
 
+@Config.Option("mash", "method")
+@Config("prob", fix="mash")
+@Config("rescale", fix="nac")
+@Config("reverse", fix=True)
+@Config("decoherence", fix="none")
 class MASH(SurfaceHopping):
     ''' Lawrence and Richardson's "unSMASH". Reduces to Mannouch and Richardson's "MASH" for two state case '''
-    key = "mash"
     _molmixins = ["bloch"]
 
     def __init__(self, **config):
+        config["quantum"]["coeff_upd"] = "bloch"
+        config["dynamics"]["prob"] = "mash"
         super().__init__(**config)
-        BlochUpdater(**config["quantum"])
-
-        self._rescale = "nac"
-        self._reverse = True
+        # BlochUpdater(**config["quantum"])
 
     def set_components(self, *, quantum, **kwargs):
         super().set_components(quantum=quantum, **kwargs)
 
-        BlochUpdater.reset()
-        BlochUpdater(**quantum)
-
-        HoppingUpdater.reset()
-        HoppingUpdater.select("mash")(**quantum)
+        # BlochUpdater.reset()
+        # BlochUpdater(**quantum)
 
     def adjust_nuclear(self, traj: Trajectory):
         mol = traj.mols[-1]

@@ -1,14 +1,13 @@
 import numpy as np
 import sys
-import types
 import matplotlib.pyplot as plt
 import pickle
-import scipy
 import classes.constants
+from classes.config import Config
 from classes.molecule import Molecule
-from electronic.base import ESTProgram, est_method
+from electronic.base import ESTProgram
 
-
+@Config.Option("vcham", "program")
 class VC(ESTProgram):
     r'''
     Collects and calculates energies, gradients, NACs and Hessians according to a Heidelburgian/Fitzrovian vibronic coupling hamiltonian
@@ -51,7 +50,6 @@ Be careful here, especially with the bi-linear terms. We use a factor of 1/2 in 
 Finally, we note that we can make use of "inactive modes" physically. These amount to removing one of the normal mode displacements. To do this, set the inactive_mode[i] variable to True for the index you want to be inactive. This can be done in the options section of the input file
 
     '''
-    key = "vcham"
 
     def __init__(self, **config):
         super().__init__(**config)
@@ -80,15 +78,14 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         self.mu_b        = True
         self.expl        = []
         self.expl_b      = True
-        try:
-            self.inactive_modes = np.array(self._options['inactive_modes']).astype(bool)
-        except KeyError:
-            self.inactive_modes = np.zeros(self.no_f,dtype=bool)
 
+        self._shp = None
         self.trans      = np.eye(self.no_s)
         self.hameig     = np.zeros((self.no_s,self.no_s))
         self.grad       = np.zeros((self.no_s,self.no_f))
         self.nacdr      = np.zeros((self.no_s,self.no_s,self.no_f))
+
+        self.inactive_modes = []
 
     def _select_method(self, key):
         pass
@@ -131,11 +128,18 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         # we then run the calculations in mass-frequency weighted coordinates to get the energy.
         # Then, we have to transform the gradient and nacme back to non-weighted coordinates (technically mass-weighted), but the mass is 1
 
+        self.inactive_modes = mol.inact_dof.flatten()
+        self._shp = mol.pos_ad.shape
         self.disp = 1.*mol.pos_ad.flatten()
         self.disp[self.inactive_modes] = 0.
         if not self.initiated:
             self.read_vcham_file(self.file)
         self.disp *= np.sqrt(self.omega)
+
+        temp = mol.vel_ad.flatten()
+        temp[self.inactive_modes] = 0.
+        mol.vel_ad = temp.reshape(*(self._shp))
+
         self.get_energy()
         self.grad[:,self.inactive_modes] = 0.
         self.nacdr[:,:,self.inactive_modes] = 0.
@@ -151,15 +155,18 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
         return self.hameig
 
     def read_grad(self):
-        return self.grad.reshape(self.no_s,self.no_f//3,3)
+        self.grad[:,self.inactive_modes] = 0.
+        return self.grad.reshape((self.no_s, *self._shp))
 
     def read_nac(self):
-        return self.nacdr.reshape(self.no_s,self.no_s,self.no_f//3,3)
+        self.nacdr[:,:,self.inactive_modes] = 0.
+        return self.nacdr.reshape((self.no_s, self.no_s, *self._shp))
 
+    # CHECK DIMENSIONS
     def read_hess(self):
         return self.hess
 
-    def read_ovlp(self):
+    def read_ovlp(self, *args):
         raise NotImplementedError
 
     def read_dipmom(self):
@@ -167,11 +174,10 @@ Finally, we note that we can make use of "inactive modes" physically. These amou
 
     def get_energy(self):
         self.calculate_energy(self.disp)
-        # self.ham *= np.eye(self.no_s)
         self._diagonalise()
         self._get_grad_nac()
 
-    def calculate_energy(self,disp):
+    def calculate_energy(self, disp):
 
         In = np.eye(self.no_s)
 

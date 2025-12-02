@@ -1,14 +1,15 @@
 import numpy as np
-from scipy.linalg import expm
 from scipy.interpolate import CubicSpline
-from .meta import Selector
+from .config import Config, get_cfg
 from .constants import convert
+from .format import *
 from .molecule import Molecule
-from .out import Output as out
+from .out import FileManager as fm
 
+@Config("killafter", default=1e10, path=Config.DYNAMICS, valid=Config.LIST[Config.UNIT])
 class StateTracker:
     def __init__(self, **config):
-        temp = config.get("killafter", 1e10)
+        temp = get_cfg(self, "killafter", config)
         if isinstance(temp, dict):
             temp = {int(k): convert(v, "au") for k, v in temp.items()}
         elif isinstance(temp, list):
@@ -30,33 +31,40 @@ class StateTracker:
             self._state = mol.active
 
         if self._elapsed > self._killafter.get(self._state, 1e10):
-            out.write_log(f"Time on state {self._state} exceeded limits.\nTerminating.")
+            fm.log(f"Time on state {self._state} exceeded limits.")
+            fm.log(f"Time spent on state {self._state}: {cfmtu(self._elapsed, 'au', 'fs')}")
+            fm.log(f"Limit on state {self._state}:      {cfmtu(self._killafter.get(self._state, 1e10), 'au', 'fs')}")
+            fm.log("Terminating.")
             exit()
 
-class Timestep(Selector):
-    def __init__(self, *, dt, steps = 1, **config):
-        self._itime = convert(config.get("itime", 0), "au")
-        self._ftime = config.get("ftime", None)
-        if self._ftime is not None:
-            self._ftime = convert(self._ftime, "au")
+@Config("timestep", default="const", path=Config.DYNAMICS, valid=Config.STR)
+@Config("dt", path=Config.DYNAMICS, valid=Config.LIST[Config.UNIT])
+@Config("keep", default=1, valid=Config.POSITIVE(Config.INT))
+@Config("itime", default=0, path=Config.DYNAMICS, valid=Config.UNIT)
+@Config("ftime", default=None, path=Config.DYNAMICS, valid=Config.NONE | Config.UNIT)
+@Config("istep", default=0, path=Config.DYNAMICS, valid=Config.INT)
+@Config("fstep", default=None, path=Config.DYNAMICS, valid=Config.NONE | Config.INT)
+class Timestep:
+    def __init__(self, **config):
+        self._itime = convert(get_cfg(self, "itime", config), "au")
+        self._ftime = convert(get_cfg(self, "ftime", config), "au")
         self.time = self._itime
 
-        self._istep = config.get("istep", 0)
-        self._fstep = config.get("fstep", None)
+        self._istep = get_cfg(self, "istep", config)
+        self._fstep = get_cfg(self, "fstep", config)
+        if self._fstep is not None and self._istep > self._fstep:
+            self._istep, self._fstep = self._fstep, self._istep
+            fm.log("Warning: *istep* and *fstep* swapped to ensure that *istep* < *fstep*.")
         self.step = self._istep
 
-
+        dt = get_cfg(self, "dt", config)
         if not isinstance(dt, (list, tuple)):
             dt = [dt, dt]
         self._mindt, self._maxdt = sorted([convert(x, "au") for x in dt])
-        self.dts = np.zeros(steps)
-        self.dts[:] = convert(self._maxdt, "au")
+        n_steps = max(get_cfg(self, "keep", config), 1)
+        self.dts = np.full(n_steps, self._maxdt)
 
         self._fact = 1
-        self._lim = config.get("lim", 2)
-        if self._lim < 1:
-            self._lim = 1 / self._lim
-
         self.success = False
         self._nupd: dict = None
 
@@ -91,8 +99,9 @@ class Timestep(Selector):
         return -1/a * np.log(np.exp(-a*self._maxdt) + 1 / (np.exp(a * self._mindt) + np.exp(a * dt)))
 
     def _clip_local(self, dt: float):
+        lim = 10
         fact = dt / self.dt
-        fact = min(max(fact, 1/self._lim), self._lim)
+        fact = min(max(fact, 1/lim), lim)
         return self.dt * fact
 
     def _clip_global(self, dt: float):
@@ -119,17 +128,22 @@ class Timestep(Selector):
     def save_nupd(self, *args, **kwargs):
         pass
 
+@Config.Option("const", "timestep")
 class Constant(Timestep):
-    key = "const"
+    pass
 
+@Config.Option("half", "timestep")
+@Config("maxdepth", default=10, path=Config.DYNAMICS, valid=Config.INT)
+@Config("enthresh", default="0.1 ev", path=Config.DYNAMICS, valid=Config.POSITIVE(Config.UNIT))
+@Config("ovlthresh", default=0.95, path=Config.DYNAMICS, valid=Config.POSITIVE(Config.FLOAT))
 class Half(Timestep):
     key = "half"
 
     def __init__(self, **config):
         super().__init__(**config)
-        self._maxit = config.get("max_depth", 10)
-        self._enthresh = convert(config.get("enthresh", "0.1 ev"), "au")
-        self._ovlthresh = config.get("ovlthresh", 0.95)
+        self._maxit = get_cfg(self, "maxdepth", config)
+        self._enthresh = convert(get_cfg(self, "enthresh", config), "au")
+        self._ovlthresh = get_cfg(self, "ovlthresh", config)
         self._it = 0
 
         self._diff = 0
@@ -159,19 +173,20 @@ class Half(Timestep):
 
     def step_fail(self, mols: list[Molecule]):
         if self._it >= self._maxit:
-            msg = "Maximum timestep halving depth exceeded. Terminating."
-            out.write_log(msg)
-            raise RuntimeError(msg)
+            fm.log("Maximum timestep halving depth exceeded.")
+            fm.log("Terminating.")
+            exit()
         self._it += 1
 
-        msg = f"Step rejected with energy difference {convert(self._diff, 'ev'):.6f} eV"
+        fm.log("Step rejected.")
+        fm.log(f"Energy difference: {cfmtu(self._diff, 'au', 'ev', Size.S)}.")
         if self._ovl is not None:
-            msg += f"and overlap {self._ovl}"
-        out.write_log(msg)
+            fm.log(f"Overlap: {fmt(self._ovl, Size.S)}.")
 
         self._iter_to_dt()
 
-class MonitorFunc(Selector):
+@Config("monitor", default="pop", path=Config.DYNAMICS)
+class MonitorFunc:
     def fun(self, mols: list[Molecule], ts: Timestep):
         raise NotImplementedError
 
@@ -184,9 +199,8 @@ class MonitorFunc(Selector):
     def check(self, mols: list[Molecule], ts: Timestep):
         return None
 
+@Config.Option("tdc", "monitor")
 class TDCFunc(MonitorFunc):
-    key = "tdc"
-
     def fun(self, mols):
         mol = mols[-1]
         tot = 0
@@ -197,23 +211,20 @@ class TDCFunc(MonitorFunc):
         # return 0.5*np.sum(np.abs(mol.nacdt_ss))
         return tot
 
+@Config.Option("pos", "monitor")
 class PosFunc(MonitorFunc):
-    key = "pos"
-
     def fun(self, mols):
         mol = mols[-1]
         return np.sqrt(0.5 * np.sum(mol.mom_ad**2 / mol.mass_a[:,None]))
 
+@Config.Option("phs", "monitor")
 class PhsFunc(MonitorFunc):
-    key = "phs"
-
     def fun(self, mols):
         mol = mols[-1]
         return np.sqrt(0.5 * np.sum(mol.mom_ad**2 / mol.mass_a[:,None]) + np.sum(mol.force_ad**2 / mol.mass_a[:,None]))
 
+@Config.Option("pop", "monitor")
 class PopFunc(MonitorFunc):
-    key = "pop"
-
     def fun(self, mols: list[Molecule], ts: Timestep):
         def absmax(x, y):
             if np.abs(x) > np.abs(y):
@@ -235,16 +246,16 @@ class PopFunc(MonitorFunc):
             sz = mol.bloch_n3[i,2]
             sx = np.sqrt(1 - sz**2)
             sy = np.sqrt(1 - sz**2)
-            tot += np.abs(-a/c * np.sin(c*h) * sx - a*b/c**2 * (1 - np.cos(c*h)) * sy + (np.cos(c*h) + b**2/c**2 * (1 - np.cos(c*h))) * sz - sz)
-            # tot = max(tot, np.abs(-a/c * np.sin(c*h) * sx - a*b/c**2 * (1 - np.cos(c*h)) * sy + (np.cos(c*h) + b**2/c**2 * (1 - np.cos(c*h))) * sz - sz))
-        return 0.5 * tot
+            tot += 0.5 * np.abs(-a/c * np.sin(c*h) * sx - a*b/c**2 * (1 - np.cos(c*h)) * sy + (np.cos(c*h) + b**2/c**2 * (1 - np.cos(c*h))) * sz - sz)
+            # tot = max(tot, 0.5 * np.abs(-a/c * np.sin(c*h) * sx - a*b/c**2 * (1 - np.cos(c*h)) * sy + (np.cos(c*h) + b**2/c**2 * (1 - np.cos(c*h))) * sz - sz))
+        return tot
 
     def check(self, mols, ts):
-        return 0.5 * np.nansum(np.abs(mols[-1].bloch_n3[:,2] - mols[-2].bloch_n3[:,2]))
+        # return 0.25 * np.nanmax(np.abs(mols[-1].bloch_n3[:,2] - mols[-2].bloch_n3[:,2]))
+        return 0.25 * np.nansum(np.abs(mols[-1].bloch_n3[:,2] - mols[-2].bloch_n3[:,2]))
 
+@Config.Option("mas", "monitor")
 class Massey(MonitorFunc):
-    key = "mas"
-
     def fun(self, mols: list[Molecule], ts: Timestep):
         def absmax(x, y):
             if np.abs(x) > np.abs(y):
@@ -272,47 +283,19 @@ class Massey(MonitorFunc):
             tot = max(tot, np.abs(mol.nacdt_ss[i, act]) / np.abs(mol.ham_eig_ss[i,i] - mol.ham_eig_ss[act, act]))
         return tot
 
-# class Curvature(Proportional):
-#     key = "curv"
-
-#     def __init__(self, **config):
-#         super().__init__(**config)
-#         self._vals = np.full((3,2), np.nan)
-
-#     def validate(self, mols):
-#         self.success = True
-
-#     def step_success(self, mols):
-#         self._vals[:-1] = self._vals[1:]
-#         self._vals[-1,0] = self.dt
-
-#         self._vals[-1,1] = self._mon(mols)
-#         if np.any(np.isnan(self._vals)):
-#             dt = self.dt
-#         else:
-#             times = np.cumsum(self._vals[:,0])
-#             times -= times[-1]
-#             spl = CubicSpline(times, self._vals[:,1])
-#             der2 = spl(0, 2)
-#             dt = self._maxdt * (self._eta / (np.abs(der2)**(1/3) + self._delta))**self._alpha
-
-#         self._process_dt(dt)
-
-#         with open("ts.dat", "a") as f:
-#             f.write(f"{self.time + self.dt} {self.dt}\n")
-
+@Config.Option("symp", "timestep")
+@Config("alpha", default=1, path=Config.DYNAMICS)
+@Config("delta", default=1e-10, path=Config.DYNAMICS)
 class Symplectic(Timestep):
     # doi: 10.1137/040606995
-    key = "symp"
-
     def __init__(self, **config):
         super().__init__(**config)
-        self._alpha = config.get("alpha", 0.5)
-        self._delta = config.get("delta", 1e-8)
-        self._eps = config.get("eps", self.dt)
+        self._alpha = get_cfg(self, "alpha", config)
+        self._delta = get_cfg(self, "delta", config)
+        self._eps = self.dt
         self._rho = 1
 
-        self._func = MonitorFunc.select(config.get("monitor", "tdc"))()
+        self._func = get_cfg(self, "monitor", config)()
         self._vals = np.full((3,2), np.nan)
 
 
@@ -347,21 +330,24 @@ class Symplectic(Timestep):
         with open("ts.dat", "a") as f:
             f.write(f"{self.time + self.dt} {self.dt}\n")
 
+@Config.Option("pid", "timestep")
+@Config("kp", default=0, path=Config.DYNAMICS)
+@Config("ki", default=0, path=Config.DYNAMICS)
+@Config("kd", default=0, path=Config.DYNAMICS)
+@Config("intlim", default=1, path=Config.DYNAMICS)
 class PID(Timestep):
-    key = "pid"
-
     def __init__(self, **config):
         super().__init__(**config)
-        self._kp = config.get("kp", 0)
-        self._ki = config.get("ki", 0)
-        self._kd = config.get("kd", 0)
+        self._kp = get_cfg(self, "kp", config)
+        self._ki = get_cfg(self, "ki", config)
+        self._kd = get_cfg(self, "kd", config)
 
-        self._intlim = config.get("intlim", 1)
+        self._intlim = get_cfg(self, "intlim", config)
         self._intsum = 0
         self._prev = None
         self._target = config["target"]
 
-        self._mon = MonitorFunc.select(config.get("monitor", "tdc"))()
+        self._mon = get_cfg(self, "monitor", config)()
 
     def _get_multiplier(self, mols: list[Molecule]):
         err = (self._target - self._mon(mols, self)) / self._target
@@ -395,21 +381,24 @@ class PID(Timestep):
         with open("ts.dat", "a") as f:
             f.write(f"{self.time + self.dt} {self.dt}\n")
 
+@Config.Option("prop", "timestep")
+@Config("threshval", path=Config.DYNAMICS, valid=Config.LIST[Config.UNIT])
+@Config("delta", default=1e-10, path=Config.DYNAMICS, valid=Config.POSITIVE(Config.UNIT))
+@Config("gamma", default=0.8, path=Config.DYNAMICS, valid=Config.POSITIVE(Config.FLOAT))
+@Config.Init(MonitorFunc)
 class Proportional(Timestep):
-    key = "prop"
-
     def __init__(self, **config):
         super().__init__(**config)
-        self._delta = config.get("delta", 1e-8)
-        self._qmax, self._qmin = sorted([convert(val, "au") for val in config["vals"]])
+        self._delta = get_cfg(self, "delta", config)
+        self._qmax, self._qmin = sorted([convert(val, "au") for val in get_cfg(self, "threshval", config)])
         self._eta = self._qmin
         self._alpha = - np.log(self._maxdt / self._mindt) / np.log(self._qmax / self._qmin)
 
-        self._gamma = config.get("gamma", 0.9)
+        self._gamma = get_cfg(self, "gamma", config)
         self._fact = 1
         self._pred = 1e10
 
-        self._mon: MonitorFunc = MonitorFunc.select(config["monitor"])()
+        self._mon: MonitorFunc = get_cfg(MonitorFunc, "monitor", config)()
 
         with open("0/ts.dat", "w") as f:
             pass
@@ -418,13 +407,16 @@ class Proportional(Timestep):
         tot = self._mon.check(mols, self)
         self._fact = self._pred / (tot + self._delta)
         self.success = self._fact >= 1 or tot <= self._qmax or self.dt <= self._mindt
+        print(self._pred, tot)
         # self.success = self._fact >= 1 or self.dt <= self._mindt
+        # self.success = True
 
     def step_fail(self, mols):
         self._process_dt(self.dt * self._gamma * self._fact)
         print("REJECTED")
 
     def step_success(self, mols):
+        # self._pred = 1 / self._gamma * self._mon(mols, self)
         self._pred = self._mon(mols, self)
         dt = self._mindt * (self._eta / (self._pred + self._delta))**self._alpha
         self._process_dt(dt)

@@ -1,18 +1,22 @@
 import numpy as np
 from scipy.linalg import expm
 from .ehr import SimpleEhrenfest
-from dynamics.sh.checker import HoppingUpdater
+from classes.config import Config, get_cfg
 from classes.molecule import Molecule
+from dynamics.sh.checker import HoppingUpdater
+from dynamics.base import Dynamics
 from updaters.coeff import CoeffUpdater
 
+
+@Config.Option("csdm", "method")
+@Config("prob", default="tdc", valid=Config.STR)
 class CSDM(SimpleEhrenfest):
-    key = "csdm"
     _molmixins = ["csdm"]
 
     def __init__(self, *, dynamics, **config):
         super().__init__(dynamics=dynamics, **config)
         config["nuclear"]["keep"] = 3
-        HoppingUpdater[dynamics.get("prob", "tdc")](**dynamics, **config["quantum"])
+        get_cfg(HoppingUpdater, "prob", dynamics)(**dynamics, **config["quantum"])
 
     def prepare_dynamics(self, mols: list[Molecule], dt: float):
         mol = mols[-1]

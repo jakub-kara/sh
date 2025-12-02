@@ -15,15 +15,15 @@ def get_dirs(loc=".", cond=lambda x : True):
 
 def sample_nuclear(nsamp):
     m = 1 / units["amu"]
-    q0 = np.array([-1.5, 0])
+    q0 = np.array([-15])
     # v0 = np.array([0.005])
     # p0 = m * v
-    E0 = 0.001
-    p0 = np.array([np.sqrt(2*m*E0), np.sqrt(2*m*E0)])
+    E0 = 0.02
+    p0 = np.array([np.sqrt(2*m*E0)])
     # p0 = np.array([35])
     # p0 = np.array([10,0])
     # sigq = np.sqrt(2*0.5)
-    sigq = 1/4
+    sigq = 1
 
     q = np.random.normal(q0, sigq, (nsamp, q0.shape[0]))
     p = np.random.normal(p0, sigq, (nsamp, q0.shape[0]))
@@ -37,8 +37,7 @@ def sample_nuclear(nsamp):
         with open("geom.xyz", "w") as f:
             f.write("1\n\n")
             # f.write(f"H {q[i,0]} 0 0 {v[i,0]} 0 0")
-            f.write(f"H {q[i,0]} {q[i,1]} {v[i,0]} {v[i,1]}")
-            # f.write(f"H {q[i,0]} {v[i,0]}")
+            f.write(f"H {q[i,0]} {v[i,0]}")
         os.chdir("..")
 
 def sample_quantum(nsamp, nst):
@@ -57,8 +56,8 @@ def sample_quantum(nsamp, nst):
         os.chdir("..")
 
 if __name__ == "__main__":
-    nsamp = 1000
-    nst = 2
+    nsamp = 500
+    nst = 3
     make_dirs(nsamp, ".")
     sample_nuclear(nsamp)
     sample_quantum(nsamp, nst)

@@ -4,10 +4,14 @@ import shutil
 import os
 from .ehr import SimpleEhrenfest, EhrMixin
 from classes.bundle import Bundle
+from classes.config import Config, get_cfg
+from classes.format import fmt
 from classes.molecule import Molecule
-from classes.out import Printer, Output as out
+from classes.out import FileManager as fm
 from classes.trajectory import Trajectory
+from dynamics.base import Dynamics
 
+@Config.Option("mce", "method")
 class MultiEhrenfest(SimpleEhrenfest):
     key = "mce"
     _molmixins = ["mce"]
@@ -39,9 +43,7 @@ class MultiEhrenfest(SimpleEhrenfest):
             print(bundle.iactive, bundle.n_traj)
 
         os.chdir(f"{bundle.iactive}")
-        out.open_log()
         self.step_traj(bundle.active)
-        out.close_log()
         os.chdir("..")
 
         if self._clone:
@@ -77,12 +79,13 @@ class MultiEhrenfest(SimpleEhrenfest):
         mol = traj.mols[-1]
         accbr = self._calculate_breaking(mol)
 
+
         for s in range(mol.n_states):
             nac = np.sqrt(np.sum(mol.nacdt_ss[s]**2))
             if accbr[s] > self._dclone and nac < self._dnac and mol.nspawn < self._maxspawn:
-                out.write_log(f"Cloning conditions satisfied for state {s}.")
-                out.write_log(f"NAC norm: {nac}")
-                out.write_log(f"Breaking: {accbr[s]}")
+                fm.log(f"Cloning conditions satisfied for state {s}.")
+                fm.log(f"NAC norm: {nac}")
+                fm.log(f"Breaking: {accbr[s]}")
                 mol.nspawn += 1
                 self.clone_traj(traj, s)
                 break
@@ -102,20 +105,19 @@ class MultiEhrenfest(SimpleEhrenfest):
         self.calculate_acceleration(out2)
         return out1, out2
 
+@Config.Option("mce", "mixin")
 class MCEMixin(EhrMixin):
-    key = "mce"
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.nspawn = 0
         self.phase = 0
 
     def dat_header(self):
-        dic = {"phs": Printer.write("Phase", "s")}
+        dic = {"phs": fmt("Phase")}
         return dic | super().dat_header()
 
     def dat_dict(self):
-        dic = {"phs": Printer.write(self.phase, "f")}
+        dic = {"phs": fmt(self.phase)}
         return dic | super().dat_dict()
 
     def h5_dict(self):

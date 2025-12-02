@@ -10,7 +10,7 @@ def icond(*, nuclear, electronic, **kwargs):
     mol = Molecule(**nuclear, n_states = est.n_states)
     HamTransform.select(electronic.get("transform", "none"))()
 
-    est.request(ESTMode("d")())
+    est.request(ESTMode(ESTMode.DIPOLE)())
     est.run(mol)
     est.read(mol)
 

@@ -1,9 +1,9 @@
 import numpy as np
 from .nuclear import NuclearUpdater
 from .am import *
+from classes.config import Config
 from classes.timestep import Timestep
 from dynamics.base import Dynamics
-from electronic.base import ESTProgram
 
 class SYBase(NuclearUpdater):
     substeps = 1
@@ -64,19 +64,20 @@ class SYAMBase(NuclearUpdater):
         dyn = Dynamics()
         out = mols[-1].copy()
         temp = mols[-self.steps:]
+
         # find new position as a weighted sum of previous positions and accelerations
         out.pos_ad = -np.einsum("j,j...->...", self.sy.a[:-1], np.array([mol.pos_ad for mol in temp])) + ts.dt**2*np.einsum("j,j...->...", self.sy.b[:-1], np.array([mol.acc_ad for mol in temp]))
         out.pos_ad /= self.sy.a[-1]
 
         # calculate new acceleration
-        dyn.run_est(out, ref = mols[-1], mode = dyn.step_mode(out))
+        dyn.run_est(out, mols[-1])
         dyn.update_quantum(mols + [out], ts)
         dyn.calculate_acceleration(out)
 
         # calculate new velocity from new acceleration, previous velocities, and previous accelerations
         out.vel_ad += ts.dt*np.einsum("j,j...->...", self.am.b[:-1], np.array([mol.acc_ad for mol in temp])[1:]) + ts.dt*self.am.b[-1]*out.acc_ad
 
-        self.out.out = out
+        self.result.push(out)
 
 def am4_coeffs(h0, h1, h2):
     t1 = h0
@@ -111,20 +112,21 @@ def sy4_coeffs(h0, h1, h2, h3):
 
     return np.array([a0,a1,a2,a3,a4]), h0/h3*SY4.b[:]
 
+@Config.Option("syam4", "nuc")
 class SYAM4(SYAMBase):
     key = "syam4"
     steps = 4
     sy = SY4
     am = AM4
 
+@Config.Option("syam6", "nuc")
 class SYAM6(SYAMBase):
-    key = "syam6"
     steps = 6
     sy = SY6
     am = AM6
 
+@Config.Option("syam8", "nuc")
 class SYAM8(SYAMBase):
-    key = "syam8"
     steps = 8
     sy = SY8
     am = AM8

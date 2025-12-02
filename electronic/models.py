@@ -1,11 +1,11 @@
 import numpy as np
 import os
+from classes.config import Config, get_cfg
 from classes.molecule import Molecule
 from electronic.base import ESTProgram, est_method
 
+@Config.Option("model", "program")
 class Model(ESTProgram):
-    key = "model"
-
     def __init__(self, **config):
         super().__init__(**config)
         self._geo = None
@@ -220,6 +220,37 @@ class Model(ESTProgram):
         self._gradham[1,2,0,0] = -2*c*d*x*np.exp(-d*x**2)
         self._hamdia[2,1] = self._hamdia[1,2]
         self._gradham[2,1,0,0] = self._gradham[1,2,0,0]
+
+    @est_method
+    def sub_s2(self):
+        a = 0.06
+        b = 1.0
+        c = 0.005
+        d = 0.5
+        x = self._geo[0,0]
+
+        self._hamdia[0,0] = a*(np.tanh(b*(x - 7)) - np.tanh(b*(x + 7))) + a
+        self._gradham[0,0,0,0] = a*b*(1 - np.tanh(b*(x - 7))**2 - (1 - np.tanh(b*(x + 7))**2))
+        self._hamdia[1,1] = -self._hamdia[0,0]
+        self._gradham[1,1,0,0] = -self._gradham[0,0,0,0]
+        self._hamdia[2,2] = 2*a*np.tanh(b/2*x)
+        self._gradham[2,2,0,0] = a*b*(1 - np.tanh(b/2*x)**2)
+
+        self._hamdia[0,1] = c*(np.exp(-d*(x - 7)**2) + np.exp(-d*(x + 7)**2))
+        self._gradham[0,1,0,0] = -2*c*d*((x - 7)*np.exp(-d*(x - 7)**2) + (x + 7)*np.exp(-d*(x + 7)**2))
+        self._hamdia[1,0] = self._hamdia[0,1]
+        self._gradham[1,0,0,0] = self._gradham[0,1,0,0]
+
+        self._hamdia[0,2] = c*np.exp(-d*x**2)
+        self._gradham[0,2,0,0] = -2*c*d*x*np.exp(-d*x**2)
+        self._hamdia[2,0] = self._hamdia[0,2]
+        self._gradham[2,0,0,0] = self._gradham[0,2,0,0]
+
+        self._hamdia[1,2] = c*np.exp(-d*x**2)
+        self._gradham[1,2,0,0] = -2*c*d*x*np.exp(-d*x**2)
+        self._hamdia[2,1] = self._hamdia[1,2]
+        self._gradham[2,1,0,0] = self._gradham[1,2,0,0]
+
 
     @est_method
     def ho(self):

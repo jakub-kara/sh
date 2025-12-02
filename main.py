@@ -5,14 +5,11 @@ import argparse
 
 from sampling.icond import icond
 from classes.bundle import Bundle
+from classes.format import BORDER
 from dynamics.base import Dynamics
 
 def main():
-    parser = argparse.ArgumentParser(
-        prog = "SHREC",
-        description = "Main script to run SHREC",
-        epilog = ""
-    )
+    parser = argparse.ArgumentParser()
     parser.add_argument("infile", help="path to input file")
     parser.add_argument("-r", "--restart", action="store_true")
     parser.add_argument("-i", "--icond", action="store_true")
@@ -34,9 +31,9 @@ def main():
 
     t_fin = time.time()
     print()
-    print("=======================================")
+    print(BORDER)
     print(f"Total time: {t_fin - t_ini}")
-    print("=======================================")
+    print(BORDER)
 
 def run_icond(args, config):
     icond(**config)

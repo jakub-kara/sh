@@ -79,6 +79,9 @@ def convert(val, *args):
             tot *= fact
         return tot
 
+    if val is None:
+        return None
+
     if len(args) > 2:
         raise ValueError("Too many arguments.")
 

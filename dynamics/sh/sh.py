@@ -1,29 +1,60 @@
 import numpy as np
 from .checker import HoppingUpdater
 from dynamics.base import Dynamics
-from classes.molecule import Molecule, SHMixin
-from classes.out import Printer, Output
+from dynamics.decoherence import Decoherence
+from classes.config import Config, get_cfg
+from classes.format import fmt
+from classes.meta import Singleton
+from classes.molecule import Molecule
 from classes.trajectory import Trajectory
 from classes.timestep import Timestep
-from electronic.base import ESTMode
-from updaters.composite import CompositeIntegrator
+from electronic.base import ESTMode, ESTRequest
+from updaters.nuclear import CompositeIntegrator
 from updaters.coeff import CoeffUpdater
 from updaters.tdc import TDCUpdater
 
+@Config.Option("vel", "rescale")
+@Config("rescale", default="vel", path=Config.DYNAMICS, valid=Config.STR)
+class Rescaler(metaclass = Singleton):
+    @staticmethod
+    def _normalise(a):
+        return a / np.linalg.norm(a)
 
+    def get_delta(self, mol: Molecule):
+        return self._normalise(mol.vel_ad)
+
+@ESTRequest(ESTMode(ESTMode.TARGET), this=False)
+@Config.Option("nac", "rescale")
+class NACRescaler(Rescaler):
+    def get_delta(self, mol: Molecule):
+        if np.any(np.isnan(mol.nacdr_ssad[mol.active, mol.target])):
+            Dynamics().run_est(mol, ref = mol)
+
+        # check this works
+        delta = mol.nacdr_ssad[mol.active, mol.target]
+        delta /= mol.mass_a[:,None]
+        return self._normalise(delta)
+
+@Config.Option("eff", "rescale")
+class EffectiveNACRescaler(Rescaler):
+    def get_delta(self, mol):
+        return self._normalise(mol.eff_nac())
+
+@Config("decoherence", default="none", path=Config.DYNAMICS, valid=Config.STR)
+@Config("rescale", default="vel", path=Config.DYNAMICS, valid=Config.STR)
+@Config("reverse", default=False, path=Config.DYNAMICS, valid=Config.BOOL)
+@Config.Init(HoppingUpdater, Decoherence, Rescaler)
 class SurfaceHopping(Dynamics):
-    mode = ESTMode("a")
+    mode = ESTMode(ESTMode.ACTIVE)
 
-    def __init__(self, *, dynamics: dict, **config):
-        super().__init__(dynamics=dynamics, **config)
-        dectypes = {
-            "none": self._decoherence_none,
-            "edc": self._decoherence_edc,
-        }
+    def __init__(self, **config):
+        super().__init__(**config)
 
-        self._rescale = dynamics.get("rescale", "")
-        self._reverse = dynamics.get("reverse", False)
-        self._decoherence = dectypes[dynamics.get("decoherence", "none")]
+        self._reverse = get_cfg(self, "reverse", config)
+
+        get_cfg(HoppingUpdater, "prob", config)(**config)
+        get_cfg(Decoherence, "decoherence", config)(**config)
+        get_cfg(Rescaler, "rescale", config)()
 
     def step_mode(self, mol):
         return self.mode(mol) + TDCUpdater().mode(mol) + CoeffUpdater().mode(mol)
@@ -34,28 +65,8 @@ class SurfaceHopping(Dynamics):
     def potential_energy(self, mol: Molecule):
         return mol.ham_eig_ss[mol.active, mol.active]
 
-    # move the switch elsewhere
     def _get_delta(self, mol: Molecule):
-        # normalises vector
-        def normalise(a):
-            return a / np.linalg.norm(a)
-
-        if self._rescale == "nac":
-            print("Rescaling")
-            # rescale along nacdr
-            if np.any(np.isnan(mol.nacdr_ssad[mol.active, mol.target])):
-                self.run_est(mol, ref = mol, mode = ESTMode("t")(mol))
-
-            # check this works
-            delta = mol.nacdr_ssad[mol.active, mol.target]
-            delta /= mol.mass_a[:,None]
-            delta = normalise(delta)
-        elif self._rescale == "eff":
-            delta = normalise(self._eff_nac(mol))
-        else:
-            # rescale uniformly
-            delta = normalise(mol.vel_ad)
-        return delta
+        return Rescaler().get_delta(mol)
 
     def _avail_kinetic_energy(self, mol: Molecule, delta: np.ndarray):
         a, b, _ = self._get_ABC(mol, delta)
@@ -117,23 +128,7 @@ class SurfaceHopping(Dynamics):
             raise RuntimeError("Issue with rescaling...")
 
         mol.vel_ad -= gamma * delta
-
         CompositeIntegrator().to_init()
-
-    def _decoherence_none(*args):
-        pass
-
-    def _decoherence_edc(self, mol: Molecule, dt, c = 0.1):
-        kin_en = mol.kinetic_energy()
-        for s in range(mol.n_states):
-            if s == mol.active:
-                continue
-            else:
-                decay_rate = 1/np.abs(mol.ham_eig_ss[s,s] - mol.ham_eig_ss[mol.active, mol.active]) * (1 + c/kin_en)
-                mol.coeff_s[s] *= np.exp(-dt/decay_rate)
-
-        tot_pop = np.sum(np.abs(mol.coeff_s)**2) - np.abs(mol.coeff_s[mol.active])**2
-        mol.coeff_s[mol.active] *= np.sqrt(1 - tot_pop)/np.abs(mol.coeff_s[mol.active])
 
     def update_target(self, mols: list[Molecule], ts: Timestep):
         hop = HoppingUpdater()
@@ -143,12 +138,12 @@ class SurfaceHopping(Dynamics):
     # TODO: move to molecule
     def dat_header(self, traj: Trajectory):
         dic = super().dat_header(traj)
-        dic["act"] = Printer.write("Active State", "s")
+        dic["act"] = fmt("Active State")
         return dic
 
     def dat_dict(self, traj: Trajectory):
         dic = super().dat_dict(traj)
-        dic["act"] = Printer.write(traj.mol.active, "i")
+        dic["act"] = fmt(traj.mol.active)
         return dic
 
     def h5_dict(self, traj: Trajectory):

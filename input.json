@@ -1,0 +1,12 @@
+{
+    "output": {},
+    "nuclear": {},
+    "quantum": {},
+    "dynamics": {
+        "initstate": "1",
+        "dt": "1 fs"
+    },
+    "electronic": {
+        "states": "3"
+    }
+}

@@ -1,6 +1,7 @@
 import numpy as np
 from copy import deepcopy
 from abc import abstractmethod
+from classes.config import Config
 from classes.molecule import Molecule
 from classes.timestep import Timestep
 
@@ -10,7 +11,8 @@ class Updater:
     substeps = 1
 
     def __init__(self, **kwargs):
-        pass
+        self.result = None
+        self.success = True
 
     def is_ready(self, step: int):
         return step >= self.steps - 1
@@ -21,6 +23,7 @@ class Updater:
             self.update(mols, ts, *args, **kwargs)
         else:
             self.no_update(mols, ts, *args, **kwargs)
+        self.validate(mols, ts, *args, **kwargs)
 
     @abstractmethod
     def new_result(self, mol: Molecule):
@@ -34,7 +37,11 @@ class Updater:
     def no_update(self, mols: list[Molecule], ts: Timestep, *args, **kwargs):
         raise NotImplementedError
 
+    def validate(self, mols: list[Molecule], ts: Timestep, *args, **kwargs):
+        self.success = True
+
 # Multistage mixin
+@Config("n_substeps", default=50, path=Config.QUANTUM, valid=Config.POSITIVE(Config.INT))
 class Multistage:
     def __init__(self, *, n_substeps = 50, **kwargs):
         super().__init__(**kwargs)
@@ -43,48 +50,48 @@ class Multistage:
 class UpdateResult:
     def __init__(self, integrand, n_substeps):
         self.substeps = n_substeps
+        self._idx = 0
         self._npa = isinstance(integrand, np.ndarray)
         if self._npa:
             dtype = integrand.dtype
-            self._inp = integrand.copy()
-            self.inter = np.zeros((n_substeps, *integrand.shape), dtype=dtype)
+            self._vals = np.zeros((self.substeps + 1, *integrand.shape), dtype=dtype)
+            self.push(integrand.copy())
         else:
             dtype = type(integrand)
-            self._inp = deepcopy(integrand)
-            self.inter = np.empty(n_substeps, dtype=dtype)
+            self._vals = np.empty(self.substeps + 1, dtype=dtype)
+            self.push(deepcopy(integrand))
 
     @property
     def inp(self):
-        if self._npa:
-            return self._inp.copy()
-        else:
-            return deepcopy(self._inp)
+        return self._copy_val(self._vals[0])
 
     @property
     def out(self):
-        return self.inter[-1]
+        return self._copy_val(self._vals[-1])
 
     @out.setter
     def out(self, value):
-        self.inter[-1] = value
+        self._vals[-1] = value
+
+    def _copy_val(self, val):
+        if self._npa:
+            return val.copy()
+        else:
+            return deepcopy(val)
 
     def copy(self):
         return deepcopy(self)
 
-    def fill(self):
-        self.inter[:] = self.inp
-        self.out = self.inp
+    def push(self, val):
+        self._vals[self._idx] = val
+        self._idx += 1
 
-    # janky, maybe rework
+    def get(self, idx):
+        return self._copy_val(self._vals[idx])
+
+    def fill(self):
+        self._vals[:] = self.inp
+        self._idx = self.substeps
+
     def interpolate(self, frac: float):
-        # temp = frac * self.substeps
-        # idx = int(temp)
-        # if idx >= self.substeps - 1:
-        #     return self.out
-        # upper = (temp - idx) * self.inter[idx + 1]
-        # if idx == 0:
-        #     lower = (1 - temp + idx) * self.inp
-        # else:
-        #     lower = (1 - temp + idx) * self.inter[idx]
-        # return lower + upper
         return (1 - frac) * self.inp + frac * self.out

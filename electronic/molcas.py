@@ -1,26 +1,31 @@
 import numpy as np
 import os, sys
 
+from classes.config import Config
 from .base import ESTProgram, est_method
 
+@Config.Option("molcas", "program")
 class Molcas(ESTProgram):
-    key = "molcas"
+    def __init__(self, **config):
+        super().__init__(**config)
+        self._to_keep = ['JOB001','JOB002','JOBOLD',f'{self._file}.JobIph',f'{self._file}.JobMix',f'{self._file}.log',f'{self._file}.wf']
 
     def execute(self):
-        err = os.system(f"pymolcas -f -b1 {self._file}.input")
+        err = os.system(f"{os.path.join(self._path, 'pymolcas')} -f -b1 {self._file}.input")
         if err:
             raise InterruptedError(f"Error in MOLCAS, exit code {err}")
         self.clean_dir()
 
-
     def backup_wf(self, target):
-        os.system(f"cp {self._file}.wf {target}")
+        for file in self._to_keep:
+            os.system(f"cp {file} {target}")
 
     def recover_wf(self, source):
-        os.system(f"cp {source}/{self._file}.wf .")
+        for file in self._to_keep:
+            os.system(f"cp {source}/{file} .")
 
     @est_method
-    def cas(self):
+    def cas(self, mol):
         self._create_input_stem()
 
         for i in range(self.n_states):
@@ -35,7 +40,7 @@ class Molcas(ESTProgram):
         self._add_input_rassi(False)
 
     @est_method
-    def pt2(self):
+    def pt2(self, mol):
         self._create_input_stem()
 
         self._add_input_pt2()
@@ -69,6 +74,11 @@ class Molcas(ESTProgram):
         os.system('rm A_PT2 GAMMA*')
 
         with open(f"{self._file}.input", "w") as file:
+            def copy_if(src, tar):
+                if os.path.exists(src):
+                    file.write(f">>> COPY {src} {tar}\n")
+
+
             file.write("&GATEWAY\n")
             file.write(f"COORD={self._file}.xyz\n")
             #  if SOC:
@@ -79,11 +89,13 @@ class Molcas(ESTProgram):
             file.write("RICD\n")
             file.write(f"BASIS={self._options['basis']}\n\n")
 
-            file.write(f">>> copy {self._file}.wf JOBOLD\n")
+            copy_if(f"{self._file}.wf", "JOBOLD")
 
             file.write("&SEWARD\n\n")
             file.write("&RASSCF\n")
-            file.write("JOBIPH\nCIRESTART\n")
+            if os.path.exists("JOBIPH"):
+                file.write("JOBIPH\n")
+                file.write("CIRESTART\n")
             nactel = self._options['nel'] - 2 * self._options['closed']
             file.write(f"NACTEL={nactel} 0 0\n")
             ras2 = self._options['active'] - self._options['closed']
@@ -94,10 +106,10 @@ class Molcas(ESTProgram):
                     file.write(f"RLXROOT={i+1}\n")
             file.write(f"CIROOT={self._options['sa']} {self._options['sa']} 1\n\n")
 
-            file.write(">>> COPY JOB001 JOB002\n")
-            file.write(">>> COPY molcas.JobIph JOB001\n")
-            file.write(">>> COPY molcas.JobIph JOBOLD\n")
-            file.write(f">>> COPY molcas.JobIph {self._file}.wf\n")
+            copy_if("JOB001", "JOB002")
+            copy_if("molcas.JobIph", "JOB001")
+            copy_if("molcas.JobIph", "JOBOLD")
+            copy_if("molcas.JobIph", f"{self._file}.wf")
 
     def _add_input_ddr(self, i: int, j: int):
         with open(f"{self._file}.input", "a") as file:
@@ -261,7 +273,7 @@ class Molcas(ESTProgram):
         return dipmom
 
     # probably change args
-    def read_ovlp(self, dummy0, dummy1, dummy2):
+    def read_ovlp(self, *args):
         ovlp = np.zeros((self._options['sa']*2,self._options['sa']*2))
         with open(self._file+'.log', 'r') as file:
             for line in file:
@@ -274,8 +286,8 @@ class Molcas(ESTProgram):
 
                         ovlp[i,:len(data)] = [float(q) for q in data]
 
-            ovlp =ovlp[self._options['sa']:,:self._options['sa']]
-            ovlp =ovlp[:self._nstates,:self._nstates]
+            ovlp = ovlp[self._options['sa']:,:self._options['sa']]
+            ovlp = ovlp[:self._nstates,:self._nstates]
             U,_,Vt = np.linalg.svd(ovlp)
             ovlp = U@Vt
 
@@ -283,8 +295,7 @@ class Molcas(ESTProgram):
 
     def clean_dir(self):
 
-        to_keep=['JOB001','JOB002','JOBOLD',f'{self._file}.JobIph',f'{self._file}.JobMix',f'{self._file}.log',f'{self._file}.wf']
 
         for file in os.listdir(os.getcwd()):
-            if file not in to_keep:
+            if file not in self._to_keep:
                 os.remove(file)

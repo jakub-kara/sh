@@ -1,7 +1,8 @@
 import numpy as np
 import os
 from abc import abstractmethod
-from classes.meta import Singleton, Selector, Counter, DecoratorDistributor
+from classes.config import Config, get_cfg
+from classes.meta import Singleton, Counter, Decorator, DecoratorDistributor
 from classes.molecule import Molecule
 from classes.constants import convert
 
@@ -10,17 +11,17 @@ def est_method(func):
     return func
 
 class ESTMode:
+    NONE = ""
+    ACTIVE = "a"
+    GRADIENTS = "g"
+    NACMES = "n"
+    OVERLAP = "o"
+    DIPOLE = "d"
+    TARGET = "t"
+
     def __init__(self, val: str = ""):
         self.vals = [c.lower() for c in val]
 
-    """
-    "o": overlap
-    "d": dipole moment
-    "g": all gradients
-    "a": active state gradient
-    "n": all nacmes
-    "t": active-target state nacme
-    """
     def __call__(self, mol: Molecule = None):
         out = []
         for mode in self.vals:
@@ -38,8 +39,31 @@ class ESTMode:
                 out.append(f"n{mol.active}{mol.target}")
         return out
 
-class HamTransform(Selector, metaclass = Singleton):
-    mode = ESTMode("")
+class ESTRequest(Decorator):
+    requests = []
+
+    def __init__(self, *obj, this = True):
+        self._obj = [i for i in obj if hasattr(i, "mode")]
+        self._this = this
+        self.id = None
+
+    def run(self, func, instance, *args, **kwargs):
+        req = []
+        for obj in self._obj:
+            if isinstance(obj, ESTMode):
+                req.append(obj)
+            elif hasattr(obj, "mode"):
+                req.append(obj().mode)
+        if self._this and hasattr(instance, "mode"):
+            req.append(instance.mode)
+        ESTRequest.requests.append(req)
+        res = func(instance, *args, **kwargs)
+        ESTRequest.requests.pop()
+        return res
+
+@Config("transform", default="none", path=Config.ELECTRONIC, valid=Config.STR)
+class HamTransform(metaclass = Singleton):
+    mode = ESTMode(ESTMode.NONE)
 
     @abstractmethod
     def transform(self, mol: Molecule):
@@ -50,16 +74,15 @@ class HamTransform(Selector, metaclass = Singleton):
         mol.trans_ss = evec
         mol.ham_eig_ss = np.diag(eval)
 
+@Config.Option("none", "transform")
 class NoTransform(HamTransform):
-    key = "none"
-
     def transform(self, mol: Molecule):
         mol.ham_eig_ss[:] = np.real(mol.ham_dia_ss)
         mol.trans_ss[:] = np.eye(mol.n_states)
 
+@Config.Option("ngt", "transform")
 class NGT(HamTransform):
-    key = "ngt"
-    mode = ESTMode("gn")
+    mode = ESTMode(ESTMode.GRADIENTS + ESTMode.NACMES)
 
     def transform(self, mol):
         # need to transform gradient for non-diagonal hamiltonian
@@ -79,13 +102,20 @@ class NGT(HamTransform):
         for i in range(mol.n_states):
             mol.grad_sad[i] = np.real(g_eig[i,i])
 
-class ESTProgram(Selector, DecoratorDistributor, metaclass = Singleton):
+@Config("program", path=Config.ELECTRONIC, valid=Config.STR)
+@Config("path", default="", path=Config.ELECTRONIC, valid=Config.STR | Config.NONE)
+@Config("method", default="", path=Config.ELECTRONIC, valid=Config.STR | Config.NONE)
+@Config("states", path=Config.ELECTRONIC, valid=Config.LIST[Config.POSITIVE(Config.INT)])
+@Config("refen", default=0, path=Config.ELECTRONIC, valid=Config.UNIT)
+@Config("options", default=None, path=Config.ELECTRONIC, valid=Config.ANY)
+class ESTProgram(DecoratorDistributor, metaclass = Singleton):
     _methods = {}
 
-    def __init__(self, *, states: list, program: str, method: str, path: str = "", options: dict = None, refen = 0, **config):
+    def __init__(self, **config):
         self._register_methods()
 
-        self._path = path
+        self._path = get_cfg(self, "path", config)
+        states = get_cfg(self, "states", config)
         if isinstance(states, int):
             self._states = np.array([states])
         else:
@@ -93,14 +123,16 @@ class ESTProgram(Selector, DecoratorDistributor, metaclass = Singleton):
         self._nstates = np.sum(self._states)
         self._natoms = None
         self._spinsum = np.cumsum(self._states) - self._states
-        self._refen = convert(refen, "au")
+        self._refen = convert(get_cfg(self, "refen", config), "au")
 
-        self._method_name = method
-        self._method = self._select_method(method)
+        self._method_name = get_cfg(self, "method", config)
+        self._method = self._select_method(self._method_name)
+
+        options = get_cfg(self, "options", config)
         if options is None:
             options = {}
         self._options = options
-        self._file = program
+        self._file = self.__class__.__name__.lower()
 
         self._calc_grad = np.zeros(self._nstates)
         self._calc_nac = np.zeros((self._nstates, self._nstates))
@@ -126,19 +158,25 @@ class ESTProgram(Selector, DecoratorDistributor, metaclass = Singleton):
         self._calc_ovlp = False
         return self
 
-    def request(self, *args):
-        for arg in args:
-            if arg[0] == "o":
-                self._calc_ovlp = True
-            elif arg[0] == "g":
-                idx = int(arg[1])
-                self._calc_grad[idx] = True
-            elif arg[0] == "n":
-                idx = int(arg[1]), int(arg[2])
-                self._calc_nac[idx] = True
-                self._calc_nac[idx[::-1]] = True
-            elif arg[0] == "d":
-                self._calc_dip = True
+    def request(self, mol):
+        if len(ESTRequest.requests) < 1:
+            return
+
+        reqs = ESTRequest.requests[-1]
+        for req in reqs:
+            args = req(mol)
+            for arg in args:
+                if arg[0] == "o":
+                    self._calc_ovlp = True
+                elif arg[0] == "g":
+                    idx = int(arg[1])
+                    self._calc_grad[idx] = True
+                elif arg[0] == "n":
+                    idx = int(arg[1]), int(arg[2])
+                    self._calc_nac[idx] = True
+                    self._calc_nac[idx[::-1]] = True
+                elif arg[0] == "d":
+                    self._calc_dip = True
 
     def any_grads(self):
         return np.any(self._calc_grad)
@@ -155,6 +193,7 @@ class ESTProgram(Selector, DecoratorDistributor, metaclass = Singleton):
     @Counter(id = "est")
     def run(self, mol: Molecule):
         os.chdir("est")
+        self.request(mol)
         self.write(mol)
         self.execute()
         os.chdir("..")

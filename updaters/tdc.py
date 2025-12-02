@@ -1,44 +1,37 @@
 import numpy as np
 from .base import Updater, Multistage, UpdateResult
-from classes.meta import Singleton, Selector
+from classes.config import Config, get_cfg
+from classes.meta import Singleton
 from classes.molecule import Molecule
 from classes.timestep import Timestep
-from classes.out import Output as out
 from electronic.base import ESTMode
 
-class TDCUpdater(Updater, Selector, metaclass = Singleton):
-    mode = ESTMode("")
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.tdc = None
+@Config("tdc_upd", default="npi", path=Config.QUANTUM, valid=Config.STR)
+class TDCUpdater(Updater, metaclass = Singleton):
+    mode = ESTMode(ESTMode.NONE)
 
     def new_result(self, mol):
-        self.tdc = UpdateResult(mol.nacdt_ss, self.substeps)
-
-    def no_update(self, mols: list[Molecule], ts: Timestep):
-        self.tdc.fill()
+        self.result = UpdateResult(mol.nacdt_ss, self.substeps)
 
     def _validate_overlap(self, ovl):
         eps = 1e-12
         ovl[ovl > 1 - eps] = 1 - eps
 
+@Config.Option("none", "tdc_upd")
 class BlankTDCUpdater(TDCUpdater):
-    key = "none"
-
     def update(self, mols, dt):
         self.no_update(mols, dt)
 
+@Config.Option("ktdce", "tdc_upd")
 class kTDCe(TDCUpdater):
     # curvature-based TDC approximation, energy version
-    key = "ktdce"
     steps = 4
 
     def _dh(self, mol: Molecule, i: int, j: int):
         return mol.ham_eig_ss[i,i] - mol.ham_eig_ss[j,j]
 
     def update(self, mols: list[Molecule], ts: Timestep):
-        tdc = self.tdc.inp
+        tdc = self.result.inp
         for i in range(mols[-1].n_states):
             for j in range(i):
                 dh = lambda mol: self._dh(mol, i, j)
@@ -47,12 +40,12 @@ class kTDCe(TDCUpdater):
                 if rad > 0:
                     tdc[i,j] = 1/2 * np.sqrt(rad)
                 tdc[j,i] = -tdc[i,j]
-        self.tdc.out = tdc
+        self.result.push(tdc)
 
+@Config.Option("ktdcg", "tdc_upd")
 class kTDCg(TDCUpdater):
     # curvature-based TDC approximation, gradient version
-    key = "ktdcg"
-    mode = ESTMode("g")
+    mode = ESTMode(ESTMode.GRADIENTS)
     steps = 2
 
     def _dh(self, mol: Molecule, i: int, j: int):
@@ -62,7 +55,7 @@ class kTDCg(TDCUpdater):
         return np.sum((mol.grad_sad[i] - mol.grad_sad[j]) * mol.vel_ad)
 
     def update(self, mols: list[Molecule], ts: Timestep):
-        tdc = self.tdc.inp
+        tdc = self.result.inp
         for i in range(mols[-1].n_states):
             for j in range(i):
                 ddh = lambda mol: self._ddh(mol, i, j)
@@ -71,41 +64,43 @@ class kTDCg(TDCUpdater):
                 if rad > 0:
                     tdc[i,j] = 1/2 * np.sqrt(rad)
                 tdc[j,i] = -tdc[i,j]
-        self.tdc.out = tdc
+        self.result.push(tdc)
 
+@Config.Option("hst", "tdc_upd")
 class HST(TDCUpdater):
     # Classic Hammes-Schiffer-Tully mid point approximation (paper in 1994)
-    key = "hst"
-    mode = ESTMode("o")
+    mode = ESTMode(ESTMode.OVERLAP)
     steps = 2
 
     def update(self, mols: list[Molecule], ts: Timestep):
         self._validate_overlap(mols[-1].ovlp_ss)
-        self.tdc.out = 1 / (2 * ts.dt) * (mols[-1].ovlp_ss - mols[-1].ovlp_ss.T)
+        out = 1 / (2 * ts.dt) * (mols[-1].ovlp_ss - mols[-1].ovlp_ss.T)
+        self.result.push(out)
 
+@Config.Option("hst3", "tdc_upd")
 class HSTSharc(TDCUpdater):
-    key = "hst3"
-    mode = ESTMode("o")
+    mode = ESTMode(ESTMode.OVERLAP)
     steps = 3
 
     def update(self, mols: list[Molecule], ts: Timestep):
         self._validate_overlap(mols[-1].ovlp_ss)
-        self.tdc.out = 1 / (4 * ts.dt) * (3 * (mols[-1].ovlp_ss - mols[-1].ovlp_ss.T) - (mols[-2].ovlp_ss - mols[-2].ovlp_ss.T))
+        out = 1 / (4 * ts.dt) * (3 * (mols[-1].ovlp_ss - mols[-1].ovlp_ss.T) - (mols[-2].ovlp_ss - mols[-2].ovlp_ss.T))
+        self.result.push(out)
 
+@Config.Option("nacme", "tdc_upd")
 class NACME(TDCUpdater):
     # ddt = nacme . velocity (i.e. original Tully 1990 paper model)
-    key = "nacme"
-    mode = ESTMode("n")
+    mode = ESTMode(ESTMode.NACMES)
     steps = 1
 
     def update(self, mols: list[Molecule], ts: Timestep):
         temp = np.nan_to_num(mols[-1].nacdr_ssad)
-        self.tdc.out = np.einsum("ijad, ad -> ij", temp, mols[-1].vel_ad)
+        self.result.push(np.einsum("ijad, ad -> ij", temp, mols[-1].vel_ad))
 
+@Config.Option("npi", "tdc_upd")
 class NPI(Multistage, TDCUpdater):
     # Meek and Levine's norm preserving interpolation, but integrated across the time-step
-    key = "npi"
-    mode = ESTMode("o")
+    mode = ESTMode(ESTMode.OVERLAP)
     steps = 1
 
     def update(self, mols: list[Molecule], ts: Timestep):
@@ -118,12 +113,12 @@ class NPI(Multistage, TDCUpdater):
             dU -= (np.eye(nst) - 1) *  (np.cos(np.arcsin(mols[-1].ovlp_ss) * i / self.substeps) * np.arcsin(mols[-1].ovlp_ss) / ts.dt)
 
             Utot = np.matmul(U.T, dU)
-            self.tdc.inter[i] = Utot * (1 - np.eye(nst))
+            self.result.push(Utot * (1 - np.eye(nst)))
 
+@Config.Option("npisharc", "tdc_upd")
 class NPISharc(Multistage, TDCUpdater):
     # NPI sharc mid-point averaged
-    key = "npisharc"
-    mode = ESTMode("o")
+    mode = ESTMode(ESTMode.OVERLAP)
     steps = 1
 
     def update(self, mols: list[Molecule], ts: Timestep):
@@ -137,12 +132,12 @@ class NPISharc(Multistage, TDCUpdater):
             dU -= (np.eye(nst) - 1) *  (np.cos(np.arcsin(mols[-1].ovlp_ss) * i / self.substeps) * np.arcsin(mols[-1].ovlp_ss) / ts.dt)
 
             Utot += np.matmul(U.T, dU)
-            self.tdc.inter[i] = Utot / (i + 1) * (1 - np.eye(nst))
+            self.result.push(Utot / (i + 1) * (1 - np.eye(nst)))
 
+@Config.Option("npimeek", "tdc_upd")
 class NPIMeek(TDCUpdater):
     # NPI Meek and Levine mid-point averaged
-    key = "npimeek"
-    mode = ESTMode("o")
+    mode = ESTMode(ESTMode.OVERLAP)
     steps = 2
 
     def update(self, mols: list[Molecule], ts: Timestep, **kwargs):
@@ -153,7 +148,7 @@ class NPIMeek(TDCUpdater):
                 return np.sin(x) / x
 
         self._validate_overlap(mols[-1].ovlp_ss)
-        tdc = self.tdc.inp
+        tdc = self.result.inp
         nst = mols[-1].n_states
         w = mols[-1].ovlp_ss
 
@@ -178,4 +173,4 @@ class NPIMeek(TDCUpdater):
                             E /= (np.arcsin(wlj)**2 - np.arcsin(wlk)**2)
 
                 tdc[k,j] = 1 / (2 * ts.dt) * (np.arccos(w[j,j]) * (A + B) + np.arcsin(w[k,j]) * (C + D) + E)
-        self.tdc.out = tdc
+        self.result.push(tdc)

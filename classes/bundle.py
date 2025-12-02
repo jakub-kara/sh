@@ -3,8 +3,8 @@ import os, sys, shutil
 import pickle
 from copy import deepcopy
 from .meta import Singleton, Factory
-from classes.trajectory import Trajectory
-from classes.out import Output as out
+from .out import FileManager as fm
+from .trajectory import Trajectory
 
 class Bundle:
     def __init__(self, **config: dict):
@@ -25,8 +25,8 @@ class Bundle:
         with open("single.pkl", "wb") as pkl:
             pickle.dump(Singleton.save(), pkl)
 
-        with open("out.pkl", "wb") as pkl:
-            pickle.dump(out.save(), pkl)
+        # with open("out.pkl", "wb") as pkl:
+        #     pickle.dump(FileManager().save(), pkl)
 
         with open("fact.pkl", "wb") as pkl:
             pickle.dump(Factory.save(), pkl)
@@ -41,8 +41,8 @@ class Bundle:
         with open("single.pkl", "rb") as pkl:
             Singleton.restart(pickle.load(pkl))
 
-        with open("out.pkl", "rb") as pkl:
-            out.restart(pickle.load(pkl))
+        # with open("out.pkl", "rb") as pkl:
+            # out.restart(pickle.load(pkl))
 
         with open("fact.pkl", "rb") as pkl:
             Factory.restart(pickle.load(pkl))
@@ -80,3 +80,9 @@ class Bundle:
     def edit(self, attr, val):
         for traj in self.trajs:
             setattr(traj, attr, val)
+
+    def log_all(self, msg: str):
+        for i in range(self.n_traj):
+            os.chdir(str(i))
+            fm.log(msg)
+            os.chdir("..")

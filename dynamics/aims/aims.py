@@ -5,28 +5,35 @@ import shutil
 import os
 from classes.bundle import Bundle
 from classes.constants import atomic_widths
+from classes.config import Config, get_cfg
+from classes.format import *
 from classes.molecule import Molecule, MoleculeMixin
-from classes.out import Printer, Output as out
+from classes.out import FileManager as fm
 from classes.timestep import Timestep
 from classes.trajectory import Trajectory
 from dynamics.base import Dynamics
 from electronic.base import ESTMode
 from updaters.tdc import TDCUpdater
 
-class AIMS(Dynamics):
-    key = "aims"
-    mode = ESTMode("a")
 
+@Config.Option("aims", "method")
+@Config("csthresh", default=0.01, path=Config.DYNAMICS, valid=Config.POSITIVE(Config.FLOAT))
+@Config("poptospawn", default=0.01, path=Config.DYNAMICS, valid=Config.POSITIVE(Config.FLOAT))
+@Config("omax", default=0.5, path=Config.DYNAMICS, valid=Config.POSITIVE(Config.FLOAT))
+@Config("olapthresh", default=1e-3, path=Config.DYNAMICS, valid=Config.POSITIVE(Config.FLOAT))
+@Config("regthresh", default=1e-4, path=Config.DYNAMICS, valid=Config.POSITIVE(Config.FLOAT))
+class AIMS(Dynamics):
+    mode = ESTMode(ESTMode.ACTIVE)
 
     def __init__(self, *, dynamics: dict, **config):
         super().__init__(dynamics=dynamics, **config)
         config["nuclear"]["mixins"] = "aims"
 
-        self._csthresh = dynamics.get("csthresh", 0.01)
-        self._poptospawn = dynamics.get("poptospawn", 0.01)
-        self._omax = dynamics.get("omax", 0.5)
-        self._olapthresh = dynamics.get("olapthresh", 1e-3)
-        self._regthresh = dynamics.get("regthresh", 1e-4)
+        self._csthresh = get_cfg(self, "csthresh", dynamics)
+        self._poptospawn = get_cfg(self, "poptospawn", dynamics)
+        self._omax = get_cfg(self, "omax", dynamics)
+        self._olapthresh = get_cfg(self, "olapthresh", dynamics)
+        self._regthresh = get_cfg(self, "regthresh", dynamics)
 
         self._clone = None
         self._spawnprop = None
@@ -55,9 +62,7 @@ class AIMS(Dynamics):
             print(bundle.iactive, bundle.n_traj)
 
         os.chdir(f"{bundle.iactive}")
-        out.open_log()
         self.step_traj(bundle.active)
-        out.close_log()
         os.chdir("..")
 
         if self._spawnprop is None and self._backprop is None:
@@ -166,7 +171,7 @@ class AIMS(Dynamics):
         mols = traj.mols
 
         if self._spawnprop and (coup(mols[-3]) < coup(mols[-2]) and coup(mols[-1]) < coup(mols[-2])):
-            out.write_log(f"Spawning on state {self._spawnstate}.")
+            fm.log(f"Spawning on state {self._spawnstate}.")
             self._enter_backprop(self._spawnprop)
             self._exit_spawning()
             self._tspawn = traj.timestep.time
@@ -194,9 +199,8 @@ class AIMS(Dynamics):
         for i, mol in enumerate(mols_fin):
             mol.amp = amp[i]
 
+@Config.Option("aims", "mixin")
 class AIMSMixin(MoleculeMixin):
-    key = "aims"
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.state = self._state
@@ -212,11 +216,11 @@ class AIMSMixin(MoleculeMixin):
         return self.state
 
     def dat_header(self):
-        dic = {"phs": Printer.write("Phase", "s")}
+        dic = {"phs": fmt("Phase")}
         return dic | super().dat_header()
 
     def dat_dic(self):
-        dic = {"phs": Printer.write(self.phase, "f")}
+        dic = {"phs": fmt(self.phase)}
         return dic | super().dat_dic()
 
     def h5_dict(self):

@@ -1,5 +1,7 @@
 import numpy as np
+from .base import UpdateResult
 from .nuclear import NuclearUpdater
+from classes.config import Config
 from classes.molecule import Molecule
 from classes.timestep import Timestep
 from dynamics.base import Dynamics
@@ -20,7 +22,6 @@ class HAM_base(NuclearUpdater):
         y[2*ns+nq:] = mol.mom_ad.flatten()
         return y
 
-
     def grad(self, mol: Molecule, dyn: Dynamics):
         dyn.set_el_grads(mol)
         dyn.calc_dRdt(mol)
@@ -36,38 +37,38 @@ class HAM_base(NuclearUpdater):
         mol.pos_ad = y[2*ns:2*ns+nq].reshape((nq//3,3))
         mol.vel_ad= y[2*ns+nq:].reshape((nq//3,3)) / mol.mass_a[:,None]
 
-
-
+@Config.Option("rk4_ham", "nuc")
 class RK4_ham(HAM_base):
-    key = "rk4_ham"
     substeps = 4
     b = np.array([1/6,1/3,1/3,1/6])
     c = np.array([0,1/2,1/2,1.])
 
+    def new_result(self, mol):
+        self.result = UpdateResult(mol, self.substeps)
+
     def update(self, mols: list[Molecule], ts: Timestep):
         # update position
         mol = mols[-1]
-        out = self.out
+        out = self.result
         dyn = Dynamics()
-        out.inter[0] = mol
 
-        y = self.mol_to_y(out.inter[0])
-        grad = self.grad(out.inter[0], dyn)
+        y = self.mol_to_y(out.inp)
+        grad = self.grad(out.inp, dyn)
         k = np.zeros((self.substeps, len(y)))
         k[0] = 1*grad
 
         for i in range(1,self.substeps):
-            out.inter[i] = mol.copy()
-            self.y_to_mol(out.inter[i], y + ts.dt*k[i-1]*self.c[i])
-            dyn.run_est(out.inter[i], mol, dyn.step_mode(out.inter[i]))
-            grad = self.grad(out.inter[i], dyn)
+            temp = mol.copy()
+            out.push(temp)
+            self.y_to_mol(temp, y + ts.dt*k[i-1]*self.c[i])
+            dyn.run_est(temp, mol)
+            grad = self.grad(temp, dyn)
             k[i] = 1*grad
 
         temp = mol.copy()
         self.y_to_mol(temp, y + np.sum(self.b[:,None] * k, axis=0))
 
         # calculate new acceleration
-        dyn.run_est(temp, mol, dyn.step_mode(temp))
+        dyn.run_est(temp, mol)
         grad = self.grad(temp, dyn)
-        out.inter[:-1] = out.inter[1:]
-        out.inter[-1] = temp
+        out.push(temp)

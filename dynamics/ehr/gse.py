@@ -1,11 +1,10 @@
 import numpy as np
 from .ehr import SimpleEhrenfest
+from classes.config import Config, get_cfg
 from classes.molecule import Molecule
-from electronic.base import ESTProgram
 
+@Config.Option("gse", "method")
 class GSE(SimpleEhrenfest):
-    key = "gse"
-
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         mol = mols[-1]
         print(f"Final pops: {np.abs(mol.coeff_s)**2}")

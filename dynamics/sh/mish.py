@@ -1,25 +1,19 @@
 import numpy as np
 
-from .sh import SurfaceHopping
+from dynamics.base import Dynamics
+from .sh import SurfaceHopping, Rescaler
 from .checker import HoppingUpdater
-from classes.out import Output as out
+from classes.config import Config, get_cfg
 from classes.molecule import Molecule
-from electronic.base import ESTProgram, ESTMode
+from electronic.base import ESTProgram, ESTMode, ESTRequest
 
+@Config.Option("mish", "method")
+@Config("prob", fix="mish")
+@Config("rescale", fix="mish")
+@Config("reverse", fix=True)
+@Config("decoherence", fix="none")
 class MISH(SurfaceHopping):
     ''' Runeson and Manolopoulos "Multi Mash". Also known as "MISH", the artist previously known as SHIAM '''
-    key = "mish"
-    mode = ESTMode("a")
-
-    def __init__(self, **config):
-        super().__init__(**config)
-
-        if self._rescale != "mish":
-            out.write_log("MISH called without MISH rescaling. Changing to default MISH rescaling.")
-            self._rescale = "mish"
-
-        HoppingUpdater.select("mish")(**config["quantum"])
-
     def adjust_nuclear(self, mols: list[Molecule], dt: float):
         mol = mols[-1]
         self.update_target(mols, dt)
@@ -75,13 +69,12 @@ class MISH(SurfaceHopping):
 
         mol.coeff_s = coeff
 
-    def _get_delta(self, mol: Molecule):
-
-        def normalise(a):
-            return a / np.linalg.norm(a)
-
+@ESTRequest(ESTMode(ESTMode.TARGET), this=False)
+@Config.Option("mish", "rescale")
+class MISHRescaler(Rescaler):
+    def get_delta(self, mol: Molecule):
         if np.any(np.isnan(mol.nacdr_ssad[mol.active, mol.target])):
-            self.run_est(mol, ref = mol, mode = ESTMode("t")(mol))
+            Dynamics().run_est(mol, ref = mol)
 
         nst = mol.n_states
         coeff = mol.coeff_s
@@ -90,13 +83,8 @@ class MISH(SurfaceHopping):
         target = mol.target
 
         delta = np.zeros_like(mol.vel_ad)
-
-
         for i in range(nst):
             delta += np.real(np.conj(coeff[i])*d[i,a]*coeff[a] - np.conj(coeff[i])*d[i,target]*coeff[target])
 
         delta /= mol.mass_a[:,None]
-
-        delta = normalise(delta)
-
-        return delta
+        return self._normalise(delta)

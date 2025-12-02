@@ -1,6 +1,21 @@
 from abc import ABC, abstractmethod
 import functools
 from typing import Callable
+from .config import get_cfg
+
+def get_parent(cls):
+    return [x for x in cls.mro() if type(x) == type(cls)][-1]
+
+def get_children(cls):
+    subs = set()
+    work = [cls]
+    while work:
+        par = work.pop()
+        for child in par.__subclasses__():
+            if child not in subs:
+                subs.add(child)
+                work.append(child)
+    return subs
 
 class Singleton(type):
     _instances = {}
@@ -15,13 +30,7 @@ class Singleton(type):
 
     @property
     def _lookup_key(cls):
-        if issubclass(cls, Selector):
-            return cls.par
-        return cls
-
-    @property
-    def par(cls):
-        return [x for x in cls.mro() if type(x) == type(cls)][-1]
+        return get_parent(cls)
 
     def reset(cls):
         cls._instances.pop(cls._lookup_key, None)
@@ -44,7 +53,7 @@ class Factory:
 
     def __init__(self, base, selector = None):
         self._base = base
-        self._selector: Selector = selector
+        self._selector = selector
         self._mixins = []
         self._methods = {}
 
@@ -53,7 +62,7 @@ class Factory:
             if self._selector is None:
                 self._mixins.append(arg)
             else:
-                self._mixins.append(self._selector.select(arg))
+                self._mixins.append(get_cfg(self._selector, "mixin", {"mixin": arg}))
         return self
 
     def add_methods(self, **kwargs):
@@ -128,7 +137,7 @@ class Wrapper:
         return functools.partial(self.__call__, instance)
 
     def __call__(self, instance, *args, **kwargs):
-        if self.decorator.id in self.decorator.active:
+        if self.decorator.id is not None and self.decorator.id in self.decorator.active:
             return self.func(instance, *args, **kwargs)
 
         self.decorator.activate()
@@ -175,22 +184,41 @@ class DecoratorDistributor:
         super().__init_subclass__()
         for base in cls.__bases__:
             for name, attr in base.__dict__.items():
-                if not callable(attr):
-                    continue
+                # Extract underlying function for descriptors (staticmethod/classmethod),
+                # otherwise use the attribute directly.
+                base_func = attr
+                if isinstance(attr, staticmethod) or isinstance(attr, classmethod):
+                    base_func = attr.__func__
 
-                base_decorators = cls.get_all_decorators(attr)
+                base_decorators = cls.get_all_decorators(base_func)
                 if not base_decorators:
                     continue
 
-                child_func = cls.__dict__.get(name)
-                if child_func is None:
+                child_attr = cls.__dict__.get(name)
+                if child_attr is None:
                     continue
+
+                # Extract underlying function for the child attribute if it's a descriptor
+                child_func = child_attr
+                child_descriptor_type = None
+                if isinstance(child_attr, staticmethod):
+                    child_func = child_attr.__func__
+                    child_descriptor_type = staticmethod
+                elif isinstance(child_attr, classmethod):
+                    child_func = child_attr.__func__
+                    child_descriptor_type = classmethod
 
                 child_decorators = cls.get_all_decorators(child_func)
 
                 for dec in base_decorators:
                     if not any(isinstance(d, type(dec)) for d in child_decorators):
                         child_func = dec(child_func)
+
+                # Re-wrap into original descriptor type if necessary
+                if child_descriptor_type is staticmethod:
+                    child_func = staticmethod(child_func)
+                elif child_descriptor_type is classmethod:
+                    child_func = classmethod(child_func)
 
                 setattr(cls, name, child_func)
 

@@ -4,14 +4,13 @@ import struct
 import math
 
 from .base import ESTProgram, est_method
-from classes.constants import multiplets, convert
+from classes.config import Config
 
 def str2float(string):
     return float(string.replace('-.','-0.').replace('D','E'))
 
+@Config.Option("turbomole", "program")
 class Turbomole(ESTProgram):
-    key = "turbomole"
-
     def _select_method(self, key):
         methods = {
             "adc2": self.adc2
@@ -474,9 +473,3 @@ class civfl_ana:
             string += '\n'
         with open(wname,'w') as f:
             f.write(string)
-
-
-
-
-
-

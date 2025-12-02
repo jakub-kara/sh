@@ -1,32 +1,14 @@
 import numpy as np
-from classes.molecule import Molecule, BlochMixin
-from classes.meta import Singleton, Selector
+from classes.config import Config, get_cfg
+from classes.molecule import Molecule
+from classes.meta import Singleton
 from classes.timestep import Timestep
 from updaters.base import Updater, Multistage, UpdateResult
 from updaters.coeff import CoeffUpdater
 from updaters.tdc import TDCUpdater
 
-class HoppingUpdater(Updater, Selector, metaclass = Singleton):
-    def __init__(self, *, seed = None, **config):
-        super().__init__(**config)
-        if seed is None:
-            self._seed = np.random.default_rng().integers(9223372036854775807)
-        else:
-            self._seed = seed
-        self._rng = np.random.default_rng(self._seed)
-
-        options = {
-            "i" : self._check_hop_i,
-            "c" : self._check_hop_c
-        }
-
-        self._check_hop = options[config.get("prob_type", "i")]
-
-        if self._check_hop == self._check_hop_c:
-            self._r = None
-            self._cum_prob = None
-
-
+@Config("prob", root=True, default="tdc", path=Config.DYNAMICS, valid=Config.STR)
+class HoppingUpdater(Updater, metaclass = Singleton):
     def new_result(self, mol: Molecule):
         self.hop = UpdateResult(mol.active, self.substeps)
         self.prob = UpdateResult(np.zeros(mol.n_states), self.substeps)
@@ -34,6 +16,32 @@ class HoppingUpdater(Updater, Selector, metaclass = Singleton):
     def no_update(self, mols: list[Molecule], ts: Timestep):
         self.hop.fill()
 
+@Config.Option("none", "prob")
+class NoHoppingUpdater(HoppingUpdater):
+    def update(self, mols, dt, *args, **kwargs):
+        self.hop.fill()
+
+@Config("prob_type", default="i", path=Config.DYNAMICS, valid=Config.STR)
+@Config("seed", default=None, path=Config.DYNAMICS, valid=Config.NONE | Config.INT)
+class FSSHHoppingUpdater(HoppingUpdater):
+    def __init__(self, **config):
+        super().__init__(**config)
+
+        seed = get_cfg(self, "seed", config)
+        if seed is None:
+            self._seed = np.random.default_rng().integers(9223372036854775807)
+        else:
+            self._seed = seed
+        self._rng = np.random.default_rng(self._seed)
+
+        self.__class__._check_hop = get_cfg(self, "prob_type", config)
+        # breakpoint()
+
+        if self._check_hop == self._check_hop_c:
+            self._r = None
+            self._cum_prob = None
+
+    @Config.Option("c", "prob_type", "HoppingUpdater")
     def _check_hop_c(self, prob: np.ndarray, active : int, dt: float):
         if self._r is None:
             self._r = self._rng.random()
@@ -50,6 +58,7 @@ class HoppingUpdater(Updater, Selector, metaclass = Singleton):
             return s
         return active
 
+    @Config.Option("i", "prob_type", "HoppingUpdater")
     def _check_hop_i(self, prob: np.ndarray, active: int, dt: float):
         r = self._rng.random()
         cum_prob = 0
@@ -59,15 +68,8 @@ class HoppingUpdater(Updater, Selector, metaclass = Singleton):
                 return s
         return active
 
-class NoHoppingUpdater(HoppingUpdater):
-    key = "none"
-
-    def update(self, mols, dt, *args, **kwargs):
-        self.hop.fill()
-
+@Config.Option("tdc", "prob")
 class TDCHoppingChecker(Multistage, HoppingUpdater):
-    ''' CLASSIC TULLY '''
-    key = "tdc"
     steps = 1
 
     def update(self, mols: list[Molecule], ts: Timestep):
@@ -101,8 +103,8 @@ class TDCHoppingChecker(Multistage, HoppingUpdater):
             self.hop.inter[i] = self._check_hop(prob, active, ts.dt/self.substeps)
             target = self.hop.inter[i]
 
+@Config.Option("prop", "prob")
 class PropHoppingChecker(HoppingUpdater):
-    key = "prop"
     steps = 1
 
     def update(self, mols: list[Molecule], ts: Timestep):
@@ -124,6 +126,7 @@ class PropHoppingChecker(HoppingUpdater):
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active, ts.dt)
 
+@Config.Option("gf", "prob")
 class GFHoppingChecker(HoppingUpdater):
     key = "gf"
     steps = 1
@@ -147,9 +150,8 @@ class GFHoppingChecker(HoppingUpdater):
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active, ts.dt)
 
+@Config.Option("mash", "prob")
 class MASHChecker(HoppingUpdater):
-    key = "mash"
-
     def update(self, mols: list[Molecule], ts: Timestep):
         nst = mols[-1].n_states
         active = mols[-1].active
@@ -162,6 +164,7 @@ class MASHChecker(HoppingUpdater):
         self.prob.out = prob
         self.hop.out = self._check_hop(prob, active, ts.dt)
 
+@Config.Option("mish", "prob")
 class MISHChecker(HoppingUpdater):
     key = "mish"
 

@@ -2,6 +2,7 @@ import numpy as np
 import os, sys, shutil
 import json
 
+from classes.config import Config, get_cfg
 from classes.molecule import Molecule
 from .base import ESTProgram, est_method
 from .molpro import Molpro
@@ -11,9 +12,8 @@ try:
 except ImportError:
     print("Warning: pyscf module not found")
 
+@Config.Option("bagel", "program")
 class Bagel(ESTProgram):
-    key = "bagel"
-
     def initiate(self):
 
         fs = os.listdir(os.getcwd())
